@@ -2,7 +2,7 @@
 
 Source project: **LMS Collaborato Design System**
 Project ID: `72f1ad68-b894-4cea-b870-e2336fc2fe87`
-Pulled: 2026-08-31
+Pulled: 2026-08-31 (Button icon-start update)
 
 ## What lives here
 
@@ -21,7 +21,7 @@ Kept deliberately minimal. Three changes, all required to run under Vite:
 1. `Tabs.jsx` and `AppBar.jsx` call `React.useState` / `React.useEffect`.
    Claude Design's preview supplies `React` as a global; Vite does not, so
    `import * as React from 'react'` was added to both.
-2. `IconButton`, `MenuItem` and `TabItem` looked the `Icon` component up off a
+2. `Button`, `IconButton`, `MenuItem` and `TabItem` looked the `Icon` component up off a
    `window.LMSCollaboratoDesignSystem_72f1ad` global, with an inline `<i>`
    fallback. Both branches render identical markup, so these now import `Icon`
    directly instead.

@@ -15,6 +15,16 @@ export interface ButtonProps {
    */
   state?: 'default' | 'hover' | 'pressed' | 'disabled';
   size?: 'm';
+  /**
+   * Shows a 16×16 icon (--icon-size-s) left of the label wrapper, 4px gap.
+   * Icon color always matches the label: --on-primary on primary,
+   * --on-surface-variant → --on-surface (hover/pressed) on tonal,
+   * --on-surface-subtle at 60% opacity when disabled.
+   * Off by default.
+   */
+  iconStart?: boolean;
+  /** Phosphor glyph name used when iconStart is true */
+  iconStartName?: string;
 }
 
 export declare function Button(props: ButtonProps): JSX.Element;

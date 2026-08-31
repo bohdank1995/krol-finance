@@ -53,7 +53,7 @@ When the user asks to sync, pull, or update the design system:
    to the user in plain language — which components changed, which tokens moved.
 4. **Re-apply every deviation in SYNC.md** to any file that was overwritten. As of the
    last sync: `import * as React from 'react'` in `Tabs.jsx` and `AppBar.jsx`; direct
-   `Icon` imports in `IconButton.jsx`, `MenuItem.jsx`, `TabItem.jsx`; no remote
+   `Icon` imports in `Button.jsx`, `IconButton.jsx`, `MenuItem.jsx`, `TabItem.jsx`; no remote
    `@import url(...)` in `tokens/fonts.css` or `tokens/icons.css` (those stylesheets are
    `<link>`ed from `index.html` instead).
 5. If a **new** component appeared, add it to both `index.js` and `index.d.ts`, add its

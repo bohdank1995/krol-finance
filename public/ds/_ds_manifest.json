@@ -32,7 +32,7 @@
     { "path": "guidelines/type-label-s.card.html", "group": "Typography", "viewport": "1000x560", "subtitle": "12px / 16px, medium — font-plain", "name": "label-s" },
     { "path": "guidelines/type-link-m.card.html", "group": "Typography", "viewport": "1000x620", "subtitle": "label-m + underline — 6% thickness, 25% offset, skip ink on", "name": "link-m" },
     { "path": "components/Breadcrumbs/Breadcrumbs.html", "group": "UI Components", "viewport": "620x200", "subtitle": "Link-m trail / 12px caret-right separators", "name": "Breadcrumbs" },
-    { "path": "components/Button/Button.html", "group": "UI Components", "viewport": "620x340", "subtitle": "primary + tonal / states / m", "name": "Button" },
+    { "path": "components/Button/Button.html", "group": "UI Components", "viewport": "620x400", "subtitle": "primary + tonal / states / icon start toggle", "name": "Button" },
     { "path": "components/ButtonGroup/ButtonGroup.html", "group": "UI Components", "viewport": "620x300", "subtitle": "primary button + chevron icon-button, primary-30 divider", "name": "Button group" },
     { "path": "components/IconButton/IconButton.html", "group": "UI Components", "viewport": "620x340", "subtitle": "primary + tonal / states / 32×32, 16px icon", "name": "Icon button" },
     { "path": "components/LinkM/LinkM.html", "group": "UI Components", "viewport": "620x260", "subtitle": "default / hover / disabled", "name": "Link-m" },
