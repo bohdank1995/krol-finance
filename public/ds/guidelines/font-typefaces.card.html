@@ -1,0 +1,78 @@
+<!-- @dsCard group="Typography" viewport="1000x620" name="Typeface tokens" subtitle="--font-brand and --font-plain — changing one retypes every component" -->
+<!DOCTYPE html><html><head><meta charset="utf-8"/>
+<link rel="stylesheet" href="../styles.css"/>
+<script src="../tokens/token-sync.js"></script>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+<style>
+body{margin:0;padding:28px;background:var(--neutral-99);color:var(--neutral-0);font-family:var(--font-plain)}
+a{color:var(--primary-10)}a:hover{color:var(--primary-40)}
+.tok{display:grid;grid-template-columns:1fr 300px;gap:28px;align-items:start;padding:22px 0;border-top:1px solid var(--neutral-80)}
+.tok:first-child{border-top:none;padding-top:0}
+.name{font-family:monospace;font-size:13px;color:var(--primary-10);margin:0 0 4px}
+.role{font-size:13px;color:var(--neutral-30);margin:0 0 16px}
+.sample{font-family:var(--font-brand);font-size:34px;line-height:1.15;font-weight:700;margin:0 0 6px}
+.sample.plain{font-family:var(--font-plain);font-weight:400}
+.spec{font-size:15px;color:var(--neutral-20);margin:0}
+label{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--neutral-40);margin:0 0 6px}
+select{width:100%;font-family:var(--font-plain);font-size:14px;padding:9px 10px;border:1px solid var(--neutral-70);border-radius:6px;background:var(--neutral-100);color:var(--neutral-0)}
+select:focus{outline:2px solid var(--primary-40);outline-offset:1px}
+.live{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:18px 0 0}
+.live h3{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--neutral-40);margin:0;flex:0 0 100%}
+.chip{font-size:12px;font-family:monospace;color:var(--neutral-40)}
+.reset{border:1px solid var(--neutral-70);background:var(--neutral-100);border-radius:6px;padding:7px 10px;font:inherit;font-size:12px;color:var(--neutral-20);cursor:pointer}
+.reset:hover{background:var(--neutral-95)}
+pre{margin:12px 0 0;padding:12px 14px;border-radius:6px;background:var(--neutral-0);color:var(--neutral-95);font-family:monospace;font-size:12px;line-height:1.6;overflow-x:auto;cursor:pointer}
+pre .p{color:var(--primary-70)}
+pre .v{color:var(--secondary-80)}
+pre.copied{outline:2px solid var(--primary-40)}
+</style></head><body>
+<div class="tok">
+  <div>
+    <p class="name">--font-brand</p>
+    <p class="sample" id="s-brand">Learn together, ship faster</p>
+  </div>
+  <div>
+    <label for="sel-brand">Brand typeface</label>
+    <select id="sel-brand"></select>
+  </div>
+</div>
+<div class="tok">
+  <div>
+    <p class="name">--font-plain</p>
+    <p class="sample plain" id="s-plain">Assign a course to 24 learners and track completion weekly.</p>
+  </div>
+  <div>
+    <label for="sel-plain">Plain typeface</label>
+    <select id="sel-plain"></select>
+  </div>
+</div>
+<div class="tok">
+  <div></div>
+</div>
+<pre id="snippet"></pre>
+<script>
+const {FAMILIES,FALLBACK,ROLES}=TokenSync;
+const sel={brand:document.getElementById('sel-brand'),plain:document.getElementById('sel-plain')};
+for(const k of ROLES){
+  sel[k].innerHTML=FAMILIES.map(f=>`<option>${f}</option>`).join('');
+  sel[k].addEventListener('change',()=>TokenSync.setFont(k,sel[k].value));
+}
+const snippet=document.getElementById('snippet');
+snippet.addEventListener('click',()=>{
+  navigator.clipboard.writeText(snippet.textContent).catch(()=>{});
+  snippet.classList.add('copied');setTimeout(()=>snippet.classList.remove('copied'),900);
+});
+TokenSync.onChange(({fonts})=>{
+  for(const k of ROLES)sel[k].value=fonts[k];
+  snippet.innerHTML=`:root {
+  <span class="p">--font-fallback</span>: ${FALLBACK.replace(/"/g,'&quot;')};
+
+  <span class="p">--font-brand</span>: <span class="v">"${fonts.brand}"</span>, var(--font-fallback);
+  <span class="p">--font-plain</span>: <span class="v">"${fonts.plain}"</span>, var(--font-fallback);
+}`;
+});
+</script>
+</body></html>

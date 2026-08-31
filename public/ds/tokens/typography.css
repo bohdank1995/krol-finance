@@ -1,0 +1,183 @@
+/* LMS Collaborato — Typestyle tokens
+   Each typestyle is a set of primitives + one shorthand-ish class.
+   Sizes are rem (1rem = 16px base). */
+
+:root {
+  /* label-m */
+  --label-m-font-family: var(--font-plain);
+  --label-m-font-size: 0.875rem;   /* 14px */
+  --label-m-font-weight: 500;      /* medium */
+  --label-m-font-style: normal;
+  --label-m-line-height: 1.25rem;  /* 20px */
+  --label-m-letter-spacing: 0;     /* tracking 0px */
+  --label-m-color: var(--on-surface);
+}
+
+.label-m {
+  font-family: var(--label-m-font-family);
+  font-size: var(--label-m-font-size);
+  font-weight: var(--label-m-font-weight);
+  font-style: var(--label-m-font-style);
+  line-height: var(--label-m-line-height);
+  letter-spacing: var(--label-m-letter-spacing);
+  color: var(--label-m-color);
+}
+
+:root {
+  /* link-m — label-m props + underline */
+  --link-m-font-family: var(--label-m-font-family);
+  --link-m-font-size: var(--label-m-font-size);
+  --link-m-font-weight: var(--label-m-font-weight);
+  --link-m-font-style: var(--label-m-font-style);
+  --link-m-line-height: var(--label-m-line-height);
+  --link-m-letter-spacing: var(--label-m-letter-spacing);
+  --link-m-color: var(--on-surface);
+  --link-m-text-decoration-line: underline;
+  --link-m-text-decoration-style: solid;
+  --link-m-text-decoration-thickness: 6%;   /* 6% of font size */
+  --link-m-text-underline-offset: 25%;      /* 25% of font size */
+  --link-m-text-decoration-skip-ink: auto;  /* skip ink on */
+  --link-m-text-decoration-color: var(--link-underline);
+}
+
+.link-m {
+  font-family: var(--link-m-font-family);
+  font-size: var(--link-m-font-size);
+  font-weight: var(--link-m-font-weight);
+  font-style: var(--link-m-font-style);
+  line-height: var(--link-m-line-height);
+  letter-spacing: var(--link-m-letter-spacing);
+  color: var(--link-m-color);
+  text-decoration-line: var(--link-m-text-decoration-line);
+  text-decoration-style: var(--link-m-text-decoration-style);
+  text-decoration-thickness: var(--link-m-text-decoration-thickness);
+  text-underline-offset: var(--link-m-text-underline-offset);
+  text-decoration-skip-ink: var(--link-m-text-decoration-skip-ink);
+  text-decoration-color: var(--link-m-text-decoration-color);
+}
+
+:root {
+  /* label-l */
+  --label-l-font-family: var(--font-plain);
+  --label-l-font-size: 1rem;   /* 16px */
+  --label-l-font-weight: 500;      /* medium */
+  --label-l-font-style: normal;
+  --label-l-line-height: 1.5rem;      /* 24px */
+  --label-l-letter-spacing: 0;     /* tracking 0px */
+  --label-l-color: var(--on-surface);
+}
+
+.label-l {
+  font-family: var(--label-l-font-family);
+  font-size: var(--label-l-font-size);
+  font-weight: var(--label-l-font-weight);
+  font-style: var(--label-l-font-style);
+  line-height: var(--label-l-line-height);
+  letter-spacing: var(--label-l-letter-spacing);
+  color: var(--label-l-color);
+}
+
+:root {
+  /* label-s */
+  --label-s-font-family: var(--font-plain);
+  --label-s-font-size: 0.75rem;   /* 12px */
+  --label-s-font-weight: 500;      /* medium */
+  --label-s-font-style: normal;
+  --label-s-line-height: 1rem;      /* 16px */
+  --label-s-letter-spacing: 0;     /* tracking 0px */
+  --label-s-color: var(--on-surface);
+}
+
+.label-s {
+  font-family: var(--label-s-font-family);
+  font-size: var(--label-s-font-size);
+  font-weight: var(--label-s-font-weight);
+  font-style: var(--label-s-font-style);
+  line-height: var(--label-s-line-height);
+  letter-spacing: var(--label-s-letter-spacing);
+  color: var(--label-s-color);
+}
+
+:root {
+  /* h5 */
+  --h5-font-family: var(--font-brand);
+  --h5-font-size: 1.1875rem;   /* 19px */
+  --h5-font-weight: 500;       /* medium */
+  --h5-font-style: normal;
+  --h5-line-height: 1.75rem;   /* 28px */
+  --h5-letter-spacing: 0;      /* tracking 0px */
+  --h5-color: var(--on-surface);
+}
+
+.h5 {
+  font-family: var(--h5-font-family);
+  font-size: var(--h5-font-size);
+  font-weight: var(--h5-font-weight);
+  font-style: var(--h5-font-style);
+  line-height: var(--h5-line-height);
+  letter-spacing: var(--h5-letter-spacing);
+  color: var(--h5-color);
+}
+
+:root {
+  /* body-l */
+  --body-l-font-family: var(--font-plain);
+  --body-l-font-size: 1rem;   /* 16px */
+  --body-l-font-weight: 400;      /* normal */
+  --body-l-font-style: normal;
+  --body-l-line-height: 1.75rem;   /* 28px */
+  --body-l-letter-spacing: 0;     /* tracking 0px */
+  --body-l-color: var(--on-surface);
+}
+
+.body-l {
+  font-family: var(--body-l-font-family);
+  font-size: var(--body-l-font-size);
+  font-weight: var(--body-l-font-weight);
+  font-style: var(--body-l-font-style);
+  line-height: var(--body-l-line-height);
+  letter-spacing: var(--body-l-letter-spacing);
+  color: var(--body-l-color);
+}
+
+:root {
+  /* body-m */
+  --body-m-font-family: var(--font-plain);
+  --body-m-font-size: 0.875rem;   /* 14px */
+  --body-m-font-weight: 400;      /* normal */
+  --body-m-font-style: normal;
+  --body-m-line-height: 1.5rem;   /* 24px */
+  --body-m-letter-spacing: 0;     /* tracking 0px */
+  --body-m-color: var(--on-surface);
+}
+
+.body-m {
+  font-family: var(--body-m-font-family);
+  font-size: var(--body-m-font-size);
+  font-weight: var(--body-m-font-weight);
+  font-style: var(--body-m-font-style);
+  line-height: var(--body-m-line-height);
+  letter-spacing: var(--body-m-letter-spacing);
+  color: var(--body-m-color);
+}
+
+:root {
+  /* body-s */
+  --body-s-font-family: var(--font-plain);
+  --body-s-font-size: 0.75rem;   /* 12px */
+  --body-s-font-weight: 400;      /* normal */
+  --body-s-font-style: normal;
+  --body-s-line-height: 1rem;   /* 16px */
+  --body-s-letter-spacing: 0;     /* tracking 0px */
+  --body-s-color: var(--on-surface);
+}
+
+.body-s {
+  font-family: var(--body-s-font-family);
+  font-size: var(--body-s-font-size);
+  font-weight: var(--body-s-font-weight);
+  font-style: var(--body-s-font-style);
+  line-height: var(--body-s-line-height);
+  letter-spacing: var(--body-s-letter-spacing);
+  color: var(--body-s-color);
+}

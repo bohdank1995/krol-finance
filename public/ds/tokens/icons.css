@@ -1,0 +1,12 @@
+/* LMS Collaborato — Icon tokens
+   Icon set: Phosphor, Bold weight only. The family is loaded here so every
+   consumer of styles.css gets it; components never name the family. */
+
+@import url('https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css');
+
+:root {
+  --icon-size-xs: 12px;
+  --icon-size-s: 16px;
+  --icon-size-m: 20px;
+  --icon-size-l: 24px;
+}

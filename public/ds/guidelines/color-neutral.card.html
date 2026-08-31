@@ -1,0 +1,22 @@
+<!-- @dsCard group="Colors" viewport="360x660" name="Neutral — Warm gray" subtitle="Text, surfaces, borders — click a tone to edit" -->
+<!DOCTYPE html><html><head><meta charset="utf-8"/>
+<link rel="stylesheet" href="../styles.css"/>
+<script src="../tokens/token-sync.js"></script>
+<style>
+  body{margin:0;padding:16px;background:var(--neutral-99);font-family:var(--font-caption)}
+  .hint{display:flex;align-items:center;justify-content:space-between;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--neutral-40);margin:0 2px 8px}
+  .hint button{border:1px solid var(--neutral-80);background:var(--neutral-100);border-radius:6px;padding:3px 8px;font:inherit;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--neutral-30);cursor:pointer}
+  .hint button:hover{background:var(--neutral-95)}
+  .col{display:flex;flex-direction:column;border-radius:8px;overflow:hidden;border:1px solid var(--neutral-90)}
+  .sw{height:40px;display:flex;align-items:center;gap:8px;padding:0 10px;font-size:11px}
+  .sw b{font-weight:600}
+  .sw span{margin-left:auto;opacity:0.85;font-family:monospace}
+  .sw:hover{filter:brightness(1.06)}
+</style></head><body>
+<div class="hint"><span>Click a tone to edit</span><button id="rs">Reset ramp</button></div>
+<div class="col" id="r"></div>
+<script src="../tokens/palette-editor.js"></script>
+<script>
+PaletteEditor.renderRamp(document.getElementById('r'),'neutral');
+document.getElementById('rs').addEventListener('click',()=>PaletteEditor.reset('neutral'));
+</script></body></html>
