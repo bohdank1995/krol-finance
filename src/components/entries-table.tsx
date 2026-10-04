@@ -24,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import type { AssetSymbol } from '@/lib/assets'
+import { assetLabel, type AssetSymbol } from '@/lib/assets'
 import { deleteEntry, isReadOnly, type Entry, type Portfolio } from '@/lib/entries'
 import { formatAmount, formatDate, formatSigned, formatMoney } from '@/lib/format'
 import type { Currency } from '@/lib/preferences'
@@ -53,7 +53,8 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
   const byId = new Map(portfolios.map((h) => [h.id, h]))
   // Synced (Monobank) portfolios are read-only: no Deposit/Withdraw into them, no row edits.
   const editable = readOnly ? [] : portfolios.filter((p) => !isReadOnly(p))
-  const synced = isReadOnly(portfolioId ? byId.get(portfolioId) : undefined)
+  const current = portfolioId ? byId.get(portfolioId) : undefined
+  const synced = isReadOnly(current)
   const rows = [...entries].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
 
   return (
@@ -67,8 +68,10 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
               ? 'Create your first portfolio with the + card above.'
               : filtered
                 ? 'Nothing in this period.'
-                : synced
-                  ? 'No transactions in the last 31 days.'
+                : current?.source === 'ibkr'
+                  ? 'No stocks in this portfolio.'
+                  : synced
+                    ? 'No transactions in the last 31 days.'
                   : 'No entries yet. Make a deposit to see a balance.'}
           </p>
         </div>
@@ -108,7 +111,7 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
                     )}
                   >
                     {formatSigned(e.amount)}
-                    <span className="ml-2 inline-block min-w-[4ch] text-left text-muted-foreground">{e.asset}</span>
+                    <span className="ml-2 inline-block min-w-[4ch] text-left text-muted-foreground">{assetLabel(e.asset)}</span>
                     {/* Phones have no Date column: the date sits under the amount. */}
                     <span className="mt-1 block whitespace-pre-wrap text-muted-foreground sm:hidden">
                       {formatDate(e.createdAt)}
@@ -171,7 +174,7 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
           <AlertDialogTitle className="text-sm font-normal text-muted-foreground">
             Delete{' '}
             <span className="font-mono text-foreground">
-              {deleting && `${formatAmount(deleting.amount)} ${deleting.asset}`}
+              {deleting && `${formatAmount(deleting.amount)} ${assetLabel(deleting.asset)}`}
             </span>
             ?
           </AlertDialogTitle>

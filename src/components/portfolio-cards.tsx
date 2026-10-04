@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS as DndCSS } from '@dnd-kit/utilities'
-import { Landmark, MoreHorizontal, Pencil, Plus, Trash2, Unlink, WalletCards } from 'lucide-react'
+import { ChartCandlestick, Landmark, MoreHorizontal, Pencil, Plus, Trash2, Unlink, WalletCards } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { AssetSymbol } from '@/lib/assets'
-import { deletePortfolio, reorderPortfolios, type Entry, type Portfolio } from '@/lib/entries'
+import { deletePortfolio, isReadOnly, reorderPortfolios, type Entry, type Portfolio } from '@/lib/entries'
 import { formatAgo, formatMoney } from '@/lib/format'
 import type { DailyPrices } from '@/lib/history'
 import type { Range } from '@/lib/period'
@@ -28,6 +28,7 @@ import { balance, series, valueOn } from '@/lib/portfolio'
 import type { Currency } from '@/lib/preferences'
 import type { PriceStatus } from '@/lib/prices'
 import { cn } from '@/lib/utils'
+import { IbkrDrawer } from './ibkr-drawer'
 import { MonobankDrawer } from './monobank-drawer'
 import { PortfolioDrawer } from './portfolio-drawer'
 
@@ -67,7 +68,7 @@ type Props = Valuation & {
 
 export function PortfolioCards({ portfolios, entries, status, selected, onSelect, readOnly, ...valuation }: Props) {
   const [creating, setCreating] = useState(false)
-  const [connecting, setConnecting] = useState(false)
+  const [connecting, setConnecting] = useState<'monobank' | 'ibkr'>()
   const [renaming, setRenaming] = useState<Portfolio>()
   const [deleting, setDeleting] = useState<Portfolio>()
   const rowRef = useRef<HTMLDivElement>(null)
@@ -173,8 +174,8 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
                             Rename
                           </DropdownMenuItem>
                           <DropdownMenuItem variant="destructive" onClick={() => setDeleting(h)}>
-                            {h.source === 'monobank' ? <Unlink /> : <Trash2 />}
-                            {h.source === 'monobank' ? 'Disconnect' : 'Delete'}
+                            {isReadOnly(h) ? <Unlink /> : <Trash2 />}
+                            {isReadOnly(h) ? 'Disconnect' : 'Delete'}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -201,14 +202,18 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
             >
               <Plus />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={() => setCreating(true)}>
                 <WalletCards className="text-muted-foreground" />
                 Custom
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setConnecting(true)}>
+              <DropdownMenuItem onClick={() => setConnecting('monobank')}>
                 <Landmark className="text-muted-foreground" />
                 Monobank
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setConnecting('ibkr')}>
+                <ChartCandlestick className="text-muted-foreground" />
+                Interactive Brokers
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -238,7 +243,16 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
       )}
 
       <PortfolioDrawer open={creating} onOpenChange={setCreating} onCreated={onSelect} />
-      <MonobankDrawer open={connecting} onOpenChange={setConnecting} onCreated={onSelect} />
+      <MonobankDrawer
+        open={connecting === 'monobank'}
+        onOpenChange={(open) => !open && setConnecting(undefined)}
+        onCreated={onSelect}
+      />
+      <IbkrDrawer
+        open={connecting === 'ibkr'}
+        onOpenChange={(open) => !open && setConnecting(undefined)}
+        onCreated={onSelect}
+      />
       <PortfolioDrawer
         open={!!renaming}
         onOpenChange={(open) => !open && setRenaming(undefined)}
@@ -248,9 +262,9 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
       <AlertDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(undefined)}>
         <AlertDialogContent size="sm" className="gap-6 p-6">
           <AlertDialogTitle className="text-sm font-normal text-muted-foreground">
-            {deleting?.source === 'monobank' ? 'Disconnect' : 'Delete'}{' '}
+            {isReadOnly(deleting) ? 'Disconnect' : 'Delete'}{' '}
             <span className="text-foreground">{deleting?.name}</span> and{' '}
-            {deleting?.source === 'monobank' ? 'remove its synced entries' : 'all its entries'}?
+            {isReadOnly(deleting) ? 'remove its synced entries' : 'all its entries'}?
           </AlertDialogTitle>
           <AlertDialogFooter className="-mx-6 -mb-6 px-6 py-4">
             <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
@@ -264,7 +278,7 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
                 setDeleting(undefined)
               }}
             >
-              {deleting?.source === 'monobank' ? 'Disconnect' : 'Delete'}
+              {isReadOnly(deleting) ? 'Disconnect' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

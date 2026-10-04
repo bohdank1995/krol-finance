@@ -1,5 +1,5 @@
-/** Everything a user can hold. `USD` is cash; the rest (other currencies too) are priced live from Binance.
-    Each asset belongs to one entry type, which is how an entry's type is known. */
+/** Everything a user can hold besides stocks. `USD` is cash; the rest (other currencies too) are priced
+    live from Binance. Each asset belongs to one entry type, which is how an entry's type is known. */
 export const ASSETS = [
   { symbol: 'USD', name: 'US Dollar', type: 'money' },
   { symbol: 'EUR', name: 'Euro', type: 'money' },
@@ -20,7 +20,13 @@ export const ASSETS = [
   { symbol: 'TRX', name: 'TRON', type: 'crypto' },
 ] as const
 
-export type AssetSymbol = (typeof ASSETS)[number]['symbol']
+type KnownSymbol = (typeof ASSETS)[number]['symbol']
+
+/** A stock is "stock:" + its Yahoo Finance ticker ("stock:AAPL", "stock:VWCE.DE"), so it can never
+    clash with a crypto symbol. Stocks come from Interactive Brokers and are priced in `stocks.ts`. */
+export type StockSymbol = `stock:${string}`
+
+export type AssetSymbol = KnownSymbol | StockSymbol
 
 /** The kinds of entry. Each type only offers its own assets. */
 export const ENTRY_TYPES = [
@@ -36,8 +42,14 @@ export function assetsFor(type: EntryType) {
   return ASSETS.filter((a) => a.type === type)
 }
 
+export const isStock = (a: AssetSymbol): a is StockSymbol => a.startsWith('stock:')
+
 /** The entry type an asset belongs to. */
-export const typeOf = (symbol: AssetSymbol): EntryType => ASSETS.find((a) => a.symbol === symbol)!.type
+export const typeOf = (symbol: AssetSymbol): EntryType =>
+  isStock(symbol) ? 'stocks' : ASSETS.find((a) => a.symbol === symbol)!.type
+
+/** What to show for an asset: "AAPL" for stock:AAPL, "VWCE" for stock:VWCE.DE, "BTC" for BTC. */
+export const assetLabel = (a: AssetSymbol) => (isStock(a) ? a.slice(6).replace(/\.[A-Z]+$/, '') : a)
 
 /** Assets worth exactly one dollar, so they need no price feed. */
 export const isDollar = (a: AssetSymbol) => a === 'USD' || a === 'USDC'

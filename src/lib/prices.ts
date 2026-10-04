@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { isDollar, type AssetSymbol } from './assets'
+import { isDollar, isStock, type AssetSymbol } from './assets'
+import { useStockPrices } from './stocks'
 
 /* Live prices in USD (USDC pairs) from Binance's public market data: one REST snapshot so
-   values appear immediately, then a WebSocket stream for tick-by-tick updates. */
+   values appear immediately, then a WebSocket stream for tick-by-tick updates.
+   Stocks are priced separately (`stocks.ts`) and merged in. */
 
 export type PriceStatus = 'idle' | 'connecting' | 'live' | 'offline'
 
@@ -22,7 +24,8 @@ export function useLivePrices(assets: AssetSymbol[]) {
     () => [...new Set(assets)].filter((a) => !isDollar(a)).sort(),
     [assets],
   )
-  const watchKey = watched.join(',')
+  const watchKey = watched.filter((a) => !isStock(a)).join(',')
+  const stocks = useStockPrices(watched.filter(isStock).join(','))
   const [prices, setPrices] = useState<Partial<Record<AssetSymbol, number>>>({})
   const [status, setStatus] = useState<Exclude<PriceStatus, 'idle'>>('connecting')
 
@@ -76,6 +79,15 @@ export function useLivePrices(assets: AssetSymbol[]) {
     }
   }, [watchKey])
 
-  const usd: Partial<Record<AssetSymbol, number>> = { ...prices, USD: 1, USDC: 1 }
-  return { prices: usd, status: watchKey ? status : ('idle' as PriceStatus) }
+  const usd: Partial<Record<AssetSymbol, number>> = { ...prices, ...stocks.prices, USD: 1, USDC: 1 }
+  // Both feeds in use: live only when both are, reconnecting if either dropped.
+  const feeds = [watchKey && status, watched.some(isStock) && stocks.status].filter(Boolean) as PriceStatus[]
+  const combined: PriceStatus = !feeds.length
+    ? 'idle'
+    : feeds.includes('offline')
+      ? 'offline'
+      : feeds.includes('connecting')
+        ? 'connecting'
+        : 'live'
+  return { prices: usd, status: combined }
 }

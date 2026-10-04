@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import type { AssetSymbol } from './assets'
+import type { AssetSymbol, StockSymbol } from './assets'
 import { supabase } from './supabase'
 
 /* Portfolios (the cards) and their entries (the rows) live in Supabase, locked to the
@@ -11,9 +11,10 @@ export type Portfolio = {
   id: string
   name: string
   createdAt: string
-  /** 'monobank' portfolios mirror a Monobank card: their entries are synced, not typed in. */
-  source: 'manual' | 'monobank'
-  /** When a Monobank portfolio was last synced. */
+  /** 'monobank' portfolios mirror a Monobank card, 'ibkr' ones stocks at Interactive Brokers:
+      their entries are synced, not typed in. */
+  source: 'manual' | 'monobank' | 'ibkr'
+  /** When a synced portfolio was last synced. */
   syncedAt?: string
   /** Place in the cards row once dragged; unset ones follow in creation order. */
   position?: number
@@ -236,8 +237,19 @@ export function deleteEntry(id: string) {
   commit(previous, () => supabase.from('entries').delete().eq('id', id))
 }
 
-/** Synced portfolios (Monobank) can't have entries added, edited or deleted by hand. */
-export const isReadOnly = (p: Portfolio | undefined) => p?.source === 'monobank'
+/** Synced portfolios (Monobank, IBKR) can't have entries added, edited or deleted by hand. */
+export const isReadOnly = (p: Portfolio | undefined) => !!p && p.source !== 'manual'
+
+/** Calls an Edge Function; its `{ error }` reply becomes the thrown message. */
+export async function invoke<T>(name: string, body: Record<string, unknown>, fallback: string): Promise<T> {
+  const { data, error } = await supabase.functions.invoke(name, { body })
+  if (error) {
+    const context = (error as { context?: Response }).context
+    const reply = await context?.json?.().catch(() => undefined)
+    throw new Error(reply?.error ?? fallback)
+  }
+  return data as T
+}
 
 /* Monobank: the token goes to the `monobank` Edge Function, which keeps it server-side,
    talks to Monobank and writes the portfolio + entries. The app then reloads. */
@@ -254,15 +266,7 @@ export type MonobankCard = {
   connected: boolean
 }
 
-async function monobank<T>(body: Record<string, string>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke('monobank', { body })
-  if (error) {
-    const context = (error as { context?: Response }).context
-    const reply = await context?.json?.().catch(() => undefined)
-    throw new Error(reply?.error ?? 'Could not reach Monobank. Try again.')
-  }
-  return data as T
-}
+const monobank = <T>(body: Record<string, string>) => invoke<T>('monobank', body, 'Could not reach Monobank. Try again.')
 
 /** Checks the token with Monobank and lists the cards it can see. */
 export async function listMonobankCards(token: string) {
@@ -273,6 +277,37 @@ export async function listMonobankCards(token: string) {
 /** Creates a portfolio for the card with its last 31 days of transactions. Returns its id. */
 export async function connectMonobankCard(accountId: string, name: string) {
   const { portfolioId } = await monobank<{ portfolioId: string }>({ action: 'connect', accountId, name })
+  await load()
+  return portfolioId
+}
+
+/* Interactive Brokers: the Flex token + Query ID go to the `ibkr` Edge Function, which keeps them
+   server-side, reads the account's stocks and writes the portfolio + entries. The app then reloads. */
+
+export type IbkrPosition = {
+  asset: StockSymbol
+  /** IBKR's ticker, e.g. "AAPL" or "BRK B". */
+  symbol: string
+  /** Company or fund name. */
+  name: string
+  /** Shares held, as a decimal string. */
+  quantity: string
+  /** Current value in USD; null when the stock can't be priced (it can't be connected then). */
+  value: number | null
+  connected: boolean
+}
+
+const ibkr = <T>(body: Record<string, unknown>) => invoke<T>('ibkr', body, 'Could not reach Interactive Brokers. Try again.')
+
+/** Runs the Flex Query and lists the stocks in the account. */
+export async function listIbkrPositions(token: string, queryId: string) {
+  const { positions } = await ibkr<{ positions: IbkrPosition[] }>({ action: 'positions', token, queryId })
+  return positions
+}
+
+/** Creates a portfolio with the picked stocks (`all`: every stock, also ones bought later). Returns its id. */
+export async function connectIbkr(name: string, assets: StockSymbol[], all: boolean) {
+  const { portfolioId } = await ibkr<{ portfolioId: string }>({ action: 'connect', name, assets, all })
   await load()
   return portfolioId
 }
