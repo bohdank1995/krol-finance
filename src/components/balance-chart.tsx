@@ -6,7 +6,8 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatDay, formatUsd } from '@/lib/format'
+import { formatDay, formatMoney } from '@/lib/format'
+import type { Currency } from '@/lib/preferences'
 
 const config = { value: { label: 'Value', color: 'var(--chart-1)' } } satisfies ChartConfig
 
@@ -17,7 +18,7 @@ export function BalanceChartSkeleton() {
   return <Skeleton aria-busy="true" aria-label="Loading graph" className="h-64 w-full rounded-xl" />
 }
 
-export function BalanceChart({ points }: { points: { date: string; value: number }[] }) {
+export function BalanceChart({ points, currency }: { points: { date: string; value: number }[]; currency: Currency }) {
   if (points.length === 0) {
     return (
       <div className="flex h-64 items-center justify-center font-mono text-5xl font-light text-faint-foreground">
@@ -25,9 +26,11 @@ export function BalanceChart({ points }: { points: { date: string; value: number
       </div>
     )
   }
+  // Room on the right for the last date label; grows with the text size.
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize)
   return (
     <ChartContainer config={config} className="aspect-auto h-64 w-full font-mono tabular-nums">
-      <LineChart data={points} margin={{ top: 8, right: 4, bottom: 0, left: 0 }}>
+      <LineChart data={points} margin={{ top: 8, right: rem, bottom: 0, left: 0 }}>
         <CartesianGrid vertical={false} strokeOpacity={0.4} />
         <XAxis
           dataKey="date"
@@ -38,7 +41,7 @@ export function BalanceChart({ points }: { points: { date: string; value: number
           tickFormatter={(d: string) => formatDay(d).slice(0, 6)}
         />
         <YAxis
-          width={44}
+          width="auto"
           tickLine={false}
           axisLine={false}
           domain={['auto', 'auto']}
@@ -51,7 +54,7 @@ export function BalanceChart({ points }: { points: { date: string; value: number
               hideIndicator
               labelFormatter={(_, p) => formatDay(p[0]?.payload.date ?? '')}
               formatter={(v) => (
-                <span className="font-mono tabular-nums">{formatUsd(Number(v))} USD</span>
+                <span className="font-mono tabular-nums">{formatMoney(Number(v))} {currency}</span>
               )}
             />
           }

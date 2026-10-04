@@ -102,4 +102,28 @@
   html {
     @apply font-sans;
     }
+  /* Everything clickable shows the hand cursor (Tailwind resets buttons to the arrow). */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"],
+  [role="radio"]:not([aria-disabled="true"]),
+  [role="switch"],
+  [role="combobox"],
+  select,
+  summary,
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    }
+}
+
+/* iPhone: follow the system text size (Settings → Display & Brightness → Text Size).
+   Safari only exposes it through this font keyword; it sets the root size (17px by
+   default, like iOS itself), and every rem/em in the UI scales from there. The
+   touch-callout check keeps it off desktop Safari, where the keyword means 13px. */
+@supports (font: -apple-system-body) and (-webkit-touch-callout: none) {
+  html {
+    font: -apple-system-body;
+    font-family: var(--font-sans);
+    line-height: 1.5;
+  }
 }

@@ -11,6 +11,12 @@ export type Portfolio = {
   id: string
   name: string
   createdAt: string
+  /** 'monobank' portfolios mirror a Monobank card: their entries are synced, not typed in. */
+  source: 'manual' | 'monobank'
+  /** When a Monobank portfolio was last synced. */
+  syncedAt?: string
+  /** Place in the cards row once dragged; unset ones follow in creation order. */
+  position?: number
 }
 
 export type Entry = {
@@ -25,7 +31,15 @@ export type Entry = {
   note?: string
 }
 
-type PortfolioRow = { id: string; name: string; created_at: string }
+type PortfolioRow = {
+  id: string
+  name: string
+  created_at: string
+  source: Portfolio['source']
+  synced_at: string | null
+  /** Missing until migration 0007 is run. */
+  position?: number | null
+}
 type EntryRow = {
   id: string
   portfolio_id: string
@@ -48,9 +62,16 @@ function set(portfolios: Portfolio[], entries: Entry[], loaded = true) {
   listeners.forEach((l) => l())
 }
 
+/** Dragged order first, then the rest (new ones, never-dragged ones) by creation. */
+function sortPortfolios(list: Portfolio[]) {
+  const rank = (p: Portfolio) => p.position ?? Infinity
+  return [...list].sort((a, b) => rank(a) - rank(b) || (a.createdAt < b.createdAt ? -1 : 1))
+}
+
 async function load() {
   const [h, e] = await Promise.all([
-    supabase.from('portfolios').select('id, name, created_at').order('created_at', { ascending: true }),
+    // '*' rather than a column list, so loading still works before the `position` migration is run.
+    supabase.from('portfolios').select('*').order('created_at', { ascending: true }),
     supabase
       .from('entries')
       .select('id, portfolio_id, asset, amount, created_at, note')
@@ -61,7 +82,16 @@ async function load() {
     return set([], []) // stop the skeletons; the empty state is shown instead
   }
   set(
-    (h.data as PortfolioRow[]).map((r) => ({ id: r.id, name: r.name, createdAt: r.created_at })),
+    sortPortfolios(
+      (h.data as PortfolioRow[]).map((r) => ({
+        id: r.id,
+        name: r.name,
+        createdAt: r.created_at,
+        source: r.source,
+        syncedAt: r.synced_at ?? undefined,
+        position: r.position ?? undefined,
+      })),
+    ),
     (e.data as EntryRow[]).map((r) => ({
       id: r.id,
       portfolioId: r.portfolio_id,
@@ -135,7 +165,7 @@ const entryRow = (e: Entry) => ({
 
 /** Creates an empty portfolio (entries are added afterwards). Returns its id. */
 export function addPortfolio(name: string) {
-  const portfolio: Portfolio = { id: crypto.randomUUID(), name, createdAt: new Date().toISOString() }
+  const portfolio: Portfolio = { id: crypto.randomUUID(), name, createdAt: new Date().toISOString(), source: 'manual' }
   const previous = snapshot()
   set([...portfoliosCache, portfolio], entriesCache)
   commit(previous, () =>
@@ -148,6 +178,22 @@ export function renamePortfolio(id: string, name: string) {
   const previous = snapshot()
   set(portfoliosCache.map((h) => (h.id === id ? { ...h, name } : h)), entriesCache)
   commit(previous, () => supabase.from('portfolios').update({ name }).eq('id', id))
+}
+
+/** Saves a new card order (`ids` in display order). */
+export function reorderPortfolios(ids: string[]) {
+  const previous = snapshot()
+  const byId = new Map(portfoliosCache.map((p) => [p.id, p]))
+  const next = ids.flatMap((id, position) => {
+    const p = byId.get(id)
+    return p ? [{ ...p, position }] : []
+  })
+  const changed = next.filter((p) => byId.get(p.id)?.position !== p.position)
+  set(next, entriesCache)
+  commit(
+    previous,
+    ...changed.map((p) => () => supabase.from('portfolios').update({ position: p.position }).eq('id', p.id)),
+  )
 }
 
 /** Deleting a portfolio also deletes its entries (the database cascades). */
@@ -188,4 +234,45 @@ export function deleteEntry(id: string) {
   const previous = snapshot()
   set(portfoliosCache, entriesCache.filter((e) => e.id !== id))
   commit(previous, () => supabase.from('entries').delete().eq('id', id))
+}
+
+/** Synced portfolios (Monobank) can't have entries added, edited or deleted by hand. */
+export const isReadOnly = (p: Portfolio | undefined) => p?.source === 'monobank'
+
+/* Monobank: the token goes to the `monobank` Edge Function, which keeps it server-side,
+   talks to Monobank and writes the portfolio + entries. The app then reloads. */
+
+export type MonobankCard = {
+  id: string
+  /** Card kind: black, white, iron, platinum, fop, yellow, eAid… */
+  type: string
+  last4: string
+  /** null when the card's currency can't be priced yet. */
+  asset: AssetSymbol | null
+  /** Available to spend (includes the credit limit), as a decimal string. */
+  balance: string
+  connected: boolean
+}
+
+async function monobank<T>(body: Record<string, string>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('monobank', { body })
+  if (error) {
+    const context = (error as { context?: Response }).context
+    const reply = await context?.json?.().catch(() => undefined)
+    throw new Error(reply?.error ?? 'Could not reach Monobank. Try again.')
+  }
+  return data as T
+}
+
+/** Checks the token with Monobank and lists the cards it can see. */
+export async function listMonobankCards(token: string) {
+  const { cards } = await monobank<{ cards: MonobankCard[] }>({ action: 'cards', token })
+  return cards
+}
+
+/** Creates a portfolio for the card with its last 31 days of transactions. Returns its id. */
+export async function connectMonobankCard(accountId: string, name: string) {
+  const { portfolioId } = await monobank<{ portfolioId: string }>({ action: 'connect', accountId, name })
+  await load()
+  return portfolioId
 }

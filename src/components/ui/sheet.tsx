@@ -20,12 +20,37 @@ function SheetClose({ ...props }: SheetPrimitive.Close.Props) {
   return <SheetPrimitive.Close data-slot="sheet-close" {...props} />
 }
 
+/**
+ * The part of the screen the on-screen keyboard leaves visible. Phones keep fixed panels full
+ * height under the keyboard, so the drawer is fitted to this instead: its buttons stay in view.
+ */
+function useVisibleArea() {
+  const [area, setArea] = React.useState<{ top: number; height: number }>()
+  React.useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    const update = () =>
+      // Only while something covers the bottom (the keyboard); otherwise plain full height.
+      setArea(vv.height < window.innerHeight - 1 ? { top: vv.offsetTop, height: vv.height } : undefined)
+    update()
+    vv.addEventListener("resize", update)
+    vv.addEventListener("scroll", update)
+    return () => {
+      vv.removeEventListener("resize", update)
+      vv.removeEventListener("scroll", update)
+    }
+  }, [])
+  return area
+}
+
 function SheetContent({
   className,
   children,
   showCloseButton = true,
+  style,
   ...props
 }: SheetPrimitive.Popup.Props & { showCloseButton?: boolean }) {
+  const area = useVisibleArea()
   return (
     <SheetPrimitive.Portal>
       <SheetPrimitive.Backdrop
@@ -35,9 +60,19 @@ function SheetContent({
       <SheetPrimitive.Popup
         data-slot="sheet-content"
         className={cn(
-          "fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col gap-6 border-l bg-popover p-6 text-sm text-popover-foreground shadow-lg outline-none duration-200 sm:max-w-md data-open:animate-in data-open:slide-in-from-right data-closed:animate-out data-closed:slide-out-to-right",
+          "fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col gap-6 overflow-y-auto overscroll-contain border-l bg-popover p-6 pb-0 text-sm text-popover-foreground shadow-lg outline-none duration-200 sm:max-w-md data-open:animate-in data-open:slide-in-from-right data-closed:animate-out data-closed:slide-out-to-right",
           className
         )}
+        style={
+          area
+            ? (state) => ({
+                ...(typeof style === "function" ? style(state) : style),
+                top: area.top,
+                bottom: "auto",
+                height: area.height,
+              })
+            : style
+        }
         {...props}
       >
         {children}
@@ -75,7 +110,11 @@ function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sheet-footer"
-      className={cn("mt-auto flex gap-2 sm:justify-end", className)}
+      // Pinned to the drawer's bottom edge (right above the keyboard on phones); buttons split the width.
+      className={cn(
+        "sticky bottom-0 -mx-6 mt-auto grid auto-cols-fr grid-flow-col gap-2 bg-popover px-6 pt-2 pb-[max(1.5rem,env(safe-area-inset-bottom))] *:h-11 *:text-sm",
+        className
+      )}
       {...props}
     />
   )

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,10 +25,11 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import type { AssetSymbol } from '@/lib/assets'
-import { deleteEntry, type Entry, type Portfolio } from '@/lib/entries'
-import { formatAmount, formatDate, formatSigned, formatUsd } from '@/lib/format'
+import { deleteEntry, isReadOnly, type Entry, type Portfolio } from '@/lib/entries'
+import { formatAmount, formatDate, formatSigned, formatMoney } from '@/lib/format'
+import type { Currency } from '@/lib/preferences'
 import { cn } from '@/lib/utils'
-import { AddEntryButton, AddEntryMenu } from './add-entry-menu'
+import { EntryActions } from './add-entry-menu'
 import { EntryDrawer } from './entry-drawer'
 
 type Props = {
@@ -37,78 +38,81 @@ type Props = {
   prices: Partial<Record<AssetSymbol, number>>
   /** Set when a single portfolio is selected; unset on Net worth (all portfolios). */
   portfolioId?: string
+  currency: Currency
+  /** Fake numbers mode: nothing can be added, edited or deleted. */
+  readOnly: boolean
+  /** A period other than All time is picked (changes the empty-state text). */
+  filtered: boolean
 }
 
 const head = 'h-10 text-xs font-normal text-faint-foreground'
 
-export function EntriesTable({ entries, portfolios, prices, portfolioId }: Props) {
+export function EntriesTable({ entries, portfolios, prices, portfolioId, currency, readOnly, filtered }: Props) {
   const [editing, setEditing] = useState<Entry>()
   const [deleting, setDeleting] = useState<Entry>()
-  const names = new Map(portfolios.map((h) => [h.id, h.name]))
+  const byId = new Map(portfolios.map((h) => [h.id, h]))
+  // Synced (Monobank) portfolios are read-only: no Deposit/Withdraw into them, no row edits.
+  const editable = readOnly ? [] : portfolios.filter((p) => !isReadOnly(p))
+  const synced = isReadOnly(portfolioId ? byId.get(portfolioId) : undefined)
   const rows = [...entries].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
 
   return (
     <section className="grid gap-2">
-      {rows.length === 0 ? (
+      {editable.length > 0 && !synced && <EntryActions portfolios={editable} portfolioId={portfolioId} />}
+
+      {rows.length === 0 && (
         <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed px-6 py-14 text-center">
-          {portfolios.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Create your first portfolio with the + card above.</p>
-          ) : (
-            <>
-              <p className="text-sm text-muted-foreground">No entries yet. Add the first one to see a balance.</p>
-              <AddEntryButton portfolios={portfolios} portfolioId={portfolioId} />
-            </>
-          )}
+          <p className="text-sm text-muted-foreground">
+            {portfolios.length === 0
+              ? 'Create your first portfolio with the + card above.'
+              : filtered
+                ? 'Nothing in this period.'
+                : synced
+                  ? 'No transactions in the last 31 days.'
+                  : 'No entries yet. Make a deposit to see a balance.'}
+          </p>
         </div>
-      ) : (
-        <AddEntryMenu
-          portfolios={portfolios}
-          portfolioId={portfolioId}
-          trigger={
-            <Button
-              size="icon-lg"
-              aria-label="Add entry"
-              className="fixed right-6 bottom-6 z-40 size-14 rounded-full shadow-lg [&_svg]:size-6"
-            >
-              <Plus />
-            </Button>
-          }
-        />
       )}
 
       {rows.length > 0 && (
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className={cn(head, 'pl-0')}>Date</TableHead>
+              <TableHead className={cn(head, 'hidden pl-0 sm:table-cell')}>Date</TableHead>
               {!portfolioId && <TableHead className={cn(head, 'hidden sm:table-cell')}>Portfolio</TableHead>}
-              <TableHead className={cn(head, 'text-right')}>Amount</TableHead>
+              <TableHead className={cn(head, 'max-sm:pl-0 sm:text-right')}>Amount</TableHead>
               <TableHead className={cn(head, 'hidden pl-6 sm:table-cell')}>Note</TableHead>
-              <TableHead className={cn(head, 'hidden text-right sm:table-cell')}>USD</TableHead>
+              <TableHead className={cn(head, 'hidden text-right sm:table-cell')}>{currency}</TableHead>
               <TableHead className={cn(head, 'w-10 pr-0')} />
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((e) => {
-              const price = prices[e.asset]
+              const asset = prices[e.asset]
+              const rate = prices[currency]
+              const price = asset === undefined || rate === undefined ? undefined : asset / rate
               return (
                 <TableRow key={e.id} className="group">
-                  <TableCell className="py-3.5 pl-0 font-mono whitespace-pre text-muted-foreground tabular-nums">
+                  <TableCell className="hidden py-3.5 pl-0 font-mono whitespace-pre text-muted-foreground tabular-nums sm:table-cell">
                     {formatDate(e.createdAt)}
                   </TableCell>
                   {!portfolioId && (
                     <TableCell className="hidden py-3.5 text-muted-foreground sm:table-cell">
-                      {names.get(e.portfolioId)}
+                      {byId.get(e.portfolioId)?.name}
                     </TableCell>
                   )}
                   <TableCell
                     className={cn(
-                      'py-3.5 text-right font-mono tabular-nums',
+                      'py-3.5 font-mono tabular-nums max-sm:pl-0 sm:text-right',
                       Number(e.amount) < 0 && 'text-muted-foreground',
                     )}
                   >
                     {formatSigned(e.amount)}
-                    <span className="ml-2 inline-block w-10 text-left text-muted-foreground">{e.asset}</span>
+                    <span className="ml-2 inline-block min-w-[4ch] text-left text-muted-foreground">{e.asset}</span>
+                    {/* Phones have no Date column: the date sits under the amount. */}
+                    <span className="mt-1 block whitespace-pre-wrap text-muted-foreground sm:hidden">
+                      {formatDate(e.createdAt)}
+                    </span>
                   </TableCell>
                   <TableCell
                     title={e.note}
@@ -117,33 +121,35 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId }: Props
                     {e.note}
                   </TableCell>
                   <TableCell className="hidden py-3.5 text-right font-mono text-muted-foreground tabular-nums sm:table-cell">
-                    {price === undefined ? '···' : formatUsd(Number(e.amount) * price)}
+                    {price === undefined ? '···' : formatMoney(Number(e.amount) * price)}
                   </TableCell>
                   <TableCell className="py-3.5 pr-0 text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        render={
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label="Row actions"
-                            className="text-faint-foreground group-hover:text-foreground aria-expanded:text-foreground"
-                          />
-                        }
-                      >
-                        <MoreHorizontal />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-36">
-                        <DropdownMenuItem onClick={() => setEditing(e)}>
-                          <Pencil className="text-muted-foreground" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem variant="destructive" onClick={() => setDeleting(e)}>
-                          <Trash2 />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {!readOnly && !isReadOnly(byId.get(e.portfolioId)) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label="Row actions"
+                              className="text-faint-foreground group-hover:text-foreground aria-expanded:text-foreground"
+                            />
+                          }
+                        >
+                          <MoreHorizontal />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-36">
+                          <DropdownMenuItem onClick={() => setEditing(e)}>
+                            <Pencil className="text-muted-foreground" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem variant="destructive" onClick={() => setDeleting(e)}>
+                            <Trash2 />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </TableCell>
                 </TableRow>
               )
@@ -155,7 +161,7 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId }: Props
       <EntryDrawer
         open={!!editing}
         onOpenChange={(open) => !open && setEditing(undefined)}
-        portfolios={portfolios}
+        portfolios={editable}
         portfolioId={portfolioId}
         entry={editing}
       />
@@ -170,7 +176,7 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId }: Props
             ?
           </AlertDialogTitle>
           <AlertDialogFooter className="-mx-6 -mb-6 px-6 py-4">
-            <AlertDialogCancel variant="ghost">Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
@@ -193,8 +199,8 @@ export function EntriesTableSkeleton() {
     <Table aria-busy="true" aria-label="Loading entries">
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          <TableHead className={cn(head, 'pl-0')}>Date</TableHead>
-          <TableHead className={cn(head, 'text-right')}>Amount</TableHead>
+          <TableHead className={cn(head, 'hidden pl-0 sm:table-cell')}>Date</TableHead>
+          <TableHead className={cn(head, 'max-sm:pl-0 sm:text-right')}>Amount</TableHead>
           <TableHead className={cn(head, 'hidden pl-6 sm:table-cell')}>Note</TableHead>
           <TableHead className={cn(head, 'hidden text-right sm:table-cell')}>USD</TableHead>
           <TableHead className={cn(head, 'w-10 pr-0')} />
@@ -203,11 +209,12 @@ export function EntriesTableSkeleton() {
       <TableBody>
         {[0, 1, 2, 3, 4].map((i) => (
           <TableRow key={i} className="hover:bg-transparent">
-            <TableCell className="py-3.5 pl-0">
+            <TableCell className="hidden py-3.5 pl-0 sm:table-cell">
               <Skeleton className="h-4 w-24" />
             </TableCell>
-            <TableCell className="py-3.5">
-              <Skeleton className="ml-auto h-4 w-28" />
+            <TableCell className="py-3.5 max-sm:pl-0">
+              <Skeleton className="h-4 w-28 sm:ml-auto" />
+              <Skeleton className="mt-2 h-4 w-36 sm:hidden" />
             </TableCell>
             <TableCell className="hidden py-3.5 pl-6 sm:table-cell">
               <Skeleton className={cn('h-4', i % 2 ? 'w-16' : 'w-32')} />

@@ -26,11 +26,23 @@ Vocabulary:
 - **Entry type** — money / crypto / stocks (soon); decides which assets an entry can use. It is
   derived from the asset (`typeOf` in `src/lib/assets.ts`), not stored.
 - **Asset** — anything owned (USD, BTC, later stocks/bonds). All balances show in USD.
+- **Monobank portfolio** — a portfolio with `source = 'monobank'`, mirroring one Monobank card. Its
+  entries are the card's transactions (plus "Opening balance" / "Balance adjustment" rows) and are
+  read-only in the app and in RLS. Balance = available to spend (includes any credit limit).
+- **Period** — the tracked time span picked in the header (All time by default, not saved). It limits
+  the graph and table; cards show the balance at the period's end plus the change during it.
+- **Display currency** — USD / EUR / UAH switch in the header; values convert via the currency's own
+  Binance price. Saved per browser in `src/lib/preferences.ts`.
+- **Fake numbers** — toggle in the user menu: every portfolio's entries are scaled by a random
+  factor (`src/lib/fake.ts`) and the app becomes read-only, so screenshots are safe to share.
+- **Card order** — portfolio cards are dragged into order (@dnd-kit), saved in `portfolios.position`.
 - **Drawer** — the right-side panel (`ui/sheet.tsx`) used for every form. Only short "Delete?"
   confirmations stay as small centered pop-ups.
 
-Flow: + card → drawer with a name → empty portfolio shows an "Add entry" empty state → Add entry
-asks for the entry type in a dropdown → entry drawer.
+Flow: + card → drawer with a name → floating Deposit (+, primary) / Withdraw (−, secondary) buttons →
+each asks for the entry type in a dropdown → entry drawer (the button decides the sign).
+
+The + card opens a menu: Custom (the flow above) or Monobank (`monobank-drawer.tsx`: paste token → pick card).
 
 `src/lib/entries.ts` is the only module that touches Supabase (portfolios + entries, optimistic
 cache). Live prices come from Binance public market data in `src/lib/prices.ts` (REST snapshot +
@@ -51,3 +63,8 @@ Target: Supabase (hosted Postgres), not wired to the UI yet. Client is `src/lib/
 `.env.local` (git-ignored; template in `.env.example`). The publishable key is public by
 design — every table must have Row Level Security enabled with policies scoped to the
 signed-in user, since this holds personal financial data.
+
+Monobank: the `monobank` Edge Function (`supabase/functions/monobank`) keeps tokens server-side in
+`monobank_tokens` (RLS on, no policies), imports a card's last 31 days on connect, and an hourly
+pg_cron job syncs the stalest card (each card ≈ daily; Monobank allows 1 request/min). Setup and
+deploy steps: `supabase/README.md`. CLI runs via `npx supabase`.

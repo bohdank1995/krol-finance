@@ -67,8 +67,8 @@ function PortfolioForm({
       </div>
 
       <SheetFooter>
-        <SheetClose render={<Button type="button" variant="ghost" />}>Cancel</SheetClose>
-        <Button type="submit" disabled={!valid} className="min-w-20">
+        <SheetClose render={<Button type="button" variant="secondary" />}>Cancel</SheetClose>
+        <Button type="submit" disabled={!valid}>
           {portfolio ? 'Save' : 'Create'}
         </Button>
       </SheetFooter>

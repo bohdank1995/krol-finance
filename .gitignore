@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Supabase CLI local state and one-off secret snippets
+supabase/.temp
+supabase/*.secret.sql

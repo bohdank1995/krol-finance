@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { ArrowDownLeft, ArrowUpRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -16,15 +15,12 @@ import {
   SheetFooter,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { assetsFor, ENTRY_TYPES, typeOf, type AssetSymbol, type EntryType } from '@/lib/assets'
 import { addEntry, updateEntry, type Entry, type Portfolio } from '@/lib/entries'
 import { dayToIso, parseAmount } from '@/lib/format'
 import { AmountFields, DateField } from './amount-fields'
 
-// Segmented control: the chosen option is a raised, filled pill on a recessed track.
-const SEGMENT =
-  'h-8 flex-1 text-muted-foreground hover:bg-transparent hover:text-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm aria-pressed:ring-1 aria-pressed:ring-border'
+export type Direction = 'in' | 'out'
 
 type Props = {
   open: boolean
@@ -34,6 +30,8 @@ type Props = {
   portfolioId?: string
   /** The kind of entry being added (chosen in the Add entry menu). Ignored when editing. */
   type?: EntryType
+  /** Deposit (in) or withdraw (out), picked with the floating buttons. Ignored when editing. */
+  direction?: Direction
   /** When set, the drawer edits this entry instead of adding a new one. */
   entry?: Entry
 }
@@ -54,13 +52,15 @@ function EntryForm({
   portfolios,
   portfolioId,
   type: chosen,
+  direction: picked = 'in',
   entry,
   onDone,
 }: Omit<Props, 'open' | 'onOpenChange'> & { onDone: () => void }) {
   const type: EntryType = entry ? typeOf(entry.asset) : (chosen ?? 'money')
   const label = ENTRY_TYPES.find((t) => t.value === type)?.label.toLowerCase()
-  // The amount field holds the size; the Deposit/Withdraw switch decides the sign.
-  const [direction, setDirection] = useState<'in' | 'out'>(entry?.amount.startsWith('-') ? 'out' : 'in')
+  // The amount field holds the size; the button that opened the drawer decides the sign.
+  const direction: Direction = entry ? (entry.amount.startsWith('-') ? 'out' : 'in') : picked
+  const verb = direction === 'out' ? 'withdrawal' : 'deposit'
   const [amount, setAmount] = useState(entry?.amount.replace(/^-/, '') ?? '')
   const [note, setNote] = useState(entry?.note ?? '')
   const [asset, setAsset] = useState<AssetSymbol>(() => entry?.asset ?? assetsFor(type)[0].symbol)
@@ -83,28 +83,12 @@ function EntryForm({
   return (
     <form onSubmit={submit} className="contents">
       <SheetTitle className="text-sm font-normal text-muted-foreground">
-        {entry ? `Edit ${label} entry` : `Add ${label} entry`}
+        {entry ? `Edit ${label} ${verb}` : `${direction === 'out' ? 'Withdraw' : 'Deposit'} ${label}`}
       </SheetTitle>
-
-      <ToggleGroup
-        value={[direction]}
-        onValueChange={(v) => v[0] && setDirection(v[0] as 'in' | 'out')}
-        spacing={1}
-        className="w-full bg-muted p-1"
-      >
-        <ToggleGroupItem value="in" className={SEGMENT}>
-          <ArrowDownLeft />
-          Deposit
-        </ToggleGroupItem>
-        <ToggleGroupItem value="out" className={SEGMENT}>
-          <ArrowUpRight />
-          Withdraw
-        </ToggleGroupItem>
-      </ToggleGroup>
 
       <AmountFields amount={amount} onAmountChange={setAmount} type={type} asset={asset} onAssetChange={setAsset} autoFocus />
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <DateField value={day} onChange={setDay} />
         {!portfolioId && (
           <Select
@@ -112,7 +96,7 @@ function EntryForm({
             onValueChange={(v) => v && setTarget(v)}
             items={portfolios.map((p) => ({ value: p.id, label: p.name }))}
           >
-            <SelectTrigger aria-label="Portfolio" className="h-10! flex-1">
+            <SelectTrigger aria-label="Portfolio" className="h-10! min-w-40 flex-1">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -137,9 +121,9 @@ function EntryForm({
       />
 
       <SheetFooter>
-        <SheetClose render={<Button type="button" variant="ghost" />}>Cancel</SheetClose>
-        <Button type="submit" disabled={!valid} className="min-w-20">
-          {entry ? 'Save' : 'Add'}
+        <SheetClose render={<Button type="button" variant="secondary" />}>Cancel</SheetClose>
+        <Button type="submit" disabled={!valid}>
+          {entry ? 'Save' : direction === 'out' ? 'Withdraw' : 'Deposit'}
         </Button>
       </SheetFooter>
     </form>
