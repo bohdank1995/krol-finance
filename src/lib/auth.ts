@@ -23,6 +23,13 @@ export function signInWithEmail(email: string) {
   })
 }
 
+export function signInWithGoogle() {
+  return supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin },
+  })
+}
+
 export function signOut() {
   return supabase.auth.signOut()
 }
