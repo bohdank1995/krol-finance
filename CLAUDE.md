@@ -39,6 +39,11 @@ Vocabulary:
   Binance price. Saved per browser in `src/lib/preferences.ts`.
 - **Fake numbers** — toggle in the user menu: every portfolio's entries are scaled by a random
   factor (`src/lib/fake.ts`) and the app becomes read-only, so screenshots are safe to share.
+- **Hidden from net worth** — a portfolio's ⋯ menu can leave it out of Net worth (card, graph and table);
+  saved in `portfolios.in_net_worth`, its own card is unchanged.
+- **Percentages** — per portfolio (⋯ → Set percentages): `card_percent` (what the card + its graph show,
+  with a "50% of …" line) and `net_worth_percent` (what Net worth counts). Totals and graphs use
+  `scaleEntries`; the table and stored entries keep real amounts.
 - **Card order** — portfolio cards are dragged into order (@dnd-kit), saved in `portfolios.position`.
 - **Drawer** — the right-side panel (`ui/sheet.tsx`) used for every form. Only short "Delete?"
   confirmations stay as small centered pop-ups.

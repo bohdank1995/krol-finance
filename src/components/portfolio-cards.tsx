@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS as DndCSS } from '@dnd-kit/utilities'
-import { ChartCandlestick, Landmark, MoreHorizontal, Pencil, Plus, Trash2, Unlink, WalletCards } from 'lucide-react'
+import { ChartCandlestick, ChartPie, Eye, EyeOff, Landmark, MoreHorizontal, Pencil, Percent, Plus, Trash2, Unlink, WalletCards } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +20,16 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { AssetSymbol } from '@/lib/assets'
-import { deletePortfolio, isReadOnly, reorderPortfolios, type Entry, type Portfolio } from '@/lib/entries'
+import {
+  deletePortfolio,
+  isReadOnly,
+  netWorthEntries,
+  reorderPortfolios,
+  scaleEntries,
+  setInNetWorth,
+  type Entry,
+  type Portfolio,
+} from '@/lib/entries'
 import { formatAgo, formatMoney } from '@/lib/format'
 import type { DailyPrices } from '@/lib/history'
 import type { Range } from '@/lib/period'
@@ -30,6 +39,7 @@ import type { PriceStatus } from '@/lib/prices'
 import { cn } from '@/lib/utils'
 import { IbkrDrawer } from './ibkr-drawer'
 import { MonobankDrawer } from './monobank-drawer'
+import { PercentsDrawer } from './percents-drawer'
 import { PortfolioDrawer } from './portfolio-drawer'
 
 export const NET_WORTH = 'all'
@@ -71,11 +81,17 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
   const [connecting, setConnecting] = useState<'monobank' | 'ibkr'>()
   const [renaming, setRenaming] = useState<Portfolio>()
   const [deleting, setDeleting] = useState<Portfolio>()
+  const [adjusting, setAdjusting] = useState<Portfolio>()
   const rowRef = useRef<HTMLDivElement>(null)
   const latest = useRef({ selected, onSelect })
   useEffect(() => {
     latest.current = { selected, onSelect }
   })
+  const counted = useMemo(
+    () => scaleEntries(portfolios, netWorthEntries(portfolios, entries), 'netWorth'),
+    [portfolios, entries],
+  )
+  const ownEntries = (id: string) => entries.filter((e) => e.portfolioId === id)
   const slides = [{ id: NET_WORTH, label: 'Net worth' }, ...portfolios.map((p) => ({ id: p.id, label: p.name }))]
 
   // Mouse: drag after moving a few pixels, so a click still selects. Touch: long-press, so a swipe still scrolls.
@@ -134,7 +150,7 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
           <Card
             id={NET_WORTH}
             label="Net worth"
-            entries={entries}
+            entries={counted}
             {...valuation}
             active={selected === NET_WORTH}
             onSelect={() => onSelect(NET_WORTH)}
@@ -148,8 +164,11 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
                   id={h.id}
                   sortable={!readOnly}
                   label={h.name}
+                  hidden={!h.inNetWorth}
+                  share={h.cardPercent / 100}
+                  netWorthShare={h.inNetWorth ? h.netWorthPercent : undefined}
                   hint={h.syncedAt && `Synced ${formatAgo(h.syncedAt)}`}
-                  entries={entries.filter((e) => e.portfolioId === h.id)}
+                  entries={scaleEntries([h], ownEntries(h.id), 'card')}
                   {...valuation}
                   active={selected === h.id}
                   onSelect={() => onSelect(h.id)}
@@ -168,10 +187,18 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
                         >
                           <MoreHorizontal />
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-36">
+                        <DropdownMenuContent align="end" className="w-48">
                           <DropdownMenuItem onClick={() => setRenaming(h)}>
                             <Pencil className="text-muted-foreground" />
                             Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setAdjusting(h)}>
+                            <Percent className="text-muted-foreground" />
+                            Set percentages
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setInNetWorth(h.id, !h.inNetWorth)}>
+                            {h.inNetWorth ? <EyeOff className="text-muted-foreground" /> : <Eye className="text-muted-foreground" />}
+                            {h.inNetWorth ? 'Hide from net worth' : 'Show in net worth'}
                           </DropdownMenuItem>
                           <DropdownMenuItem variant="destructive" onClick={() => setDeleting(h)}>
                             {isReadOnly(h) ? <Unlink /> : <Trash2 />}
@@ -259,6 +286,13 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
         portfolio={renaming}
       />
 
+      <PercentsDrawer
+        portfolio={adjusting}
+        onOpenChange={(open) => !open && setAdjusting(undefined)}
+        total={adjusting ? balance(ownEntries(adjusting.id), valuation.prices, valuation.currency).total : 0}
+        currency={valuation.currency}
+      />
+
       <AlertDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(undefined)}>
         <AlertDialogContent size="sm" className="gap-6 p-6">
           <AlertDialogTitle className="text-sm font-normal text-muted-foreground">
@@ -294,7 +328,7 @@ export function PortfolioCardsSkeleton() {
       {[0, 1, 2].map((i) => (
         <div
           key={i}
-          className="flex min-h-30 w-[calc(100vw-4rem)] shrink-0 flex-col justify-between rounded-xl border bg-card p-5 sm:min-h-26 sm:w-48"
+          className="flex min-h-30 w-[calc(100vw-4rem)] shrink-0 flex-col justify-between rounded-xl border bg-card p-5 sm:min-h-26 sm:w-62"
         >
           <Skeleton className="h-3.5 w-20" />
           <Skeleton className="mt-4 h-6 w-28 sm:h-5" />
@@ -309,6 +343,12 @@ type CardProps = Valuation & {
   /** Portfolio cards can be dragged; Net worth stays first. */
   sortable?: boolean
   label: string
+  /** Left out of the Net worth total. */
+  hidden?: boolean
+  /** Part of the real balance the card shows (0–1); the entries passed in are already scaled. */
+  share?: number
+  /** Percent counted in Net worth, when below 100. */
+  netWorthShare?: number
   /** Shown on hover, e.g. when a synced card was last updated. */
   hint?: string
   entries: Entry[]
@@ -320,7 +360,7 @@ type CardProps = Valuation & {
 
 const dayBefore = (day: string) => new Date(Date.parse(`${day}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
 
-function Card({ id, sortable, label, hint, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
+function Card({ id, sortable, label, hidden, share = 1, netWorthShare, hint, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
   const drag = useSortable({ id, disabled: !sortable })
   const points = useMemo(() => series(entries, daily, prices, currency), [entries, daily, prices, currency])
   const today = new Date().toISOString().slice(0, 10)
@@ -337,7 +377,7 @@ function Card({ id, sortable, label, hint, entries, prices, daily, currency, ran
       data-slide={id}
       style={sortable ? { transform: DndCSS.Translate.toString(drag.transform), transition: drag.transition } : undefined}
       className={cn(
-        'relative w-[calc(100vw-4rem)] shrink-0 snap-center snap-always touch-manipulation sm:w-48',
+        'relative w-[calc(100vw-4rem)] shrink-0 snap-center snap-always touch-manipulation sm:w-62',
         drag.isDragging && 'z-10 opacity-80',
       )}
     >
@@ -356,12 +396,27 @@ function Card({ id, sortable, label, hint, entries, prices, daily, currency, ran
         <span className="flex items-center gap-2 pr-6 text-sm text-muted-foreground">
           <span className="truncate">{label}</span>
           {live && <LiveDot status={live} />}
+          {hidden && (
+            <span title="Hidden from net worth" className="shrink-0 text-faint-foreground">
+              <EyeOff className="size-3.5" aria-label="Hidden from net worth" />
+            </span>
+          )}
+          {netWorthShare !== undefined && netWorthShare < 100 && (
+            <span title={`${netWorthShare}% counts in net worth`} className="shrink-0 text-faint-foreground">
+              <ChartPie className="size-3.5" aria-label={`${netWorthShare}% counts in net worth`} />
+            </span>
+          )}
         </span>
         <span className="mt-4 flex flex-col gap-0.5 font-mono tabular-nums">
           <span className="flex flex-wrap items-baseline gap-x-1.5">
             <span className={cn('text-2xl transition-opacity sm:text-xl', pricing && 'opacity-50')}>{formatMoney(total)}</span>
             <span className="text-xs text-muted-foreground">{currency}</span>
           </span>
+          {share !== 1 && (
+            <span className="text-xs text-faint-foreground">
+              {Math.round(share * 1000) / 10}% of {formatMoney(total / share)}
+            </span>
+          )}
           {change !== undefined && (
             <span className="text-xs text-muted-foreground">
               {change < 0 ? '−' : '+'}

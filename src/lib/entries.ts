@@ -18,6 +18,12 @@ export type Portfolio = {
   syncedAt?: string
   /** Place in the cards row once dragged; unset ones follow in creation order. */
   position?: number
+  /** False when the card is hidden from the Net worth total. */
+  inNetWorth: boolean
+  /** Share of the real balance shown on the card and its graph, 1–100. */
+  cardPercent: number
+  /** Share of the real balance counted in Net worth, 0–100 (ignored while hidden). */
+  netWorthPercent: number
 }
 
 export type Entry = {
@@ -40,6 +46,11 @@ type PortfolioRow = {
   synced_at: string | null
   /** Missing until migration 0007 is run. */
   position?: number | null
+  /** Missing until migration 0009 is run. */
+  in_net_worth?: boolean | null
+  /** Missing until migration 0010 is run. */
+  card_percent?: number | string | null
+  net_worth_percent?: number | string | null
 }
 type EntryRow = {
   id: string
@@ -91,6 +102,9 @@ async function load() {
         source: r.source,
         syncedAt: r.synced_at ?? undefined,
         position: r.position ?? undefined,
+        inNetWorth: r.in_net_worth !== false,
+        cardPercent: Number(r.card_percent ?? 100),
+        netWorthPercent: Number(r.net_worth_percent ?? 100),
       })),
     ),
     (e.data as EntryRow[]).map((r) => ({
@@ -166,7 +180,7 @@ const entryRow = (e: Entry) => ({
 
 /** Creates an empty portfolio (entries are added afterwards). Returns its id. */
 export function addPortfolio(name: string) {
-  const portfolio: Portfolio = { id: crypto.randomUUID(), name, createdAt: new Date().toISOString(), source: 'manual' }
+  const portfolio: Portfolio = { id: crypto.randomUUID(), name, createdAt: new Date().toISOString(), source: 'manual', inNetWorth: true, cardPercent: 100, netWorthPercent: 100 }
   const previous = snapshot()
   set([...portfoliosCache, portfolio], entriesCache)
   commit(previous, () =>
@@ -179,6 +193,43 @@ export function renamePortfolio(id: string, name: string) {
   const previous = snapshot()
   set(portfoliosCache.map((h) => (h.id === id ? { ...h, name } : h)), entriesCache)
   commit(previous, () => supabase.from('portfolios').update({ name }).eq('id', id))
+}
+
+/** Shows or hides a portfolio in the Net worth total. */
+export function setInNetWorth(id: string, inNetWorth: boolean) {
+  const previous = snapshot()
+  set(portfoliosCache.map((h) => (h.id === id ? { ...h, inNetWorth } : h)), entriesCache)
+  commit(previous, () => supabase.from('portfolios').update({ in_net_worth: inNetWorth }).eq('id', id))
+}
+
+/** Sets how much of a portfolio's real balance its card shows and Net worth counts. */
+export function setPercents(id: string, cardPercent: number, netWorthPercent: number) {
+  const previous = snapshot()
+  set(portfoliosCache.map((h) => (h.id === id ? { ...h, cardPercent, netWorthPercent } : h)), entriesCache)
+  commit(previous, () =>
+    supabase.from('portfolios').update({ card_percent: cardPercent, net_worth_percent: netWorthPercent }).eq('id', id),
+  )
+}
+
+/** The part of a portfolio a view adds up: 0–1. Hidden portfolios count 0 toward Net worth. */
+export const shareOf = (p: Portfolio, view: 'card' | 'netWorth') =>
+  view === 'card' ? p.cardPercent / 100 : p.inNetWorth ? p.netWorthPercent / 100 : 0
+
+/** The entries Net worth lists: every portfolio's except the ones counting 0%. */
+export function netWorthEntries(portfolios: Portfolio[], entries: Entry[]) {
+  const left = new Set(portfolios.filter((p) => !shareOf(p, 'netWorth')).map((p) => p.id))
+  return left.size ? entries.filter((e) => !left.has(e.portfolioId)) : entries
+}
+
+/** Entries with each amount scaled by its portfolio's share, for totals and the graph only
+    (the table keeps real amounts). Portfolios counting 0% are left out. */
+export function scaleEntries(portfolios: Portfolio[], entries: Entry[], view: 'card' | 'netWorth') {
+  const share = new Map(portfolios.map((p) => [p.id, shareOf(p, view)]))
+  return entries.flatMap((e) => {
+    const f = share.get(e.portfolioId) ?? 1
+    if (f === 1) return [e]
+    return f ? [{ ...e, amount: String(Number(e.amount) * f) }] : []
+  })
 }
 
 /** Saves a new card order (`ids` in display order). */

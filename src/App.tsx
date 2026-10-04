@@ -5,7 +5,7 @@ import { Header } from '@/components/header'
 import { NET_WORTH, PortfolioCards, PortfolioCardsSkeleton } from '@/components/portfolio-cards'
 import { SignIn } from '@/components/sign-in'
 import { useSession } from '@/lib/auth'
-import { useEntries, useLoaded, usePortfolios } from '@/lib/entries'
+import { netWorthEntries, scaleEntries, useEntries, useLoaded, usePortfolios } from '@/lib/entries'
 import { fakeEntries } from '@/lib/fake'
 import { useDailyPrices } from '@/lib/history'
 import { inRange, rangeOf, type Period } from '@/lib/period'
@@ -33,8 +33,13 @@ function Signed({ email }: { email: string }) {
   // A deleted portfolio falls back to Net worth.
   const selected = portfolios.some((p) => p.id === picked) ? picked : NET_WORTH
   const shown = useMemo(
-    () => (selected === NET_WORTH ? entries : entries.filter((e) => e.portfolioId === selected)),
-    [entries, selected],
+    () => (selected === NET_WORTH ? netWorthEntries(portfolios, entries) : entries.filter((e) => e.portfolioId === selected)),
+    [portfolios, entries, selected],
+  )
+  // The graph adds up the set percentages; the table keeps real amounts.
+  const valued = useMemo(
+    () => scaleEntries(portfolios, shown, selected === NET_WORTH ? 'netWorth' : 'card'),
+    [portfolios, shown, selected],
   )
 
   // The display currency is priced too, to convert USD values into it.
@@ -42,8 +47,8 @@ function Signed({ email }: { email: string }) {
   const { prices, status } = useLivePrices(assets)
   const { prices: daily, ready: historyReady } = useDailyPrices(assets, firstDay(entries))
   const points = useMemo(
-    () => series(shown, daily, prices, currency).filter((p) => (!range.from || p.date >= range.from) && p.date <= range.to),
-    [shown, daily, prices, currency, range],
+    () => series(valued, daily, prices, currency).filter((p) => (!range.from || p.date >= range.from) && p.date <= range.to),
+    [valued, daily, prices, currency, range],
   )
   const rows = useMemo(() => shown.filter((e) => inRange(e.createdAt, range)), [shown, range])
 
