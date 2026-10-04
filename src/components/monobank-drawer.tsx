@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/sheet'
 import { connectMonobankCard, listMonobankCards, type MonobankCard } from '@/lib/entries'
 import { formatAmount } from '@/lib/format'
-import { cn } from '@/lib/utils'
+import { cn, masked, noAutofill } from '@/lib/utils'
 import { EmojiPicker } from './emoji-picker'
 
 type Props = {
@@ -112,14 +112,12 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
           </p>
           <Input
             autoFocus
-            type="password"
-            autoComplete="off"
-            spellCheck={false}
+            {...noAutofill}
             placeholder="Token"
             aria-label="Monobank token"
             value={token}
             onChange={(e) => setToken(e.target.value)}
-            className="h-12 font-mono"
+            className={cn('h-12 font-mono', masked)}
           />
         </div>
       ) : (

@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/sheet'
 import { connectIbkr, listIbkrPositions, type IbkrPosition } from '@/lib/entries'
 import { formatAmount, formatMoney } from '@/lib/format'
-import { cn } from '@/lib/utils'
+import { cn, masked, noAutofill } from '@/lib/utils'
 import { EmojiPicker } from './emoji-picker'
 
 type Props = {
@@ -55,8 +55,14 @@ const STEPS = [
     shown next to the query.
   </>,
   <>
-    On the same page, open <span className={strong}>Flex Web Service Configuration</span>, turn it on and generate a{' '}
-    <span className={strong}>token</span>.
+    Back on the Flex Queries page, find <span className={strong}>Flex Web Service Configuration</span> on the right
+    and click its settings (⚙) icon. Tick <span className={strong}>Flex Web Service Status</span> and click{' '}
+    <span className={strong}>Save</span>.
+  </>,
+  <>
+    Click <span className={strong}>Generate New Token</span>, set <span className={strong}>Expire After</span> to{' '}
+    <span className={strong}>1 year</span> and leave the IP field empty. Copy the{' '}
+    <span className={strong}>Current Token</span> it shows.
   </>,
 ]
 
@@ -141,19 +147,16 @@ function IbkrFlow({ onCreated, onDone }: { onCreated?: (id: string) => void; onD
           <div className="grid gap-2">
             <Input
               autoFocus
-              type="password"
-              autoComplete="off"
-              spellCheck={false}
+              {...noAutofill}
               placeholder="Token"
               aria-label="IBKR Flex token"
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              className="h-12 font-mono"
+              className={cn('h-12 font-mono', masked)}
             />
             <Input
               inputMode="numeric"
-              autoComplete="off"
-              spellCheck={false}
+              {...noAutofill}
               placeholder="Query ID"
               aria-label="Flex Query ID"
               value={queryId}
