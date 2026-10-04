@@ -19,10 +19,23 @@ The user is a designer, not an engineer. Explain changes in plain language.
 
 ## Data
 
-Iteration 1 stores entries in the browser's localStorage via `src/lib/entries.ts` — the
-only module that touches storage, so moving to Supabase changes that file alone.
-Live crypto prices (in USDC) come from Binance public market data in `src/lib/prices.ts`
-(REST snapshot + WebSocket stream; no key needed).
+Vocabulary:
+- **Portfolio** — a named card in the top "Portfolios" row (e.g. "Binance"): a name plus its entries,
+  no type of its own. The first card, **Net worth**, sums every portfolio.
+- **Entry** — a signed change (+/−) of one asset inside a portfolio. One portfolio can mix entry types.
+- **Entry type** — money / crypto / stocks (soon); decides which assets an entry can use. It is
+  derived from the asset (`typeOf` in `src/lib/assets.ts`), not stored.
+- **Asset** — anything owned (USD, BTC, later stocks/bonds). All balances show in USD.
+- **Drawer** — the right-side panel (`ui/sheet.tsx`) used for every form. Only short "Delete?"
+  confirmations stay as small centered pop-ups.
+
+Flow: + card → drawer with a name → empty portfolio shows an "Add entry" empty state → Add entry
+asks for the entry type in a dropdown → entry drawer.
+
+`src/lib/entries.ts` is the only module that touches Supabase (portfolios + entries, optimistic
+cache). Live prices come from Binance public market data in `src/lib/prices.ts` (REST snapshot +
+WebSocket); daily closes for the graph come from `src/lib/history.ts`; balance and graph maths
+are in `src/lib/portfolio.ts`.
 
 ## Design
 

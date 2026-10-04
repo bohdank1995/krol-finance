@@ -1,31 +1,31 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { CryptoSymbol } from './assets'
+import { isDollar, type AssetSymbol } from './assets'
 
-/* Live prices in USDC from Binance's public market data: one REST snapshot so
+/* Live prices in USD (USDC pairs) from Binance's public market data: one REST snapshot so
    values appear immediately, then a WebSocket stream for tick-by-tick updates. */
 
 export type PriceStatus = 'idle' | 'connecting' | 'live' | 'offline'
 
 /** Binance pair to watch for each asset, and how to turn its price into USDC. */
-function pairFor(asset: CryptoSymbol) {
+export function pairFor(asset: AssetSymbol) {
   if (asset === 'USDT') return { pair: 'USDCUSDT', invert: true }
   return { pair: `${asset}USDC`, invert: false }
 }
 
-const toUsdc = (price: number, invert: boolean) => (invert ? 1 / price : price)
+export const toUsd = (price: number, invert: boolean) => (invert ? 1 / price : price)
 
-export function useLivePrices(assets: CryptoSymbol[]) {
+export function useLivePrices(assets: AssetSymbol[]) {
   const watched = useMemo(
-    () => [...new Set(assets)].filter((a) => a !== 'USDC').sort(),
+    () => [...new Set(assets)].filter((a) => !isDollar(a)).sort(),
     [assets],
   )
   const watchKey = watched.join(',')
-  const [prices, setPrices] = useState<Partial<Record<CryptoSymbol, number>>>({})
+  const [prices, setPrices] = useState<Partial<Record<AssetSymbol, number>>>({})
   const [status, setStatus] = useState<Exclude<PriceStatus, 'idle'>>('connecting')
 
   useEffect(() => {
     if (!watchKey) return
-    const list = watchKey.split(',') as CryptoSymbol[]
+    const list = watchKey.split(',') as AssetSymbol[]
     const byPair = new Map(list.map((a) => [pairFor(a).pair, a]))
     let socket: WebSocket | undefined
     let retry: number | undefined
@@ -36,7 +36,7 @@ export function useLivePrices(assets: CryptoSymbol[]) {
       const asset = byPair.get(pair)
       const price = Number(raw)
       if (!asset || !Number.isFinite(price) || price <= 0) return
-      setPrices((p) => ({ ...p, [asset]: toUsdc(price, pairFor(asset).invert) }))
+      setPrices((p) => ({ ...p, [asset]: toUsd(price, pairFor(asset).invert) }))
     }
 
     const symbols = encodeURIComponent(JSON.stringify([...byPair.keys()]))
@@ -73,6 +73,6 @@ export function useLivePrices(assets: CryptoSymbol[]) {
     }
   }, [watchKey])
 
-  const usdc: Partial<Record<CryptoSymbol, number>> = { ...prices, USDC: 1 }
-  return { prices: usdc, status: watchKey ? status : ('idle' as PriceStatus) }
+  const usd: Partial<Record<AssetSymbol, number>> = { ...prices, USD: 1, USDC: 1 }
+  return { prices: usd, status: watchKey ? status : ('idle' as PriceStatus) }
 }
