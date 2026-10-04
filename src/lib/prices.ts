@@ -9,6 +9,9 @@ export type PriceStatus = 'idle' | 'connecting' | 'live' | 'offline'
 /** Binance pair to watch for each asset, and how to turn its price into USDC. */
 export function pairFor(asset: AssetSymbol) {
   if (asset === 'USDT') return { pair: 'USDCUSDT', invert: true }
+  // Binance quotes these as "how many per dollar", so flip them.
+  if (asset === 'UAH') return { pair: 'USDTUAH', invert: true }
+  if (asset === 'PLN') return { pair: 'USDCPLN', invert: true }
   return { pair: `${asset}USDC`, invert: false }
 }
 

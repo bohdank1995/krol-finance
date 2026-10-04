@@ -35,7 +35,7 @@ function Signed({ email }: { email: string }) {
   const points = useMemo(() => series(shown, daily, prices), [shown, daily, prices])
 
   return (
-    <div className="min-h-svh px-6 py-8 sm:py-14">
+    <div className="min-h-svh px-6 pt-8 pb-28 sm:py-14">
       <header className="flex items-center justify-end">
         <UserMenu email={email} />
       </header>

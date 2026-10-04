@@ -1,7 +1,10 @@
-/** Everything a user can hold. `USD` is cash; the rest are priced live from Binance.
+/** Everything a user can hold. `USD` is cash; the rest (other currencies too) are priced live from Binance.
     Each asset belongs to one entry type, which is how an entry's type is known. */
 export const ASSETS = [
   { symbol: 'USD', name: 'US Dollar', type: 'money' },
+  { symbol: 'EUR', name: 'Euro', type: 'money' },
+  { symbol: 'UAH', name: 'Ukrainian Hryvnia', type: 'money' },
+  { symbol: 'PLN', name: 'Polish Złoty', type: 'money' },
   { symbol: 'BTC', name: 'Bitcoin', type: 'crypto' },
   { symbol: 'ETH', name: 'Ethereum', type: 'crypto' },
   { symbol: 'USDC', name: 'USD Coin', type: 'crypto' },
