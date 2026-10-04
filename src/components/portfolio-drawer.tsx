@@ -9,6 +9,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { addPortfolio, renamePortfolio, type Portfolio } from '@/lib/entries'
+import { useT } from '@/lib/i18n'
 import { EmojiPicker } from './emoji-picker'
 
 type Props = {
@@ -36,6 +37,7 @@ function PortfolioForm({
   onCreated,
   onDone,
 }: Omit<Props, 'open' | 'onOpenChange'> & { onDone: () => void }) {
+  const t = useT()
   const [name, setName] = useState(portfolio?.name ?? '')
   const valid = !!name.trim()
 
@@ -50,15 +52,15 @@ function PortfolioForm({
   return (
     <form onSubmit={submit} className="contents">
       <SheetTitle className="text-sm font-normal text-muted-foreground">
-        {portfolio ? 'Rename portfolio' : 'New portfolio'}
+        {portfolio ? t.renamePortfolio : t.newPortfolio}
       </SheetTitle>
 
       <div className="flex items-center gap-1">
         <Input
           autoFocus
           autoComplete="off"
-          placeholder="Name"
-          aria-label="Name"
+          placeholder={t.name}
+          aria-label={t.name}
           value={name}
           onChange={(e) => setName(e.target.value)}
           className="h-12 flex-1"
@@ -67,9 +69,9 @@ function PortfolioForm({
       </div>
 
       <SheetFooter>
-        <SheetClose render={<Button type="button" variant="secondary" />}>Cancel</SheetClose>
+        <SheetClose render={<Button type="button" variant="secondary" />}>{t.cancel}</SheetClose>
         <Button type="submit" disabled={!valid}>
-          {portfolio ? 'Save' : 'Create'}
+          {portfolio ? t.save : t.create}
         </Button>
       </SheetFooter>
     </form>

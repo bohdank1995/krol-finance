@@ -1,6 +1,7 @@
+import { dict } from './i18n'
+
 const money = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const qty = new Intl.NumberFormat('en-US', { maximumFractionDigits: 8 })
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const pad = (n: number) => String(n).padStart(2, '0')
 
 export const formatMoney = (n: number) => money.format(n)
@@ -12,19 +13,20 @@ export function formatSigned(s: string) {
 }
 export function formatDate(iso: string) {
   const d = new Date(iso)
-  return `${pad(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()}  ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return `${pad(d.getDate())} ${dict().months[d.getMonth()]} ${d.getFullYear()}  ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
-/** "just now", "12m ago", "3h ago", "2d ago". */
+/** "just now", "12m ago", "3h ago", "2d ago" (in the app's language). */
 export function formatAgo(iso: string) {
+  const { ago } = dict()
   const minutes = Math.floor((Date.now() - Date.parse(iso)) / 60_000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes}m ago`
-  if (minutes < 60 * 24) return `${Math.floor(minutes / 60)}h ago`
-  return `${Math.floor(minutes / (60 * 24))}d ago`
+  if (minutes < 1) return ago.now
+  if (minutes < 60) return ago.minutes(minutes)
+  if (minutes < 60 * 24) return ago.hours(Math.floor(minutes / 60))
+  return ago.days(Math.floor(minutes / (60 * 24)))
 }
 export const formatDay = (day: string) => {
   const [y, m, d] = day.split('-').map(Number)
-  return `${pad(d)} ${MONTHS[m - 1]} ${y}`
+  return `${pad(d)} ${dict().months[m - 1]} ${y}`
 }
 
 /** Local calendar day of an ISO timestamp, as "YYYY-MM-DD" (what a date input uses). */

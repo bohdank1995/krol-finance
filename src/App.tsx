@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { BalanceChart, BalanceChartSkeleton } from '@/components/balance-chart'
 import { EntriesTable, EntriesTableSkeleton } from '@/components/entries-table'
-import { Header } from '@/components/header'
+import { Header, PeriodFilter } from '@/components/header'
 import { NET_WORTH, PortfolioCards, PortfolioCardsSkeleton } from '@/components/portfolio-cards'
 import { SignIn } from '@/components/sign-in'
 import { useSession } from '@/lib/auth'
@@ -54,16 +54,11 @@ function Signed({ email }: { email: string }) {
 
   return (
     <div className="min-h-svh px-6 pb-28 sm:pb-14">
-      <Header email={email} period={period} onPeriodChange={setPeriod} />
+      <Header email={email} />
       <main className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-10 sm:mt-6">
-        {!loaded ? (
-          <>
-            <PortfolioCardsSkeleton />
-            <BalanceChartSkeleton />
-            <EntriesTableSkeleton />
-          </>
-        ) : (
-          <>
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
+          <PeriodFilter period={period} onChange={setPeriod} />
+          {loaded ? (
             <PortfolioCards
               portfolios={portfolios}
               entries={entries}
@@ -76,6 +71,17 @@ function Signed({ email }: { email: string }) {
               onSelect={setPicked}
               readOnly={fake}
             />
+          ) : (
+            <PortfolioCardsSkeleton />
+          )}
+        </div>
+        {!loaded ? (
+          <>
+            <BalanceChartSkeleton />
+            <EntriesTableSkeleton />
+          </>
+        ) : (
+          <>
             {historyReady ? <BalanceChart points={points} currency={currency} /> : <BalanceChartSkeleton />}
             <EntriesTable
               entries={rows}

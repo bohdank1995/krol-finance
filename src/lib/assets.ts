@@ -28,12 +28,8 @@ export type StockSymbol = `stock:${string}`
 
 export type AssetSymbol = KnownSymbol | StockSymbol
 
-/** The kinds of entry. Each type only offers its own assets. */
-export const ENTRY_TYPES = [
-  { value: 'money', label: 'Money' },
-  { value: 'crypto', label: 'Crypto' },
-  { value: 'stocks', label: 'Stocks', soon: true },
-] as const
+/** The kinds of entry. Each type only offers its own assets. Names are in `i18n.ts` (`entryTypes`). */
+export const ENTRY_TYPES = [{ value: 'money' }, { value: 'crypto' }, { value: 'stocks', soon: true }] as const
 
 export type EntryType = (typeof ENTRY_TYPES)[number]['value']
 

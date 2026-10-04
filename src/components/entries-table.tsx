@@ -27,6 +27,7 @@ import {
 import { assetLabel, type AssetSymbol } from '@/lib/assets'
 import { deleteEntry, isReadOnly, type Entry, type Portfolio } from '@/lib/entries'
 import { formatAmount, formatDate, formatSigned, formatMoney } from '@/lib/format'
+import { useT } from '@/lib/i18n'
 import type { Currency } from '@/lib/preferences'
 import { cn } from '@/lib/utils'
 import { EntryActions } from './add-entry-menu'
@@ -48,6 +49,7 @@ type Props = {
 const head = 'h-10 text-xs font-normal text-faint-foreground'
 
 export function EntriesTable({ entries, portfolios, prices, portfolioId, currency, readOnly, filtered }: Props) {
+  const t = useT()
   const [editing, setEditing] = useState<Entry>()
   const [deleting, setDeleting] = useState<Entry>()
   const byId = new Map(portfolios.map((h) => [h.id, h]))
@@ -65,14 +67,14 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
         <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed px-6 py-14 text-center">
           <p className="text-sm text-muted-foreground">
             {portfolios.length === 0
-              ? 'Create your first portfolio with the + card above.'
+              ? t.empty.noPortfolios
               : filtered
-                ? 'Nothing in this period.'
+                ? t.empty.period
                 : current?.source === 'ibkr'
-                  ? 'No stocks in this portfolio.'
+                  ? t.empty.noStocks
                   : synced
-                    ? 'No transactions in the last 31 days.'
-                  : 'No entries yet. Make a deposit to see a balance.'}
+                    ? t.empty.noTransactions
+                    : t.empty.noEntries}
           </p>
         </div>
       )}
@@ -81,10 +83,10 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className={cn(head, 'hidden pl-0 sm:table-cell')}>Date</TableHead>
-              {!portfolioId && <TableHead className={cn(head, 'hidden sm:table-cell')}>Portfolio</TableHead>}
-              <TableHead className={cn(head, 'max-sm:pl-0 sm:text-right')}>Amount</TableHead>
-              <TableHead className={cn(head, 'hidden pl-6 sm:table-cell')}>Note</TableHead>
+              <TableHead className={cn(head, 'hidden pl-0 sm:table-cell')}>{t.date}</TableHead>
+              {!portfolioId && <TableHead className={cn(head, 'hidden sm:table-cell')}>{t.portfolio}</TableHead>}
+              <TableHead className={cn(head, 'max-sm:pl-0 sm:text-right')}>{t.amount}</TableHead>
+              <TableHead className={cn(head, 'hidden pl-6 sm:table-cell')}>{t.note}</TableHead>
               <TableHead className={cn(head, 'hidden text-right sm:table-cell')}>{currency}</TableHead>
               <TableHead className={cn(head, 'w-10 pr-0')} />
             </TableRow>
@@ -134,7 +136,7 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              aria-label="Row actions"
+                              aria-label={t.rowActions}
                               className="text-faint-foreground group-hover:text-foreground aria-expanded:text-foreground"
                             />
                           }
@@ -144,11 +146,11 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
                         <DropdownMenuContent align="end" className="w-36">
                           <DropdownMenuItem onClick={() => setEditing(e)}>
                             <Pencil className="text-muted-foreground" />
-                            Edit
+                            {t.edit}
                           </DropdownMenuItem>
                           <DropdownMenuItem variant="destructive" onClick={() => setDeleting(e)}>
                             <Trash2 />
-                            Delete
+                            {t.delete}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -172,14 +174,14 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
       <AlertDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(undefined)}>
         <AlertDialogContent size="sm" className="gap-6 p-6">
           <AlertDialogTitle className="text-sm font-normal text-muted-foreground">
-            Delete{' '}
+            {t.confirmDeleteEntry[0]}{' '}
             <span className="font-mono text-foreground">
               {deleting && `${formatAmount(deleting.amount)} ${assetLabel(deleting.asset)}`}
             </span>
-            ?
+            {t.confirmDeleteEntry[1]}
           </AlertDialogTitle>
           <AlertDialogFooter className="-mx-6 -mb-6 px-6 py-4">
-            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">{t.cancel}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
@@ -187,7 +189,7 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
                 setDeleting(undefined)
               }}
             >
-              Delete
+              {t.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -198,13 +200,14 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
 
 /** Placeholder rows while entries load, laid out like the real table. */
 export function EntriesTableSkeleton() {
+  const t = useT()
   return (
-    <Table aria-busy="true" aria-label="Loading entries">
+    <Table aria-busy="true" aria-label={t.loadingEntries}>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          <TableHead className={cn(head, 'hidden pl-0 sm:table-cell')}>Date</TableHead>
-          <TableHead className={cn(head, 'max-sm:pl-0 sm:text-right')}>Amount</TableHead>
-          <TableHead className={cn(head, 'hidden pl-6 sm:table-cell')}>Note</TableHead>
+          <TableHead className={cn(head, 'hidden pl-0 sm:table-cell')}>{t.date}</TableHead>
+          <TableHead className={cn(head, 'max-sm:pl-0 sm:text-right')}>{t.amount}</TableHead>
+          <TableHead className={cn(head, 'hidden pl-6 sm:table-cell')}>{t.note}</TableHead>
           <TableHead className={cn(head, 'hidden text-right sm:table-cell')}>USD</TableHead>
           <TableHead className={cn(head, 'w-10 pr-0')} />
         </TableRow>

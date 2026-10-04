@@ -2,8 +2,10 @@ import { EyeOff, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Switch } from '@/components/ui/switch'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { signOut } from '@/lib/auth'
-import { setFake, usePreferences } from '@/lib/preferences'
+import { LANGUAGES, setLanguage, useLanguage, useT, type Language } from '@/lib/i18n'
+import { CURRENCIES, setCurrency, setFake, usePreferences, type Currency } from '@/lib/preferences'
 import { cn } from '@/lib/utils'
 
 /** Round avatar: the email's first letter over a blurred brand glow (placed from the email, so it's stable). */
@@ -23,39 +25,82 @@ function Avatar({ email, className }: { email: string; className?: string }) {
   )
 }
 
-/** Compact header profile button (avatar only); the popover holds the account, Fake numbers and Log out. */
+/** A labelled row with a compact one-of-a-few switch (currency, language). */
+function Choice<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: T
+  options: readonly { value: T; label: string }[]
+  onChange: (value: T) => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-sm">
+      {label}
+      <ToggleGroup
+        size="sm"
+        spacing={0}
+        aria-label={label}
+        value={[value]}
+        // Clicking the already-chosen one would empty the group: keep it.
+        onValueChange={(v: string[]) => v[0] && onChange(v[0] as T)}
+        className="font-mono"
+      >
+        {options.map((o) => (
+          <ToggleGroupItem key={o.value} value={o.value} className="px-2 text-xs text-muted-foreground aria-pressed:text-foreground">
+            {o.label}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+    </div>
+  )
+}
+
+/** Compact header profile button (avatar only); the popover holds the account, currency, language, Fake numbers and Log out. */
 export function UserMenu({ email }: { email: string }) {
-  const { fake } = usePreferences()
+  const t = useT()
+  const language = useLanguage()
+  const { currency, fake } = usePreferences()
   return (
     <Popover>
       <PopoverTrigger
-        render={<Button variant="ghost" size="icon" aria-label="Account" className="relative rounded-full" />}
+        render={<Button variant="ghost" size="icon" aria-label={t.account} className="relative rounded-full" />}
       >
         <Avatar email={email} className="size-7 text-xs" />
         {fake && (
           <span
-            title="Fake numbers on"
+            title={t.fakeNumbersOn}
             className="absolute -right-0.5 -bottom-0.5 flex size-3.5 items-center justify-center rounded-full bg-background text-muted-foreground"
           >
             <EyeOff className="size-2.5!" />
           </span>
         )}
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-64 gap-4 p-4">
+      <PopoverContent align="end" className="w-72 gap-4 p-4">
         <div className="flex flex-col items-center gap-2 text-center">
           <Avatar email={email} className="size-14 text-xl" />
           <span className="max-w-full truncate text-sm">{email}</span>
         </div>
+        <Choice<Currency>
+          label={t.currency}
+          value={currency}
+          options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+          onChange={setCurrency}
+        />
+        <Choice<Language> label={t.language} value={language} options={LANGUAGES} onChange={setLanguage} />
         <label className="flex cursor-pointer items-center justify-between gap-3 text-sm">
           <span className="flex flex-col">
-            Fake numbers
-            <span className="text-xs text-muted-foreground">Random values, safe to share</span>
+            {t.fakeNumbers}
+            <span className="text-xs text-muted-foreground">{t.fakeNumbersHint}</span>
           </span>
           <Switch checked={fake} onCheckedChange={setFake} />
         </label>
         <Button variant="outline" onClick={() => signOut()}>
           <LogOut data-icon="inline-start" />
-          Log out
+          {t.logOut}
         </Button>
       </PopoverContent>
     </Popover>

@@ -33,10 +33,12 @@ Vocabulary:
 - **IBKR portfolio** — `source = 'ibkr'`, stocks held at Interactive Brokers. Entries are share counts:
   one "Opening position" per stock, then "Position change" rows from the daily sync. Read-only like
   Monobank. `tracked_assets` lists the picked stocks; null ("Select all") also follows new purchases.
-- **Period** — the tracked time span picked in the header (All time by default, not saved). It limits
+- **Period** — the tracked time span picked above the cards, on the left (All time by default, not saved). It limits
   the graph and table; cards show the balance at the period's end plus the change during it.
-- **Display currency** — USD / EUR / UAH switch in the header; values convert via the currency's own
+- **Display currency** — USD / EUR / UAH switch in the user popover; values convert via the currency's own
   Binance price. Saved per browser in `src/lib/preferences.ts`.
+- **Language** — Ukrainian (default) / English switch in the user popover. Texts live in `src/lib/i18n.ts`
+  (`useT()`); the choice is saved on the Supabase account (auth user metadata `language`). The sign-in page stays English.
 - **Fake numbers** — toggle in the user menu: every portfolio's entries are scaled by a random
   factor (`src/lib/fake.ts`) and the app becomes read-only, so screenshots are safe to share.
 - **Hidden from net worth** — a portfolio's ⋯ menu can leave it out of Net worth (card, graph and table);

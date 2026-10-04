@@ -32,6 +32,7 @@ import {
 } from '@/lib/entries'
 import { formatAgo, formatMoney } from '@/lib/format'
 import type { DailyPrices } from '@/lib/history'
+import { useT } from '@/lib/i18n'
 import type { Range } from '@/lib/period'
 import { balance, series, valueOn } from '@/lib/portfolio'
 import type { Currency } from '@/lib/preferences'
@@ -77,6 +78,7 @@ type Props = Valuation & {
 }
 
 export function PortfolioCards({ portfolios, entries, status, selected, onSelect, readOnly, ...valuation }: Props) {
+  const t = useT()
   const [creating, setCreating] = useState(false)
   const [connecting, setConnecting] = useState<'monobank' | 'ibkr'>()
   const [renaming, setRenaming] = useState<Portfolio>()
@@ -92,7 +94,7 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
     [portfolios, entries],
   )
   const ownEntries = (id: string) => entries.filter((e) => e.portfolioId === id)
-  const slides = [{ id: NET_WORTH, label: 'Net worth' }, ...portfolios.map((p) => ({ id: p.id, label: p.name }))]
+  const slides = [{ id: NET_WORTH, label: t.netWorth }, ...portfolios.map((p) => ({ id: p.id, label: p.name }))]
 
   // Mouse: drag after moving a few pixels, so a click still selects. Touch: long-press, so a swipe still scrolls.
   const sensors = useSensors(
@@ -144,12 +146,12 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
         <div
           ref={rowRef}
           role="tablist"
-          aria-label="Portfolios"
+          aria-label={t.portfolios}
           className="relative -mx-6 flex snap-x snap-mandatory gap-2 overflow-x-auto px-8 pb-2 max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden sm:snap-none sm:gap-3 sm:px-6 sm:pr-24"
         >
           <Card
             id={NET_WORTH}
-            label="Net worth"
+            label={t.netWorth}
             entries={counted}
             {...valuation}
             active={selected === NET_WORTH}
@@ -167,7 +169,7 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
                   hidden={!h.inNetWorth}
                   share={h.cardPercent / 100}
                   netWorthShare={h.inNetWorth ? h.netWorthPercent : undefined}
-                  hint={h.syncedAt && `Synced ${formatAgo(h.syncedAt)}`}
+                  hint={h.syncedAt && t.synced(formatAgo(h.syncedAt))}
                   entries={scaleEntries([h], ownEntries(h.id), 'card')}
                   {...valuation}
                   active={selected === h.id}
@@ -180,7 +182,7 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              aria-label={`${h.name} actions`}
+                              aria-label={t.portfolioActions(h.name)}
                               className="absolute top-2 right-2 text-faint-foreground hover:text-foreground aria-expanded:text-foreground"
                             />
                           }
@@ -190,19 +192,19 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
                         <DropdownMenuContent align="end" className="w-48">
                           <DropdownMenuItem onClick={() => setRenaming(h)}>
                             <Pencil className="text-muted-foreground" />
-                            Rename
+                            {t.rename}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setAdjusting(h)}>
                             <Percent className="text-muted-foreground" />
-                            Set percentages
+                            {t.setPercentages}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setInNetWorth(h.id, !h.inNetWorth)}>
                             {h.inNetWorth ? <EyeOff className="text-muted-foreground" /> : <Eye className="text-muted-foreground" />}
-                            {h.inNetWorth ? 'Hide from net worth' : 'Show in net worth'}
+                            {h.inNetWorth ? t.hideFromNetWorth : t.showInNetWorth}
                           </DropdownMenuItem>
                           <DropdownMenuItem variant="destructive" onClick={() => setDeleting(h)}>
                             {isReadOnly(h) ? <Unlink /> : <Trash2 />}
-                            {isReadOnly(h) ? 'Disconnect' : 'Delete'}
+                            {isReadOnly(h) ? t.disconnect : t.delete}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -222,7 +224,7 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
                 <Button
                   variant="outline"
                   size="icon"
-                  aria-label="Add portfolio"
+                  aria-label={t.addPortfolio}
                   className="pointer-events-auto rounded-full text-muted-foreground shadow-sm hover:text-foreground aria-expanded:text-foreground max-sm:size-7"
                 />
               }
@@ -232,7 +234,7 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={() => setCreating(true)}>
                 <WalletCards className="text-muted-foreground" />
-                Custom
+                {t.custom}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setConnecting('monobank')}>
                 <Landmark className="text-muted-foreground" />
@@ -253,7 +255,7 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
             <button
               key={s.id}
               type="button"
-              aria-label={`Show ${s.label}`}
+              aria-label={t.showCard(s.label)}
               aria-current={s.id === selected}
               onClick={() => onSelect(s.id)}
               className="p-1"
@@ -296,12 +298,12 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
       <AlertDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(undefined)}>
         <AlertDialogContent size="sm" className="gap-6 p-6">
           <AlertDialogTitle className="text-sm font-normal text-muted-foreground">
-            {isReadOnly(deleting) ? 'Disconnect' : 'Delete'}{' '}
-            <span className="text-foreground">{deleting?.name}</span> and{' '}
-            {isReadOnly(deleting) ? 'remove its synced entries' : 'all its entries'}?
+            {t.confirmDeletePortfolio(isReadOnly(deleting))[0]}{' '}
+            <span className="text-foreground">{deleting?.name}</span>{' '}
+            {t.confirmDeletePortfolio(isReadOnly(deleting))[1]}
           </AlertDialogTitle>
           <AlertDialogFooter className="-mx-6 -mb-6 px-6 py-4">
-            <AlertDialogCancel variant="secondary">Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">{t.cancel}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
@@ -312,7 +314,7 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
                 setDeleting(undefined)
               }}
             >
-              {isReadOnly(deleting) ? 'Disconnect' : 'Delete'}
+              {isReadOnly(deleting) ? t.disconnect : t.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -323,8 +325,9 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
 
 /** Placeholder row while portfolios load: Net worth plus two cards, same size as the real ones. */
 export function PortfolioCardsSkeleton() {
+  const t = useT()
   return (
-    <div aria-busy="true" aria-label="Loading portfolios" className="-mx-6 flex gap-2 overflow-hidden px-8 pb-2 sm:gap-3 sm:px-6">
+    <div aria-busy="true" aria-label={t.loadingPortfolios} className="-mx-6 flex gap-2 overflow-hidden px-8 pb-2 sm:gap-3 sm:px-6">
       {[0, 1, 2].map((i) => (
         <div
           key={i}
@@ -361,6 +364,7 @@ type CardProps = Valuation & {
 const dayBefore = (day: string) => new Date(Date.parse(`${day}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
 
 function Card({ id, sortable, label, hidden, share = 1, netWorthShare, hint, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
+  const t = useT()
   const drag = useSortable({ id, disabled: !sortable })
   const points = useMemo(() => series(entries, daily, prices, currency), [entries, daily, prices, currency])
   const today = new Date().toISOString().slice(0, 10)
@@ -388,7 +392,7 @@ function Card({ id, sortable, label, hidden, share = 1, netWorthShare, hint, ent
         onClick={onSelect}
         title={hint}
         className={cn(
-          'flex min-h-30 w-full flex-col justify-between rounded-xl border bg-card p-5 text-left transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:min-h-26',
+          'flex h-full min-h-30 w-full flex-col justify-between rounded-xl border bg-card p-5 text-left transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:min-h-26',
           active ? 'border-foreground/30 bg-accent' : 'hover:border-foreground/15',
           drag.isDragging && 'cursor-grabbing shadow-lg',
         )}
@@ -397,13 +401,13 @@ function Card({ id, sortable, label, hidden, share = 1, netWorthShare, hint, ent
           <span className="truncate">{label}</span>
           {live && <LiveDot status={live} />}
           {hidden && (
-            <span title="Hidden from net worth" className="shrink-0 text-faint-foreground">
-              <EyeOff className="size-3.5" aria-label="Hidden from net worth" />
+            <span title={t.hiddenFromNetWorth} className="shrink-0 text-faint-foreground">
+              <EyeOff className="size-3.5" aria-label={t.hiddenFromNetWorth} />
             </span>
           )}
           {netWorthShare !== undefined && netWorthShare < 100 && (
-            <span title={`${netWorthShare}% counts in net worth`} className="shrink-0 text-faint-foreground">
-              <ChartPie className="size-3.5" aria-label={`${netWorthShare}% counts in net worth`} />
+            <span title={t.countsInNetWorth(netWorthShare)} className="shrink-0 text-faint-foreground">
+              <ChartPie className="size-3.5" aria-label={t.countsInNetWorth(netWorthShare)} />
             </span>
           )}
         </span>
@@ -414,7 +418,7 @@ function Card({ id, sortable, label, hidden, share = 1, netWorthShare, hint, ent
           </span>
           {share !== 1 && (
             <span className="text-xs text-faint-foreground">
-              {Math.round(share * 1000) / 10}% of {formatMoney(total / share)}
+              {t.shareOf(Math.round(share * 1000) / 10, formatMoney(total / share))}
             </span>
           )}
           {change !== undefined && (
@@ -431,9 +435,10 @@ function Card({ id, sortable, label, hidden, share = 1, netWorthShare, hint, ent
 }
 
 function LiveDot({ status }: { status: PriceStatus }) {
+  const t = useT()
   const live = status === 'live'
   return (
-    <span className="relative flex size-2 shrink-0" title={live ? 'Live' : 'Reconnecting'}>
+    <span className="relative flex size-2 shrink-0" title={live ? t.live : t.reconnecting}>
       {live && <span className="absolute inset-0 animate-ping rounded-full bg-brand opacity-40" />}
       <span className={cn('relative size-2 rounded-full', live ? 'bg-brand' : 'bg-faint-foreground')} />
     </span>

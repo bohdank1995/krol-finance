@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/sheet'
 import { connectMonobankCard, listMonobankCards, type MonobankCard } from '@/lib/entries'
 import { formatAmount } from '@/lib/format'
+import { useT } from '@/lib/i18n'
 import { cn, masked, noAutofill } from '@/lib/utils'
 import { EmojiPicker } from './emoji-picker'
 
@@ -49,6 +50,7 @@ const cardLabel = (c: MonobankCard) =>
     .join(' ')
 
 function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void; onDone: () => void }) {
+  const t = useT()
   const [token, setToken] = useState('')
   const [cards, setCards] = useState<MonobankCard[]>()
   const [picked, setPicked] = useState<MonobankCard>()
@@ -62,7 +64,7 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
     try {
       await task()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong. Try again.')
+      setError(e instanceof Error ? e.message : t.somethingWrong)
     } finally {
       setBusy(false)
     }
@@ -92,13 +94,13 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
   return (
     <form onSubmit={submit} className="contents">
       <SheetTitle className="text-sm font-normal text-muted-foreground">
-        {cards ? 'Pick a card' : 'Connect Monobank'}
+        {cards ? t.monobank.pickCard : t.monobank.connect}
       </SheetTitle>
 
       {!cards ? (
         <div className="grid gap-3">
           <p className="text-muted-foreground">
-            Open{' '}
+            {t.monobank.intro[0]}{' '}
             <a
               href="https://api.monobank.ua"
               target="_blank"
@@ -107,14 +109,13 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
             >
               api.monobank.ua
             </a>
-            , scan the QR code with the Monobank app, then paste the token here. It can only read
-            balances and transactions.
+            {t.monobank.intro[1]}
           </p>
           <Input
             autoFocus
             {...noAutofill}
-            placeholder="Token"
-            aria-label="Monobank token"
+            placeholder={t.token}
+            aria-label={t.monobank.tokenLabel}
             value={token}
             onChange={(e) => setToken(e.target.value)}
             className={cn('h-12 font-mono', masked)}
@@ -122,8 +123,8 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
         </div>
       ) : (
         <div className="grid gap-4">
-          {cards.length === 0 && <p className="text-muted-foreground">No cards found on this account.</p>}
-          <div role="radiogroup" aria-label="Cards" className="grid gap-2">
+          {cards.length === 0 && <p className="text-muted-foreground">{t.monobank.noCards}</p>}
+          <div role="radiogroup" aria-label={t.monobank.cards} className="grid gap-2">
             {cards.map((c) => {
               const disabled = c.connected || !c.asset
               return (
@@ -144,7 +145,7 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
                     <span>{cardLabel(c)}</span>
                     {disabled && (
                       <span className="text-xs text-faint-foreground">
-                        {c.connected ? 'Already connected' : 'Currency not supported yet'}
+                        {c.connected ? t.alreadyConnected : t.monobank.currencyNotSupported}
                       </span>
                     )}
                   </span>
@@ -161,8 +162,8 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
             <div className="flex items-center gap-1">
               <Input
                 autoComplete="off"
-                placeholder="Name"
-                aria-label="Name"
+                placeholder={t.name}
+                aria-label={t.name}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="h-12 flex-1"
@@ -180,10 +181,10 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
       )}
 
       <SheetFooter>
-        <SheetClose render={<Button type="button" variant="secondary" />}>Cancel</SheetClose>
+        <SheetClose render={<Button type="button" variant="secondary" />}>{t.cancel}</SheetClose>
         <Button type="submit" disabled={!valid || busy}>
           {busy && <Loader2 className="animate-spin" />}
-          {cards ? 'Connect' : 'Continue'}
+          {cards ? t.connect : t.continue}
         </Button>
       </SheetFooter>
     </form>

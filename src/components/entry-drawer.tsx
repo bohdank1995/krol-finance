@@ -15,9 +15,10 @@ import {
   SheetFooter,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { assetsFor, ENTRY_TYPES, typeOf, type AssetSymbol, type EntryType } from '@/lib/assets'
+import { assetsFor, typeOf, type AssetSymbol, type EntryType } from '@/lib/assets'
 import { addEntry, updateEntry, type Entry, type Portfolio } from '@/lib/entries'
 import { dayToIso, parseAmount } from '@/lib/format'
+import { useT } from '@/lib/i18n'
 import { AmountFields, DateField } from './amount-fields'
 
 export type Direction = 'in' | 'out'
@@ -56,11 +57,10 @@ function EntryForm({
   entry,
   onDone,
 }: Omit<Props, 'open' | 'onOpenChange'> & { onDone: () => void }) {
+  const t = useT()
   const type: EntryType = entry ? typeOf(entry.asset) : (chosen ?? 'money')
-  const label = ENTRY_TYPES.find((t) => t.value === type)?.label.toLowerCase()
   // The amount field holds the size; the button that opened the drawer decides the sign.
   const direction: Direction = entry ? (entry.amount.startsWith('-') ? 'out' : 'in') : picked
-  const verb = direction === 'out' ? 'withdrawal' : 'deposit'
   const [amount, setAmount] = useState(entry?.amount.replace(/^-/, '') ?? '')
   const [note, setNote] = useState(entry?.note ?? '')
   const [asset, setAsset] = useState<AssetSymbol>(() => entry?.asset ?? assetsFor(type)[0].symbol)
@@ -83,7 +83,7 @@ function EntryForm({
   return (
     <form onSubmit={submit} className="contents">
       <SheetTitle className="text-sm font-normal text-muted-foreground">
-        {entry ? `Edit ${label} ${verb}` : `${direction === 'out' ? 'Withdraw' : 'Deposit'} ${label}`}
+        {t.entryTitle(direction, type, !!entry)}
       </SheetTitle>
 
       <AmountFields amount={amount} onAmountChange={setAmount} type={type} asset={asset} onAssetChange={setAsset} autoFocus />
@@ -96,7 +96,7 @@ function EntryForm({
             onValueChange={(v) => v && setTarget(v)}
             items={portfolios.map((p) => ({ value: p.id, label: p.name }))}
           >
-            <SelectTrigger aria-label="Portfolio" className="h-10! min-w-40 flex-1">
+            <SelectTrigger aria-label={t.portfolio} className="h-10! min-w-40 flex-1">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -111,8 +111,8 @@ function EntryForm({
       </div>
 
       <Input
-        placeholder="Note"
-        aria-label="Note"
+        placeholder={t.note}
+        aria-label={t.note}
         autoComplete="off"
         maxLength={200}
         value={note}
@@ -121,9 +121,9 @@ function EntryForm({
       />
 
       <SheetFooter>
-        <SheetClose render={<Button type="button" variant="secondary" />}>Cancel</SheetClose>
+        <SheetClose render={<Button type="button" variant="secondary" />}>{t.cancel}</SheetClose>
         <Button type="submit" disabled={!valid}>
-          {entry ? 'Save' : direction === 'out' ? 'Withdraw' : 'Deposit'}
+          {entry ? t.save : direction === 'out' ? t.withdraw : t.deposit}
         </Button>
       </SheetFooter>
     </form>

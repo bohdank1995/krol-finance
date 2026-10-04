@@ -7,18 +7,22 @@ import {
 } from '@/components/ui/chart'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDay, formatMoney } from '@/lib/format'
+import { useT } from '@/lib/i18n'
 import type { Currency } from '@/lib/preferences'
 
-const config = { value: { label: 'Value', color: 'var(--chart-1)' } } satisfies ChartConfig
 
 const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 })
 
 /** Same height as the graph, so nothing jumps when it arrives. */
 export function BalanceChartSkeleton() {
-  return <Skeleton aria-busy="true" aria-label="Loading graph" className="h-64 w-full rounded-xl" />
+  const t = useT()
+  return <Skeleton aria-busy="true" aria-label={t.loadingGraph} className="h-64 w-full rounded-xl" />
 }
 
 export function BalanceChart({ points, currency }: { points: { date: string; value: number }[]; currency: Currency }) {
+  // Also re-renders the month names when the language changes.
+  const t = useT()
+  const config = { value: { label: t.value, color: 'var(--chart-1)' } } satisfies ChartConfig
   if (points.length === 0) {
     return (
       <div className="flex h-64 items-center justify-center font-mono text-5xl font-light text-faint-foreground">

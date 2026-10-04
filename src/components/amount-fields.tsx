@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/select'
 import { assetsFor, type AssetSymbol, type EntryType } from '@/lib/assets'
 import { cleanAmount, groupAmount } from '@/lib/format'
+import { useT } from '@/lib/i18n'
 
 type Props = {
   amount: string
@@ -65,6 +66,7 @@ function useGroupedAmount(amount: string, onAmountChange: (v: string) => void) {
 
 /** The signed amount + asset picker used in the entry drawer. */
 export function AmountFields({ amount, onAmountChange, type, asset, onAssetChange, autoFocus }: Props) {
+  const t = useT()
   const field = useGroupedAmount(amount, onAmountChange)
   return (
     // Wraps on narrow screens or large text: the asset picker drops below, full width.
@@ -74,19 +76,19 @@ export function AmountFields({ amount, onAmountChange, type, asset, onAssetChang
         inputMode="decimal"
         autoComplete="off"
         placeholder="0.00"
-        aria-label="Amount"
+        aria-label={t.amount}
         {...field}
         className="h-12 flex-[999_1_8rem] font-mono text-xl tabular-nums md:text-xl"
       />
       <Select value={asset} onValueChange={(v) => v && onAssetChange(v as AssetSymbol)}>
-        <SelectTrigger aria-label="Asset" className="h-12! w-28 grow font-mono">
+        <SelectTrigger aria-label={t.asset} className="h-12! w-28 grow font-mono">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
           {assetsFor(type).map((a) => (
             <SelectItem key={a.symbol} value={a.symbol}>
               <span className="w-12 font-mono">{a.symbol}</span>
-              <span className="text-faint-foreground">{a.name}</span>
+              <span className="text-faint-foreground">{t.assetNames[a.symbol] ?? a.name}</span>
             </SelectItem>
           ))}
         </SelectContent>
@@ -96,10 +98,11 @@ export function AmountFields({ amount, onAmountChange, type, asset, onAssetChang
 }
 
 export function DateField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const t = useT()
   return (
     <Input
       type="date"
-      aria-label="Date"
+      aria-label={t.date}
       value={value}
       max={new Date().toLocaleDateString('en-CA')}
       onChange={(e) => onChange(e.target.value)}

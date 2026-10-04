@@ -1,14 +1,9 @@
 /* The period being tracked. Days are UTC "YYYY-MM-DD", matching the graph's daily points. */
 
-export const PERIODS = [
-  { value: 'all', label: 'All time' },
-  { value: 'last-month', label: 'Last month' },
-  { value: 'prev-month', label: 'Previous month' },
-  { value: 'last-quarter', label: 'Last quarter' },
-  { value: 'last-year', label: 'Last year' },
-] as const
+/** Their names are in `i18n.ts` (`periods`). */
+export const PERIODS = ['all', 'last-month', 'prev-month', 'last-quarter', 'last-year'] as const
 
-export type Period = (typeof PERIODS)[number]['value']
+export type Period = (typeof PERIODS)[number]
 
 /** First and last day of the period; `from` is unset for All time. */
 export type Range = { from?: string; to: string }

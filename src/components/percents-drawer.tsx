@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Sheet, SheetClose, SheetContent, SheetFooter, SheetTitle } from '@/components/ui/sheet'
 import { setPercents, type Portfolio } from '@/lib/entries'
 import { formatMoney } from '@/lib/format'
+import { useT } from '@/lib/i18n'
 import type { Currency } from '@/lib/preferences'
 
 type Props = {
@@ -35,6 +36,7 @@ function PercentsForm({
   currency,
   onDone,
 }: Omit<Props, 'portfolio' | 'onOpenChange'> & { portfolio: Portfolio; onDone: () => void }) {
+  const t = useT()
   const [card, setCard] = useState(String(portfolio.cardPercent))
   const [netWorth, setNetWorth] = useState(String(portfolio.netWorthPercent))
   const cardValue = parse(card)
@@ -52,38 +54,38 @@ function PercentsForm({
   return (
     <form onSubmit={submit} className="contents">
       <SheetTitle className="text-sm font-normal text-muted-foreground">
-        Percentages · <span className="text-foreground">{portfolio.name}</span>
+        {t.percentages} · <span className="text-foreground">{portfolio.name}</span>
       </SheetTitle>
 
       <div className="flex flex-col gap-6">
         <Field
-          label="Card shows"
+          label={t.cardShows}
           value={card}
           onChange={setCard}
           valid={cardValid}
-          error="Above 0, up to 100"
+          error={t.cardPercentError}
           result={cardValid ? (total * cardValue) / 100 : undefined}
           total={total}
           currency={currency}
           autoFocus
         />
         <Field
-          label="Counts in net worth"
+          label={t.countsInNetWorthLabel}
           value={netWorth}
           onChange={setNetWorth}
           valid={netWorthValid}
-          error="Between 0 and 100"
+          error={t.netWorthPercentError}
           result={netWorthValid ? (total * netWorthValue) / 100 : undefined}
           total={total}
           currency={currency}
-          note={!portfolio.inNetWorth ? 'Hidden from net worth for now — show it again from the card menu.' : undefined}
+          note={!portfolio.inNetWorth ? t.hiddenNote : undefined}
         />
       </div>
 
       <SheetFooter>
-        <SheetClose render={<Button type="button" variant="secondary" />}>Cancel</SheetClose>
+        <SheetClose render={<Button type="button" variant="secondary" />}>{t.cancel}</SheetClose>
         <Button type="submit" disabled={!cardValid || !netWorthValid}>
-          Save
+          {t.save}
         </Button>
       </SheetFooter>
     </form>
@@ -113,6 +115,7 @@ function Field({
   note?: string
   autoFocus?: boolean
 }) {
+  const t = useT()
   return (
     <label className="flex flex-col gap-2">
       <span className="text-sm text-muted-foreground">{label}</span>
@@ -135,7 +138,7 @@ function Field({
           <span className="font-sans text-destructive">{error}</span>
         ) : (
           <>
-            {formatMoney(result)} of {formatMoney(total)} {currency}
+            {t.partOf(formatMoney(result), formatMoney(total))} {currency}
           </>
         )}
       </span>

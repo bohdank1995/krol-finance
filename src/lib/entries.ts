@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import type { AssetSymbol, StockSymbol } from './assets'
+import { dict } from './i18n'
 import { supabase } from './supabase'
 
 /* Portfolios (the cards) and their entries (the rows) live in Supabase, locked to the
@@ -317,7 +318,7 @@ export type MonobankCard = {
   connected: boolean
 }
 
-const monobank = <T>(body: Record<string, string>) => invoke<T>('monobank', body, 'Could not reach Monobank. Try again.')
+const monobank = <T>(body: Record<string, string>) => invoke<T>('monobank', body, dict().monobank.unreachable)
 
 /** Checks the token with Monobank and lists the cards it can see. */
 export async function listMonobankCards(token: string) {
@@ -348,7 +349,7 @@ export type IbkrPosition = {
   connected: boolean
 }
 
-const ibkr = <T>(body: Record<string, unknown>) => invoke<T>('ibkr', body, 'Could not reach Interactive Brokers. Try again.')
+const ibkr = <T>(body: Record<string, unknown>) => invoke<T>('ibkr', body, dict().ibkr.unreachable)
 
 /** Runs the Flex Query and lists the stocks in the account. */
 export async function listIbkrPositions(token: string, queryId: string) {
