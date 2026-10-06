@@ -1,35 +1,11 @@
-import { useEffect, useState } from 'react'
-import type { Session } from '@supabase/supabase-js'
-import { supabase } from './supabase'
+import { useAuthActions } from '@convex-dev/auth/react'
 
-/** `undefined` while the stored session is still loading, `null` when signed out. */
-export function useSession() {
-  const [session, setSession] = useState<Session | null | undefined>(undefined)
+/* Sign-in through Convex Auth: Google comes back to this page signed in after its consent
+   screen. The first sign-in creates the account. */
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data } = supabase.auth.onAuthStateChange((_event, s) => setSession(s))
-    return () => data.subscription.unsubscribe()
-  }, [])
-
-  return session
+export function useSignInWithGoogle() {
+  const { signIn } = useAuthActions()
+  return () => signIn('google')
 }
 
-export function signInWithEmail(email: string) {
-  return supabase.auth.signInWithOtp({
-    email,
-    // Creates the account on first use; close sign-ups in the dashboard afterwards.
-    options: { emailRedirectTo: window.location.origin },
-  })
-}
-
-export function signInWithGoogle() {
-  return supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo: window.location.origin },
-  })
-}
-
-export function signOut() {
-  return supabase.auth.signOut()
-}
+export const useSignOut = () => useAuthActions().signOut

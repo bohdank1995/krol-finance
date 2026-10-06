@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { StockSymbol } from './assets'
-import { invoke } from './entries'
+import { api } from '../../convex/_generated/api'
+import { call } from './entries'
 import type { PriceStatus } from './prices'
 
-/* Stock prices in USD, from Yahoo Finance via the `ibkr` Edge Function (Yahoo can't be called from
+/* Stock prices in USD, from Yahoo Finance via the `ibkr` server functions (Yahoo can't be called from
    the browser). There is no free tick-by-tick stream for stocks, so live prices are re-fetched
    every 30 seconds while the tab is visible, and right away when it becomes visible again. */
 
@@ -25,11 +26,7 @@ export function useStockPrices(watchKey: string) {
       busy = true
       window.clearTimeout(timer)
       try {
-        const { prices: fresh } = await invoke<{ prices: Record<StockSymbol, number> }>(
-          'ibkr',
-          { action: 'quotes', assets },
-          'Could not load stock prices.',
-        )
+        const fresh = await call(api.ibkr.quotes, { assets }, 'Could not load stock prices.')
         if (closed) return
         setPrices((p) => ({ ...p, ...fresh }))
         setStatus('live')
@@ -55,9 +52,5 @@ export function useStockPrices(watchKey: string) {
 
 /** Daily closes in USD, "YYYY-MM-DD" → price, from `sinceDay` on. Empty if the request fails. */
 export function fetchStockDaily(asset: StockSymbol, sinceDay: string) {
-  return invoke<{ days: Record<string, number> }>(
-    'ibkr',
-    { action: 'history', asset, since: sinceDay },
-    'Could not load stock history.',
-  ).then((r) => r.days)
+  return call(api.ibkr.history, { asset, since: sinceDay }, 'Could not load stock history.')
 }

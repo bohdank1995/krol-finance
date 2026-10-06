@@ -4,7 +4,8 @@ import { EntriesTable, EntriesTableSkeleton } from '@/components/entries-table'
 import { Header, PeriodFilter } from '@/components/header'
 import { NET_WORTH, PortfolioCards, PortfolioCardsSkeleton } from '@/components/portfolio-cards'
 import { SignIn } from '@/components/sign-in'
-import { useSession } from '@/lib/auth'
+import { useConvexAuth, useQuery } from 'convex/react'
+import { api } from '../convex/_generated/api'
 import { netWorthEntries, scaleEntries, useEntries, useLoaded, usePortfolios } from '@/lib/entries'
 import { fakeEntries } from '@/lib/fake'
 import { useDailyPrices } from '@/lib/history'
@@ -14,10 +15,11 @@ import { usePreferences } from '@/lib/preferences'
 import { useLivePrices } from '@/lib/prices'
 
 function App() {
-  const session = useSession()
-  if (session === undefined) return null
-  if (!session) return <SignIn />
-  return <Signed email={session.user.email ?? ''} />
+  const { isLoading, isAuthenticated } = useConvexAuth()
+  const me = useQuery(api.users.me, isAuthenticated ? {} : 'skip')
+  if (isLoading) return null
+  if (!isAuthenticated) return <SignIn />
+  return <Signed email={me?.email ?? ''} />
 }
 
 function Signed({ email }: { email: string }) {

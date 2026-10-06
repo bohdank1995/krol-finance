@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { signOut } from '@/lib/auth'
+import { useSignOut } from '@/lib/auth'
 import { LANGUAGES, setLanguage, useLanguage, useT, type Language } from '@/lib/i18n'
 import { CURRENCIES, setCurrency, setFake, usePreferences, type Currency } from '@/lib/preferences'
 import { cn } from '@/lib/utils'
@@ -63,6 +63,7 @@ function Choice<T extends string>({
 export function UserMenu({ email }: { email: string }) {
   const t = useT()
   const language = useLanguage()
+  const signOut = useSignOut()
   const { currency, fake } = usePreferences()
   return (
     <Popover>

@@ -1,8 +1,6 @@
 import { useState } from 'react'
-import { ArrowLeft, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { signInWithEmail, signInWithGoogle } from '@/lib/auth'
+import { useSignInWithGoogle } from '@/lib/auth'
 
 function GoogleIcon() {
   return (
@@ -13,90 +11,30 @@ function GoogleIcon() {
 }
 
 export function SignIn() {
-  const [mode, setMode] = useState<'choose' | 'email'>('choose')
-  const [email, setEmail] = useState('')
-  const [sent, setSent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const signInWithGoogle = useSignInWithGoogle()
 
   const google = async () => {
     setBusy(true)
     setError('')
     // On success the browser leaves for Google, so only errors land here.
-    const { error } = await signInWithGoogle()
-    if (error) {
+    try {
+      await signInWithGoogle()
+    } catch (e) {
+      console.error(e)
       setBusy(false)
-      setError(error.message)
+      setError('Could not sign in with Google. Try again.')
     }
   }
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setBusy(true)
-    setError('')
-    const { error } = await signInWithEmail(email.trim())
-    setBusy(false)
-    if (error) setError(error.message)
-    else setSent(true)
-  }
-
   return (
-    <div className="mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-6 px-4">
-      {sent ? (
-        <p className="text-sm text-muted-foreground">
-          Check <span className="text-foreground">{email}</span> for your sign-in link.
-        </p>
-      ) : mode === 'choose' ? (
-        <div className="grid gap-3">
-          <Button onClick={google} disabled={busy} className="h-12 gap-2">
-            <GoogleIcon />
-            Continue with Google
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setError('')
-              setMode('email')
-            }}
-            disabled={busy}
-            className="h-12 gap-2"
-          >
-            <Mail />
-            Continue with Magic Link
-          </Button>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-        </div>
-      ) : (
-        <form onSubmit={submit} className="grid gap-3">
-          <Input
-            autoFocus
-            type="email"
-            required
-            autoComplete="email"
-            placeholder="Email"
-            aria-label="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="h-12"
-          />
-          <Button type="submit" disabled={busy || !email} className="h-12">
-            Send link
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => {
-              setError('')
-              setMode('choose')
-            }}
-            className="h-10 gap-2 text-muted-foreground"
-          >
-            <ArrowLeft />
-            Other options
-          </Button>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-        </form>
-      )}
+    <div className="mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-3 px-4">
+      <Button onClick={google} disabled={busy} className="h-12 gap-2">
+        <GoogleIcon />
+        Continue with Google
+      </Button>
+      {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   )
 }

@@ -1,12 +1,17 @@
 import { useSyncExternalStore } from 'react'
+import type { OptimisticLocalStore } from 'convex/browser'
+import type { FunctionArgs, FunctionReference, FunctionReturnType } from 'convex/server'
+import { ConvexError } from 'convex/values'
+import { api } from '../../convex/_generated/api'
 import type { AssetSymbol, StockSymbol } from './assets'
+import { convex } from './convex'
 import { dict } from './i18n'
-import { supabase } from './supabase'
 
-/* Portfolios (the cards) and their entries (the rows) live in Supabase, locked to the
-   signed-in user by Row Level Security. Everything goes through this module. The
-   in-memory cache updates instantly; the database write follows, and is rolled back
-   on failure. An entry is a change: positive adds to the portfolio, negative takes away. */
+/* Portfolios (the cards) and their entries (the rows) live in Convex; its server functions
+   (`convex/data.ts`) only ever touch the signed-in user's rows. Everything goes through this
+   module. The data is a live subscription: changes made elsewhere (another tab, the daily
+   Monobank / IBKR syncs) show up on their own. Edits show instantly and are undone if the
+   server rejects them. An entry is a change: positive adds to the portfolio, negative takes away. */
 
 export type Portfolio = {
   id: string
@@ -39,28 +44,7 @@ export type Entry = {
   note?: string
 }
 
-type PortfolioRow = {
-  id: string
-  name: string
-  created_at: string
-  source: Portfolio['source']
-  synced_at: string | null
-  /** Missing until migration 0007 is run. */
-  position?: number | null
-  /** Missing until migration 0009 is run. */
-  in_net_worth?: boolean | null
-  /** Missing until migration 0010 is run. */
-  card_percent?: number | string | null
-  net_worth_percent?: number | string | null
-}
-type EntryRow = {
-  id: string
-  portfolio_id: string
-  asset: AssetSymbol
-  amount: string | number
-  created_at: string
-  note: string | null
-}
+type Data = NonNullable<FunctionReturnType<typeof api.data.everything>>
 
 const listeners = new Set<() => void>()
 let portfoliosCache: Portfolio[] = []
@@ -81,53 +65,25 @@ function sortPortfolios(list: Portfolio[]) {
   return [...list].sort((a, b) => rank(a) - rank(b) || (a.createdAt < b.createdAt ? -1 : 1))
 }
 
-async function load() {
-  const [h, e] = await Promise.all([
-    // '*' rather than a column list, so loading still works before the `position` migration is run.
-    supabase.from('portfolios').select('*').order('created_at', { ascending: true }),
-    supabase
-      .from('entries')
-      .select('id, portfolio_id, asset, amount, created_at, note')
-      .order('created_at', { ascending: false }),
-  ])
-  if (h.error || e.error) {
-    console.error('Could not load data', h.error ?? e.error)
+// Follows sign-in and sign-out on its own: the query answers null while signed out.
+const watch = convex.watchQuery(api.data.everything, {})
+function refresh() {
+  let data: Data | null | undefined
+  try {
+    data = watch.localQueryResult()
+  } catch (e) {
+    console.error('Could not load data', e)
     return set([], []) // stop the skeletons; the empty state is shown instead
   }
+  if (data === undefined) return // still loading
+  if (data === null) return set([], [], false)
   set(
-    sortPortfolios(
-      (h.data as PortfolioRow[]).map((r) => ({
-        id: r.id,
-        name: r.name,
-        createdAt: r.created_at,
-        source: r.source,
-        syncedAt: r.synced_at ?? undefined,
-        position: r.position ?? undefined,
-        inNetWorth: r.in_net_worth !== false,
-        cardPercent: Number(r.card_percent ?? 100),
-        netWorthPercent: Number(r.net_worth_percent ?? 100),
-      })),
-    ),
-    (e.data as EntryRow[]).map((r) => ({
-      id: r.id,
-      portfolioId: r.portfolio_id,
-      asset: r.asset,
-      amount: String(r.amount),
-      createdAt: r.created_at,
-      note: r.note ?? undefined,
-    })),
+    sortPortfolios(data.portfolios as Portfolio[]),
+    ([...data.entries] as Entry[]).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
   )
 }
-
-// Reload on sign-in, clear on sign-out. Token refreshes don't change the user, so skip them.
-let userId: string | undefined
-supabase.auth.onAuthStateChange((_event, session) => {
-  const next = session?.user.id
-  if (next === userId) return
-  userId = next
-  if (next) setTimeout(load, 0) // never call Supabase inside the auth callback itself
-  else set([], [], false)
-})
+watch.onUpdate(refresh)
+refresh()
 
 function subscribe(listener: () => void) {
   listeners.add(listener)
@@ -140,76 +96,47 @@ export const usePortfolios = () => useSyncExternalStore(subscribe, () => portfol
 export const useEntries = () => useSyncExternalStore(subscribe, () => entriesCache)
 export const useLoaded = () => useSyncExternalStore(subscribe, () => loadedCache)
 
-/** Runs the writes in order; if any fails, puts the previous data back. */
-async function commit(
-  previous: [Portfolio[], Entry[]],
-  ...requests: (() => PromiseLike<{ error: unknown }>)[]
-) {
-  for (const request of requests) {
-    const { error } = await request()
-    if (error) {
-      console.error('Could not save change', error)
-      set(...previous)
-      return
-    }
-  }
+/** Saves a change: `preview` shows it right away, and Convex undoes it if the save fails. */
+function save<M extends FunctionReference<'mutation'>>(mutation: M, args: FunctionArgs<M>, preview: (d: Data) => Data) {
+  convex
+    .mutation(mutation, args, {
+      optimisticUpdate: (store: OptimisticLocalStore) => {
+        const data = store.getQuery(api.data.everything, {})
+        if (data) store.setQuery(api.data.everything, {}, preview(data))
+      },
+    })
+    .catch((e) => console.error('Could not save change', e))
 }
 
-const snapshot = (): [Portfolio[], Entry[]] => [portfoliosCache, entriesCache]
+const patchPortfolio = (id: string, patch: Partial<Portfolio>) => (d: Data) => ({
+  ...d,
+  portfolios: d.portfolios.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+})
 
 type EntryInput = { asset: AssetSymbol; amount: string; createdAt?: string; note?: string }
-
-function newEntry(portfolioId: string, input: EntryInput): Entry {
-  return {
-    id: crypto.randomUUID(),
-    portfolioId,
-    asset: input.asset,
-    amount: input.amount,
-    createdAt: input.createdAt ?? new Date().toISOString(),
-    note: input.note,
-  }
-}
-
-const entryRow = (e: Entry) => ({
-  id: e.id,
-  portfolio_id: e.portfolioId,
-  asset: e.asset,
-  amount: e.amount,
-  created_at: e.createdAt,
-  note: e.note ?? null,
-})
 
 /** Creates an empty portfolio (entries are added afterwards). Returns its id. */
 export function addPortfolio(name: string) {
   const portfolio: Portfolio = { id: crypto.randomUUID(), name, createdAt: new Date().toISOString(), source: 'manual', inNetWorth: true, cardPercent: 100, netWorthPercent: 100 }
-  const previous = snapshot()
-  set([...portfoliosCache, portfolio], entriesCache)
-  commit(previous, () =>
-    supabase.from('portfolios').insert({ id: portfolio.id, name, created_at: portfolio.createdAt }),
-  )
+  save(api.data.addPortfolio, { id: portfolio.id, name, createdAt: portfolio.createdAt }, (d) => ({
+    ...d,
+    portfolios: [...d.portfolios, portfolio],
+  }))
   return portfolio.id
 }
 
 export function renamePortfolio(id: string, name: string) {
-  const previous = snapshot()
-  set(portfoliosCache.map((h) => (h.id === id ? { ...h, name } : h)), entriesCache)
-  commit(previous, () => supabase.from('portfolios').update({ name }).eq('id', id))
+  save(api.data.updatePortfolio, { id, name }, patchPortfolio(id, { name }))
 }
 
 /** Shows or hides a portfolio in the Net worth total. */
 export function setInNetWorth(id: string, inNetWorth: boolean) {
-  const previous = snapshot()
-  set(portfoliosCache.map((h) => (h.id === id ? { ...h, inNetWorth } : h)), entriesCache)
-  commit(previous, () => supabase.from('portfolios').update({ in_net_worth: inNetWorth }).eq('id', id))
+  save(api.data.updatePortfolio, { id, inNetWorth }, patchPortfolio(id, { inNetWorth }))
 }
 
 /** Sets how much of a portfolio's real balance its card shows and Net worth counts. */
 export function setPercents(id: string, cardPercent: number, netWorthPercent: number) {
-  const previous = snapshot()
-  set(portfoliosCache.map((h) => (h.id === id ? { ...h, cardPercent, netWorthPercent } : h)), entriesCache)
-  commit(previous, () =>
-    supabase.from('portfolios').update({ card_percent: cardPercent, net_worth_percent: netWorthPercent }).eq('id', id),
-  )
+  save(api.data.updatePortfolio, { id, cardPercent, netWorthPercent }, patchPortfolio(id, { cardPercent, netWorthPercent }))
 }
 
 /** The part of a portfolio a view adds up: 0–1. Hidden portfolios count 0 toward Net worth. */
@@ -235,76 +162,59 @@ export function scaleEntries(portfolios: Portfolio[], entries: Entry[], view: 'c
 
 /** Saves a new card order (`ids` in display order). */
 export function reorderPortfolios(ids: string[]) {
-  const previous = snapshot()
-  const byId = new Map(portfoliosCache.map((p) => [p.id, p]))
-  const next = ids.flatMap((id, position) => {
-    const p = byId.get(id)
-    return p ? [{ ...p, position }] : []
-  })
-  const changed = next.filter((p) => byId.get(p.id)?.position !== p.position)
-  set(next, entriesCache)
-  commit(
-    previous,
-    ...changed.map((p) => () => supabase.from('portfolios').update({ position: p.position }).eq('id', p.id)),
-  )
+  save(api.data.reorderPortfolios, { ids }, (d) => ({
+    ...d,
+    portfolios: d.portfolios.map((p) => (ids.includes(p.id) ? { ...p, position: ids.indexOf(p.id) } : p)),
+  }))
 }
 
-/** Deleting a portfolio also deletes its entries (the database cascades). */
+/** Deleting a portfolio also deletes its entries. */
 export function deletePortfolio(id: string) {
-  const previous = snapshot()
-  set(
-    portfoliosCache.filter((h) => h.id !== id),
-    entriesCache.filter((e) => e.portfolioId !== id),
-  )
-  commit(previous, () => supabase.from('portfolios').delete().eq('id', id))
+  save(api.data.deletePortfolio, { id }, (d) => ({
+    portfolios: d.portfolios.filter((p) => p.id !== id),
+    entries: d.entries.filter((e) => e.portfolioId !== id),
+  }))
 }
 
 export function addEntry(portfolioId: string, input: EntryInput) {
-  const entry = newEntry(portfolioId, input)
-  const previous = snapshot()
-  set(portfoliosCache, [entry, ...entriesCache])
-  commit(previous, () => supabase.from('entries').insert(entryRow(entry)))
+  const entry: Entry = {
+    id: crypto.randomUUID(),
+    portfolioId,
+    asset: input.asset,
+    amount: input.amount,
+    createdAt: input.createdAt ?? new Date().toISOString(),
+    note: input.note,
+  }
+  save(api.data.addEntry, entry, (d) => ({ ...d, entries: [entry, ...d.entries] }))
 }
 
 export function updateEntry(id: string, patch: Omit<Entry, 'id'>) {
-  const previous = snapshot()
-  set(portfoliosCache, entriesCache.map((e) => (e.id === id ? { ...e, ...patch } : e)))
-  commit(previous, () =>
-    supabase
-      .from('entries')
-      .update({
-        portfolio_id: patch.portfolioId,
-        asset: patch.asset,
-        amount: patch.amount,
-        created_at: patch.createdAt,
-        note: patch.note ?? null,
-      })
-      .eq('id', id),
-  )
+  const entry = { id, ...patch }
+  save(api.data.updateEntry, entry, (d) => ({ ...d, entries: d.entries.map((e) => (e.id === id ? entry : e)) }))
 }
 
 export function deleteEntry(id: string) {
-  const previous = snapshot()
-  set(portfoliosCache, entriesCache.filter((e) => e.id !== id))
-  commit(previous, () => supabase.from('entries').delete().eq('id', id))
+  save(api.data.deleteEntry, { id }, (d) => ({ ...d, entries: d.entries.filter((e) => e.id !== id) }))
 }
 
 /** Synced portfolios (Monobank, IBKR) can't have entries added, edited or deleted by hand. */
 export const isReadOnly = (p: Portfolio | undefined) => !!p && p.source !== 'manual'
 
-/** Calls an Edge Function; its `{ error }` reply becomes the thrown message. */
-export async function invoke<T>(name: string, body: Record<string, unknown>, fallback: string): Promise<T> {
-  const { data, error } = await supabase.functions.invoke(name, { body })
-  if (error) {
-    const context = (error as { context?: Response }).context
-    const reply = await context?.json?.().catch(() => undefined)
-    throw new Error(reply?.error ?? fallback)
+/** Runs a server action; a message it gives (ConvexError) becomes the thrown message. */
+export async function call<A extends FunctionReference<'action'>>(
+  fn: A,
+  args: FunctionArgs<A>,
+  fallback: string,
+): Promise<FunctionReturnType<A>> {
+  try {
+    return await convex.action(fn, args)
+  } catch (e) {
+    throw new Error(e instanceof ConvexError && typeof e.data === 'string' ? e.data : fallback)
   }
-  return data as T
 }
 
-/* Monobank: the token goes to the `monobank` Edge Function, which keeps it server-side,
-   talks to Monobank and writes the portfolio + entries. The app then reloads. */
+/* Monobank: the token goes to the `monobank` server functions, which keep it server-side, talk
+   to Monobank and write the portfolio + entries (they then arrive through the live data). */
 
 export type MonobankCard = {
   id: string
@@ -318,23 +228,18 @@ export type MonobankCard = {
   connected: boolean
 }
 
-const monobank = <T>(body: Record<string, string>) => invoke<T>('monobank', body, dict().monobank.unreachable)
-
 /** Checks the token with Monobank and lists the cards it can see. */
 export async function listMonobankCards(token: string) {
-  const { cards } = await monobank<{ cards: MonobankCard[] }>({ action: 'cards', token })
-  return cards
+  return (await call(api.monobank.cards, { token }, dict().monobank.unreachable)) as MonobankCard[]
 }
 
 /** Creates a portfolio for the card with its last 31 days of transactions. Returns its id. */
-export async function connectMonobankCard(accountId: string, name: string) {
-  const { portfolioId } = await monobank<{ portfolioId: string }>({ action: 'connect', accountId, name })
-  await load()
-  return portfolioId
+export function connectMonobankCard(accountId: string, name: string) {
+  return call(api.monobank.connect, { accountId, name }, dict().monobank.unreachable)
 }
 
-/* Interactive Brokers: the Flex token + Query ID go to the `ibkr` Edge Function, which keeps them
-   server-side, reads the account's stocks and writes the portfolio + entries. The app then reloads. */
+/* Interactive Brokers: the Flex token + Query ID go to the `ibkr` server functions, which keep them
+   server-side, read the account's stocks and write the portfolio + entries. */
 
 export type IbkrPosition = {
   asset: StockSymbol
@@ -349,17 +254,12 @@ export type IbkrPosition = {
   connected: boolean
 }
 
-const ibkr = <T>(body: Record<string, unknown>) => invoke<T>('ibkr', body, dict().ibkr.unreachable)
-
 /** Runs the Flex Query and lists the stocks in the account. */
 export async function listIbkrPositions(token: string, queryId: string) {
-  const { positions } = await ibkr<{ positions: IbkrPosition[] }>({ action: 'positions', token, queryId })
-  return positions
+  return (await call(api.ibkr.positions, { token, queryId }, dict().ibkr.unreachable)) as IbkrPosition[]
 }
 
 /** Creates a portfolio with the picked stocks (`all`: every stock, also ones bought later). Returns its id. */
-export async function connectIbkr(name: string, assets: StockSymbol[], all: boolean) {
-  const { portfolioId } = await ibkr<{ portfolioId: string }>({ action: 'connect', name, assets, all })
-  await load()
-  return portfolioId
+export function connectIbkr(name: string, assets: StockSymbol[], all: boolean) {
+  return call(api.ibkr.connect, { name, assets, all }, dict().ibkr.unreachable)
 }

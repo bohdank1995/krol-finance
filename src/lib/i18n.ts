@@ -1,10 +1,11 @@
 import { useSyncExternalStore } from 'react'
 import type { EntryType } from './assets'
 import type { Period } from './period'
-import { supabase } from './supabase'
+import { api } from '../../convex/_generated/api'
+import { convex } from './convex'
 
-/* App language. Ukrainian by default; the user's pick is saved on their Supabase account
-   (auth user metadata, `language`), so it follows them to every device. The sign-in page
+/* App language. Ukrainian by default; the user's pick is saved on their account
+   (the `language` field of their Convex user), so it follows them to every device. The sign-in page
    stays in English and doesn't use this. */
 
 export const LANGUAGES = [
@@ -311,12 +312,19 @@ function apply(language: Language) {
 }
 
 // The signed-in user's saved language; signing out goes back to the default.
-supabase.auth.onAuthStateChange((_event, session) => {
-  const saved = session?.user.user_metadata?.language
-  const next = isLanguage(saved) ? saved : DEFAULT
+const me = convex.watchQuery(api.users.me, {})
+me.onUpdate(() => {
+  let user
+  try {
+    user = me.localQueryResult()
+  } catch {
+    return
+  }
+  if (user === undefined) return // still loading
+  const next = isLanguage(user?.language) ? user.language : DEFAULT
   if (next !== current) apply(next)
   // The sign-in page is English.
-  if (!session) document.documentElement.lang = 'en'
+  if (!user) document.documentElement.lang = 'en'
 })
 
 function subscribe(listener: () => void) {
@@ -335,12 +343,17 @@ export const useT = () => DICTIONARIES[useLanguage()]
 export const dict = () => DICTIONARIES[current]
 
 /** Switches instantly, then saves it on the account; switches back if saving fails. */
-export async function setLanguage(language: Language) {
-  const previous = current
-  apply(language)
-  const { error } = await supabase.auth.updateUser({ data: { language } })
-  if (error) {
-    console.error('Could not save language', error)
-    apply(previous)
-  }
+export function setLanguage(language: Language) {
+  convex
+    .mutation(
+      api.users.setLanguage,
+      { language },
+      {
+        optimisticUpdate: (store) => {
+          const user = store.getQuery(api.users.me, {})
+          if (user) store.setQuery(api.users.me, {}, { ...user, language })
+        },
+      },
+    )
+    .catch((e) => console.error('Could not save language', e))
 }
