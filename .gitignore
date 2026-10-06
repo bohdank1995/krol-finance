@@ -26,3 +26,5 @@ dist-ssr
 # Supabase CLI local state and one-off secret snippets
 supabase/.temp
 supabase/*.secret.sql
+.vercel
+.env*
