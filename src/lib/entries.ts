@@ -30,6 +30,8 @@ export type Portfolio = {
   cardPercent: number
   /** Share of the real balance counted in Net worth, 0–100 (ignored while hidden). */
   netWorthPercent: number
+  /** False when left out of the Net worth passive income. */
+  inPassiveIncome: boolean
 }
 
 export type Entry = {
@@ -42,19 +44,26 @@ export type Entry = {
   createdAt: string
   /** Optional free-text note. */
   note?: string
+  /** Purchases synced from IBKR: USD paid per share. */
+  price?: number
 }
+
+/** A dividend or interest payment in USD (negative for tax withheld), kept per portfolio. */
+export type Payout = { id: string; portfolioId: string; date: string; usd: number }
 
 type Data = NonNullable<FunctionReturnType<typeof api.data.everything>>
 
 const listeners = new Set<() => void>()
 let portfoliosCache: Portfolio[] = []
 let entriesCache: Entry[] = []
+let payoutsCache: Payout[] = []
 /** False until the signed-in user's data has come back from the server (shows skeletons). */
 let loadedCache = false
 
-function set(portfolios: Portfolio[], entries: Entry[], loaded = true) {
+function set(portfolios: Portfolio[], entries: Entry[], loaded = true, payouts: Payout[] = []) {
   portfoliosCache = portfolios
   entriesCache = entries
+  payoutsCache = payouts
   loadedCache = loaded
   listeners.forEach((l) => l())
 }
@@ -80,6 +89,8 @@ function refresh() {
   set(
     sortPortfolios(data.portfolios as Portfolio[]),
     ([...data.entries] as Entry[]).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
+    true,
+    data.payouts,
   )
 }
 watch.onUpdate(refresh)
@@ -94,6 +105,7 @@ function subscribe(listener: () => void) {
 
 export const usePortfolios = () => useSyncExternalStore(subscribe, () => portfoliosCache)
 export const useEntries = () => useSyncExternalStore(subscribe, () => entriesCache)
+export const usePayouts = () => useSyncExternalStore(subscribe, () => payoutsCache)
 export const useLoaded = () => useSyncExternalStore(subscribe, () => loadedCache)
 
 /** Saves a change: `preview` shows it right away, and Convex undoes it if the save fails. */
@@ -117,7 +129,7 @@ type EntryInput = { asset: AssetSymbol; amount: string; createdAt?: string; note
 
 /** Creates an empty portfolio (entries are added afterwards). Returns its id. */
 export function addPortfolio(name: string) {
-  const portfolio: Portfolio = { id: crypto.randomUUID(), name, createdAt: new Date().toISOString(), source: 'manual', inNetWorth: true, cardPercent: 100, netWorthPercent: 100 }
+  const portfolio: Portfolio = { id: crypto.randomUUID(), name, createdAt: new Date().toISOString(), source: 'manual', inNetWorth: true, cardPercent: 100, netWorthPercent: 100, inPassiveIncome: true }
   save(api.data.addPortfolio, { id: portfolio.id, name, createdAt: portfolio.createdAt }, (d) => ({
     ...d,
     portfolios: [...d.portfolios, portfolio],
@@ -134,6 +146,11 @@ export function setInNetWorth(id: string, inNetWorth: boolean) {
   save(api.data.updatePortfolio, { id, inNetWorth }, patchPortfolio(id, { inNetWorth }))
 }
 
+/** Counts a portfolio in the Net worth passive income, or leaves it out. */
+export function setInPassiveIncome(id: string, inPassiveIncome: boolean) {
+  save(api.data.updatePortfolio, { id, inPassiveIncome }, patchPortfolio(id, { inPassiveIncome }))
+}
+
 /** Sets how much of a portfolio's real balance its card shows and Net worth counts. */
 export function setPercents(id: string, cardPercent: number, netWorthPercent: number) {
   save(api.data.updatePortfolio, { id, cardPercent, netWorthPercent }, patchPortfolio(id, { cardPercent, netWorthPercent }))
@@ -142,6 +159,9 @@ export function setPercents(id: string, cardPercent: number, netWorthPercent: nu
 /** The part of a portfolio a view adds up: 0–1. Hidden portfolios count 0 toward Net worth. */
 export const shareOf = (p: Portfolio, view: 'card' | 'netWorth') =>
   view === 'card' ? p.cardPercent / 100 : p.inNetWorth ? p.netWorthPercent / 100 : 0
+
+/** The portfolios Net worth counts (not hidden, not at 0%). */
+export const netWorthPortfolios = (portfolios: Portfolio[]) => portfolios.filter((p) => shareOf(p, 'netWorth') > 0)
 
 /** The entries Net worth lists: every portfolio's except the ones counting 0%. */
 export function netWorthEntries(portfolios: Portfolio[], entries: Entry[]) {
@@ -160,6 +180,15 @@ export function scaleEntries(portfolios: Portfolio[], entries: Entry[], view: 'c
   })
 }
 
+/** Payouts counted by a view: scaled by each portfolio's share, portfolios counting 0% left out. */
+export function scalePayouts(portfolios: Portfolio[], payouts: Payout[], view: 'card' | 'netWorth') {
+  const share = new Map(portfolios.map((p) => [p.id, shareOf(p, view)]))
+  return payouts.flatMap((r) => {
+    const f = share.get(r.portfolioId) ?? 1
+    return f ? [{ ...r, usd: r.usd * f }] : []
+  })
+}
+
 /** Saves a new card order (`ids` in display order). */
 export function reorderPortfolios(ids: string[]) {
   save(api.data.reorderPortfolios, { ids }, (d) => ({
@@ -173,6 +202,7 @@ export function deletePortfolio(id: string) {
   save(api.data.deletePortfolio, { id }, (d) => ({
     portfolios: d.portfolios.filter((p) => p.id !== id),
     entries: d.entries.filter((e) => e.portfolioId !== id),
+    payouts: d.payouts.filter((r) => r.portfolioId !== id),
   }))
 }
 
@@ -264,6 +294,14 @@ export async function listIbkrPositions(token?: string, queryId?: string) {
 /** Creates a portfolio with the picked stocks (`all`: every stock, also ones bought later). Returns its id. */
 export function connectIbkr(name: string, assets: StockSymbol[], all: boolean) {
   return call(api.ibkr.connect, { name, assets, all }, dict().ibkr.unreachable)
+}
+
+/** Removes a stock and all its rows from an IBKR portfolio; later syncs leave it out. */
+export function removeStock(portfolioId: string, asset: StockSymbol) {
+  save(api.ibkr.removeStock, { portfolioId, asset }, (d) => ({
+    ...d,
+    entries: d.entries.filter((e) => e.portfolioId !== portfolioId || e.asset !== asset),
+  }))
 }
 
 /** "Sync now" for Interactive Brokers: adds a new row for every stock whose share count changed. Returns how many rows were added. */

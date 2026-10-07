@@ -42,8 +42,8 @@ async function manualPortfolio(ctx: QueryCtx, userId: Id<'users'>, id: string) {
 type PortfolioView = Pick<
   Doc<'portfolios'>,
   'id' | 'name' | 'createdAt' | 'source' | 'position' | 'inNetWorth' | 'cardPercent' | 'netWorthPercent'
-> & { syncedAt?: string }
-type EntryView = Pick<Doc<'entries'>, 'id' | 'portfolioId' | 'asset' | 'amount' | 'createdAt' | 'note'>
+> & { syncedAt?: string; inPassiveIncome: boolean }
+type EntryView = Pick<Doc<'entries'>, 'id' | 'portfolioId' | 'asset' | 'amount' | 'createdAt' | 'note' | 'price'>
 
 const portfolioView = (p: Doc<'portfolios'>): PortfolioView => ({
   id: p.id,
@@ -55,6 +55,7 @@ const portfolioView = (p: Doc<'portfolios'>): PortfolioView => ({
   inNetWorth: p.inNetWorth,
   cardPercent: p.cardPercent,
   netWorthPercent: p.netWorthPercent,
+  inPassiveIncome: p.inPassiveIncome ?? true,
 })
 
 const entryView = (e: Doc<'entries'>): EntryView => ({
@@ -64,6 +65,7 @@ const entryView = (e: Doc<'entries'>): EntryView => ({
   amount: e.amount,
   createdAt: e.createdAt,
   note: e.note,
+  price: e.price,
 })
 
 /** Everything the app shows, live: re-sent whenever a portfolio or entry changes.
@@ -73,11 +75,16 @@ export const everything = query({
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx)
     if (!userId) return null
-    const [portfolios, entries] = await Promise.all([
+    const [portfolios, entries, payouts] = await Promise.all([
       ctx.db.query('portfolios').withIndex('by_user', (q) => q.eq('userId', userId)).collect(),
       ctx.db.query('entries').withIndex('by_user', (q) => q.eq('userId', userId)).collect(),
+      ctx.db.query('payouts').withIndex('by_user', (q) => q.eq('userId', userId)).collect(),
     ])
-    return { portfolios: portfolios.map(portfolioView), entries: entries.map(entryView) }
+    return {
+      portfolios: portfolios.map(portfolioView),
+      entries: entries.map(entryView),
+      payouts: payouts.map((r) => ({ id: r.externalId, portfolioId: r.portfolioId, date: r.date, usd: r.usd })),
+    }
   },
 })
 
@@ -98,12 +105,13 @@ export const addPortfolio = mutation({
   },
 })
 
-/** Renames, hides from Net worth or sets percentages. */
+/** Renames, hides from Net worth or passive income, or sets percentages. */
 export const updatePortfolio = mutation({
   args: {
     id: v.string(),
     name: v.optional(v.string()),
     inNetWorth: v.optional(v.boolean()),
+    inPassiveIncome: v.optional(v.boolean()),
     cardPercent: v.optional(v.number()),
     netWorthPercent: v.optional(v.number()),
   },
@@ -148,6 +156,11 @@ export async function deleteEntriesOf(ctx: MutationCtx, portfolioId: string) {
     .withIndex('by_portfolio_external', (q) => q.eq('portfolioId', portfolioId))
     .collect()
   for (const e of entries) await ctx.db.delete(e._id)
+  const payouts = await ctx.db
+    .query('payouts')
+    .withIndex('by_portfolio_external', (q) => q.eq('portfolioId', portfolioId))
+    .collect()
+  for (const r of payouts) await ctx.db.delete(r._id)
 }
 
 const entryFields = {

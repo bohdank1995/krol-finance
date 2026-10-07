@@ -52,5 +52,5 @@ export function useStockPrices(watchKey: string) {
 
 /** Daily closes in USD, "YYYY-MM-DD" → price, from `sinceDay` on. Empty if the request fails. */
 export function fetchStockDaily(asset: StockSymbol, sinceDay: string) {
-  return call(api.ibkr.history, { asset, since: sinceDay }, 'Could not load stock history.')
+  return call(api.ibkr.history, { asset, since: sinceDay }, 'Could not load stock history.').then(Object.fromEntries)
 }

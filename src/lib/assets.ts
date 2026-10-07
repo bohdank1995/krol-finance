@@ -44,8 +44,12 @@ export const isStock = (a: AssetSymbol): a is StockSymbol => a.startsWith('stock
 export const typeOf = (symbol: AssetSymbol): EntryType =>
   isStock(symbol) ? 'stocks' : ASSETS.find((a) => a.symbol === symbol)!.type
 
-/** What to show for an asset: "AAPL" for stock:AAPL, "VWCE" for stock:VWCE.DE, "BTC" for BTC. */
-export const assetLabel = (a: AssetSymbol) => (isStock(a) ? a.slice(6).replace(/\.[A-Z]+$/, '') : a)
+/** What to show for an asset: "AAPL" for stock:AAPL, "VWCE" for stock:VWCE.DE, "BTC" for BTC, "$" for USD. */
+export const assetLabel = (a: AssetSymbol) => (isStock(a) ? a.slice(6).replace(/\.[A-Z]+$/, '') : currencySign(a))
+
+const SIGNS: Record<string, string> = { USD: '$', EUR: '€', UAH: '₴', PLN: 'zł' }
+/** "$" for USD, "€", "₴", "zł"; other codes stay as they are. */
+export const currencySign = (code: string) => SIGNS[code] ?? code
 
 /** Assets worth exactly one dollar, so they need no price feed. */
 export const isDollar = (a: AssetSymbol) => a === 'USD' || a === 'USDC'

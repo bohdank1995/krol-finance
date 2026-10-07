@@ -122,11 +122,13 @@ function IbkrFlow({ onCreated, onDone }: { onCreated?: (id: string) => void; onD
     let live = true
     listIbkrPositions()
       .then((found) => live && found && show(found))
-      .catch(() => {})
+      // The kept token stopped working (expired, revoked): say why above the token form.
+      .catch((e) => live && setError(e instanceof Error ? e.message : t.somethingWrong))
       .finally(() => live && setChecking(false))
     return () => {
       live = false
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ask IBKR once per open, not again on a language switch
   }, [])
 
   const run = async (task: () => Promise<void>) => {

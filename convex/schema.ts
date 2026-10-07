@@ -44,8 +44,16 @@ export default defineSchema({
     cardPercent: v.number(),
     /** 0–100: share of the real balance counted in Net worth. */
     netWorthPercent: v.number(),
+    /** False when left out of the Net worth passive income (unset = counted). */
+    inPassiveIncome: v.optional(v.boolean()),
     /** IBKR: the followed stocks; null = every stock, also ones bought later ("Select all"). */
     trackedAssets: v.optional(v.union(v.array(v.string()), v.null())),
+    /** IBKR: stocks removed by hand; syncs never add them back. */
+    removedAssets: v.optional(v.array(v.string())),
+    /** IBKR: true once the real purchase history (Trades) has replaced the placeholder opening positions. Older; see tradesVersion. */
+    history: v.optional(v.boolean()),
+    /** IBKR: which version of the trade import this portfolio has (see TRADES_VERSION in ibkr.ts). */
+    tradesVersion: v.optional(v.number()),
   })
     .index('by_app_id', ['id'])
     .index('by_user', ['userId'])
@@ -64,10 +72,29 @@ export default defineSchema({
     /** ISO timestamp of when the change happened. */
     createdAt: v.string(),
     note: v.optional(v.string()),
+    /** Purchases from IBKR trades: USD paid per share, so passive income counts the move since buying. */
+    price: v.optional(v.number()),
     /** Synced entries: the Monobank transaction id etc., so a sync never adds one twice. */
     externalId: v.optional(v.string()),
   })
     .index('by_app_id', ['id'])
+    .index('by_user', ['userId'])
+    .index('by_portfolio_external', ['portfolioId', 'externalId']),
+
+  // Dividends and interest from IBKR, one row per IBKR portfolio holding the stock (USD).
+  payouts: defineTable({
+    userId: v.id('users'),
+    /** The portfolio's app `id`. */
+    portfolioId: v.string(),
+    asset: v.optional(v.string()),
+    /** "YYYY-MM-DD" (UTC). */
+    date: v.string(),
+    /** Signed USD amount: dividends and interest are positive, withheld tax negative. */
+    usd: v.number(),
+    kind: v.string(),
+    /** IBKR transaction id + portfolio, so a sync never adds one twice. */
+    externalId: v.string(),
+  })
     .index('by_user', ['userId'])
     .index('by_portfolio_external', ['portfolioId', 'externalId']),
 

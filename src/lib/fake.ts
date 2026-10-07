@@ -1,4 +1,4 @@
-import type { Entry } from './entries'
+import type { Entry, Payout } from './entries'
 
 /* "Fake numbers": every entry of a portfolio is scaled by one random factor (0.2×–5×) picked
    from the portfolio id and a seed. Totals still add up, the graph keeps a believable shape,
@@ -13,9 +13,15 @@ function hash(text: string, seed: number) {
 
 const decimals = (amount: string) => amount.split('.')[1]?.length ?? 0
 
+const factorOf = (portfolioId: string, seed: number) => 0.2 * 25 ** hash(portfolioId, seed) // log-uniform 0.2 … 5
+
+/** Payouts get their portfolio's factor too, so passive income stays in proportion. */
+export const fakePayouts = (payouts: Payout[], seed: number): Payout[] =>
+  payouts.map((r) => ({ ...r, usd: r.usd * factorOf(r.portfolioId, seed) }))
+
 export function fakeEntries(entries: Entry[], seed: number): Entry[] {
   return entries.map((e) => {
-    const factor = 0.2 * 25 ** hash(e.portfolioId, seed) // log-uniform 0.2 … 5
+    const factor = factorOf(e.portfolioId, seed)
     const places = Math.max(2, decimals(e.amount))
     return { ...e, amount: (Number(e.amount) * factor).toFixed(places) }
   })

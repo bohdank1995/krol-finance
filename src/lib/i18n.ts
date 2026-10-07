@@ -58,6 +58,7 @@ const en = {
   assetNames: {} as Record<string, string>,
 
   netWorth: 'Net worth',
+  passiveIncome: 'Passive income',
   portfolios: 'Portfolios',
   loadingPortfolios: 'Loading portfolios',
   portfolioActions: (name: string) => `${name} actions`,
@@ -66,6 +67,11 @@ const en = {
   hideFromNetWorth: 'Hide from net worth',
   showInNetWorth: 'Show in net worth',
   hiddenFromNetWorth: 'Hidden from net worth',
+  hideFromPassive: (name: string) => `Leave ${name} out of passive income`,
+  showInPassive: (name: string) => `Count ${name} in passive income`,
+  removeStock: 'Remove stock',
+  /** Text before and after the stock in the remove confirmation. */
+  confirmRemoveStock: ['Remove', 'and all its rows from this portfolio? Syncs won’t add it back.'],
   countsInNetWorth: (percent: number) => `${percent}% counts in net worth`,
   disconnect: 'Disconnect',
   addPortfolio: 'Add portfolio',
@@ -100,6 +106,7 @@ const en = {
   },
 
   value: 'Value',
+  paid: 'Paid',
   loadingGraph: 'Loading graph',
 
   deposit: 'Deposit',
@@ -155,7 +162,7 @@ const en = {
     unreachable: 'Could not reach Interactive Brokers. Try again.',
     syncNow: 'Sync now',
     syncing: 'Syncing…',
-    syncResult: (n: number) => (n ? `${n} new ${n === 1 ? 'row' : 'rows'} added` : 'No new purchases'),
+    updated: 'Updated',
   },
 }
 
@@ -206,6 +213,7 @@ const uk: Dictionary = {
   },
 
   netWorth: 'Капітал',
+  passiveIncome: 'Пасивний дохід',
   portfolios: 'Портфелі',
   loadingPortfolios: 'Завантаження портфелів',
   portfolioActions: (name) => `Дії: ${name}`,
@@ -214,6 +222,10 @@ const uk: Dictionary = {
   hideFromNetWorth: 'Не враховувати в капіталі',
   showInNetWorth: 'Враховувати в капіталі',
   hiddenFromNetWorth: 'Не враховується в капіталі',
+  hideFromPassive: (name) => `Не враховувати ${name} в пасивному доході`,
+  showInPassive: (name) => `Враховувати ${name} в пасивному доході`,
+  removeStock: 'Прибрати акцію',
+  confirmRemoveStock: ['Прибрати', 'і всі її записи з цього портфеля? Синхронізація не додасть її знову.'],
   countsInNetWorth: (percent) => `${percent}% враховується в капіталі`,
   disconnect: 'Відключити',
   addPortfolio: 'Додати портфель',
@@ -247,6 +259,7 @@ const uk: Dictionary = {
   },
 
   value: 'Вартість',
+  paid: 'Сплачено',
   loadingGraph: 'Завантаження графіка',
 
   deposit: 'Поповнити',
@@ -302,7 +315,7 @@ const uk: Dictionary = {
     unreachable: 'Не вдалося зʼєднатися з Interactive Brokers. Спробуйте ще раз.',
     syncNow: 'Синхронізувати зараз',
     syncing: 'Синхронізація…',
-    syncResult: (n) => (n ? `Додано нових рядків: ${n}` : 'Нових покупок немає'),
+    updated: 'Оновлено',
   },
 }
 

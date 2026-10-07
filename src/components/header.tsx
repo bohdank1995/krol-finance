@@ -1,12 +1,4 @@
-import { CalendarDays, ChevronDown } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useT } from '@/lib/i18n'
 import { PERIODS, type Period } from '@/lib/period'
 import { UserMenu } from './user-menu'
@@ -20,34 +12,26 @@ export function Header({ email, image }: { email: string; image?: string }) {
   )
 }
 
-/** The tracked period, picked from a dropdown above the cards. */
+/** The tracked period, picked from a segmented control above the cards (scrolls sideways on narrow screens). */
 export function PeriodFilter({ period, onChange }: { period: Period; onChange: (period: Period) => void }) {
   const t = useT()
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={t.period}
-            className="-ml-1.5 justify-self-start text-muted-foreground aria-expanded:text-foreground"
-          />
-        }
+    <div className="-mx-6 overflow-x-auto px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <ToggleGroup
+        size="sm"
+        variant="outline"
+        spacing={0}
+        aria-label={t.period}
+        value={[period]}
+        // Clicking the already-chosen one would empty the group: keep it.
+        onValueChange={(v: string[]) => v[0] && onChange(v[0] as Period)}
       >
-        <CalendarDays data-icon="inline-start" />
-        {t.periods[period]}
-        <ChevronDown data-icon="inline-end" className="text-faint-foreground" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-44">
-        <DropdownMenuRadioGroup value={period} onValueChange={(v) => onChange(v as Period)}>
-          {PERIODS.map((p) => (
-            <DropdownMenuRadioItem key={p} value={p}>
-              {t.periods[p]}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        {PERIODS.map((p) => (
+          <ToggleGroupItem key={p} value={p} className="px-3 text-xs text-muted-foreground aria-pressed:text-foreground">
+            {t.periods[p]}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+    </div>
   )
 }

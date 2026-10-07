@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
-import type { AssetSymbol } from '@/lib/assets'
+import { currencySign, type AssetSymbol } from '@/lib/assets'
 import {
   deletePortfolio,
   isReadOnly,
@@ -81,6 +81,7 @@ type Props = Valuation & {
 export function PortfolioCards({ portfolios, entries, status, selected, onSelect, readOnly, ...valuation }: Props) {
   const t = useT()
   const [creating, setCreating] = useState(false)
+  const [syncing, setSyncing] = useState<string[]>([])
   const [syncStatus, setSyncStatus] = useState<Record<string, string>>({})
   const [connecting, setConnecting] = useState<'monobank' | 'ibkr'>()
   const [renaming, setRenaming] = useState<Portfolio>()
@@ -102,12 +103,15 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
         const { [id]: _, ...rest } = all
         return text ? { ...rest, [id]: text } : rest
       })
+    setSyncing((ids) => [...ids, id])
     show(t.ibkr.syncing)
     try {
-      show(t.ibkr.syncResult(await refreshIbkr()))
+      await refreshIbkr()
+      show(t.ibkr.updated)
     } catch (e) {
       show(e instanceof Error ? e.message : t.ibkr.unreachable)
     }
+    setSyncing((ids) => ids.filter((i) => i !== id))
     setTimeout(() => show(), 5000)
   }
   const ownEntries = (id: string) => entries.filter((e) => e.portfolioId === id)
@@ -186,6 +190,8 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
                   hidden={!h.inNetWorth}
                   share={h.cardPercent / 100}
                   netWorthShare={h.inNetWorth ? h.netWorthPercent : undefined}
+                  syncing={syncing.includes(h.id)}
+                  message={syncStatus[h.id]}
                   hint={syncStatus[h.id] ?? (h.syncedAt && t.synced(formatAgo(h.syncedAt)))}
                   entries={scaleEntries([h], ownEntries(h.id), 'card')}
                   {...valuation}
@@ -207,12 +213,6 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
                           <MoreHorizontal />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
-                          {h.source === 'ibkr' && (
-                            <DropdownMenuItem onClick={() => syncIbkr(h.id)}>
-                              <RefreshCw className="text-muted-foreground" />
-                              {t.ibkr.syncNow}
-                            </DropdownMenuItem>
-                          )}
                           <DropdownMenuItem onClick={() => setRenaming(h)}>
                             <Pencil className="text-muted-foreground" />
                             {t.rename}
@@ -292,6 +292,19 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
             </button>
           ))}
         </div>
+      )}
+
+      {/* IBKR card picked: a quiet floating "Sync now" where Deposit / Withdraw sit for other cards. */}
+      {!readOnly && portfolios.find((p) => p.id === selected)?.source === 'ibkr' && (
+        <Button
+          variant="outline"
+          disabled={syncing.includes(selected)}
+          onClick={() => syncIbkr(selected)}
+          className="fixed right-4 bottom-4 z-40 h-10 gap-2 rounded-full bg-background/80 px-4 text-muted-foreground shadow-sm backdrop-blur hover:text-foreground sm:right-6 sm:bottom-6"
+        >
+          <RefreshCw className={cn(syncing.includes(selected) && 'animate-spin')} />
+          {syncing.includes(selected) ? t.ibkr.syncing : t.ibkr.syncNow}
+        </Button>
       )}
 
       <PortfolioDrawer open={creating} onOpenChange={setCreating} onCreated={onSelect} />
@@ -377,6 +390,10 @@ type CardProps = Valuation & {
   netWorthShare?: number
   /** Shown on hover, e.g. when a synced card was last updated. */
   hint?: string
+  /** "Sync now" is running: the numbers show as a skeleton. */
+  syncing?: boolean
+  /** Result of the last "Sync now", shown on the card for a few seconds. */
+  message?: string
   entries: Entry[]
   active: boolean
   onSelect: () => void
@@ -386,7 +403,7 @@ type CardProps = Valuation & {
 
 const dayBefore = (day: string) => new Date(Date.parse(`${day}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
 
-function Card({ id, sortable, label, hidden, share = 1, netWorthShare, hint, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
+function Card({ id, sortable, label, hidden, share = 1, netWorthShare, hint, syncing, message, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
   const t = useT()
   const drag = useSortable({ id, disabled: !sortable })
   const points = useMemo(() => series(entries, daily, prices, currency), [entries, daily, prices, currency])
@@ -422,7 +439,7 @@ function Card({ id, sortable, label, hidden, share = 1, netWorthShare, hint, ent
       >
         <span className="flex items-center gap-2 pr-6 text-sm text-muted-foreground">
           <span className="truncate">{label}</span>
-          {live && <LiveDot status={live} />}
+          {syncing ? <RefreshCw className="size-3.5 shrink-0 animate-spin" /> : live && <LiveDot status={live} />}
           {hidden && (
             <span title={t.hiddenFromNetWorth} className="shrink-0 text-faint-foreground">
               <EyeOff className="size-3.5" aria-label={t.hiddenFromNetWorth} />
@@ -434,10 +451,18 @@ function Card({ id, sortable, label, hidden, share = 1, netWorthShare, hint, ent
             </span>
           )}
         </span>
+        {syncing ? (
+          <span aria-busy="true" aria-label={message} className="mt-4 flex flex-col gap-2">
+            <Skeleton className="h-6 w-28 sm:h-5" />
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-3 w-24" />
+          </span>
+        ) : (
         <span className="mt-4 flex flex-col gap-0.5 font-mono tabular-nums">
+          {message && <span className="font-sans text-xs text-brand">{message}</span>}
           <span className="flex flex-wrap items-baseline gap-x-1.5">
             <span className={cn('text-2xl transition-opacity sm:text-xl', pricing && 'opacity-50')}>{formatMoney(total)}</span>
-            <span className="text-xs text-muted-foreground">{currency}</span>
+            <span className="text-xs text-muted-foreground">{currencySign(currency)}</span>
           </span>
           {share !== 1 && (
             <span className="text-xs text-faint-foreground">
@@ -451,6 +476,7 @@ function Card({ id, sortable, label, hidden, share = 1, netWorthShare, hint, ent
             </span>
           )}
         </span>
+        )}
       </button>
       {menu}
     </div>

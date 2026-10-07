@@ -26,19 +26,22 @@ function fetchDaily(asset: AssetSymbol, sinceDay: string) {
   return hit
 }
 
-function fetchBinanceDaily(asset: AssetSymbol, sinceDay: string) {
+/** Binance gives at most 1000 days per request: keep asking from the last day until today. */
+async function fetchBinanceDaily(asset: AssetSymbol, sinceDay: string) {
   const { pair, invert } = pairFor(asset)
-  const start = Date.parse(`${sinceDay}T00:00:00Z`)
-  return fetch(`https://api.binance.com/api/v3/klines?symbol=${pair}&interval=1d&startTime=${start}&limit=1000`)
-    .then((r) => (r.ok ? r.json() : []))
-    .then((rows: [number, string, string, string, string][]) => {
-      const out: Record<string, number> = {}
-      for (const row of rows) {
-        const close = Number(row[4])
-        if (close > 0) out[new Date(row[0]).toISOString().slice(0, 10)] = toUsd(close, invert)
-      }
-      return out
-    })
+  const out: Record<string, number> = {}
+  let start = Date.parse(`${sinceDay}T00:00:00Z`)
+  for (let page = 0; page < 10 && start < Date.now(); page++) {
+    const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${pair}&interval=1d&startTime=${start}&limit=1000`)
+    const rows: [number, string, string, string, string][] = r.ok ? await r.json() : []
+    for (const row of rows) {
+      const close = Number(row[4])
+      if (close > 0) out[new Date(row[0]).toISOString().slice(0, 10)] = toUsd(close, invert)
+    }
+    if (rows.length < 1000) break
+    start = rows[rows.length - 1][0] + 86_400_000
+  }
+  return out
 }
 
 export function useDailyPrices(assets: AssetSymbol[], sinceDay: string | undefined) {

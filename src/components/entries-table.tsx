@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, X } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,8 +24,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { assetLabel, type AssetSymbol } from '@/lib/assets'
-import { deleteEntry, isReadOnly, type Entry, type Portfolio } from '@/lib/entries'
+import { assetLabel, currencySign, isStock, type AssetSymbol, type StockSymbol } from '@/lib/assets'
+import { deleteEntry, isReadOnly, removeStock, type Entry, type Portfolio } from '@/lib/entries'
 import { formatAmount, formatDate, formatSigned, formatMoney } from '@/lib/format'
 import { useT } from '@/lib/i18n'
 import type { Currency } from '@/lib/preferences'
@@ -52,11 +52,14 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
   const t = useT()
   const [editing, setEditing] = useState<Entry>()
   const [deleting, setDeleting] = useState<Entry>()
+  const [removing, setRemoving] = useState<{ portfolioId: string; asset: StockSymbol }>()
   const byId = new Map(portfolios.map((h) => [h.id, h]))
   // Synced (Monobank) portfolios are read-only: no Deposit/Withdraw into them, no row edits.
   const editable = readOnly ? [] : portfolios.filter((p) => !isReadOnly(p))
   const current = portfolioId ? byId.get(portfolioId) : undefined
   const synced = isReadOnly(current)
+  // Every view with stocks has a Paid column; rows whose price IBKR didn't give show a dash.
+  const showPaid = entries.some((e) => isStock(e.asset))
   const rows = [...entries].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
 
   return (
@@ -87,7 +90,8 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
               {!portfolioId && <TableHead className={cn(head, 'hidden sm:table-cell')}>{t.portfolio}</TableHead>}
               <TableHead className={cn(head, 'max-sm:pl-0 sm:text-right')}>{t.amount}</TableHead>
               <TableHead className={cn(head, 'hidden pl-6 sm:table-cell')}>{t.note}</TableHead>
-              <TableHead className={cn(head, 'hidden text-right sm:table-cell')}>{currency}</TableHead>
+              {showPaid && <TableHead className={cn(head, 'hidden text-right sm:table-cell')}>{t.paid}</TableHead>}
+              <TableHead className={cn(head, 'hidden text-right sm:table-cell')}>{currencySign(currency)}</TableHead>
               <TableHead className={cn(head, 'w-10 pr-0')} />
             </TableRow>
           </TableHeader>
@@ -125,11 +129,16 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
                   >
                     {e.note}
                   </TableCell>
+                  {showPaid && (
+                    <TableCell className="hidden py-3.5 text-right font-mono text-muted-foreground tabular-nums sm:table-cell">
+                      {!isStock(e.asset) || Number(e.amount) < 0 ? '' : e.price === undefined || rate === undefined ? '—' : formatMoney((Number(e.amount) * e.price) / rate)}
+                    </TableCell>
+                  )}
                   <TableCell className="hidden py-3.5 text-right font-mono text-muted-foreground tabular-nums sm:table-cell">
                     {price === undefined ? '···' : formatMoney(Number(e.amount) * price)}
                   </TableCell>
                   <TableCell className="py-3.5 pr-0 text-right">
-                    {!readOnly && !isReadOnly(byId.get(e.portfolioId)) && (
+                    {!readOnly && (!isReadOnly(byId.get(e.portfolioId)) || (byId.get(e.portfolioId)?.source === 'ibkr' && isStock(e.asset))) && (
                       <DropdownMenu>
                         <DropdownMenuTrigger
                           render={
@@ -143,16 +152,29 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
                         >
                           <MoreHorizontal />
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-36">
-                          <DropdownMenuItem onClick={() => setEditing(e)}>
-                            <Pencil className="text-muted-foreground" />
-                            {t.edit}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem variant="destructive" onClick={() => setDeleting(e)}>
-                            <Trash2 />
-                            {t.delete}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
+                        {/* IBKR rows can't be edited, but a whole stock can be removed from the portfolio. */}
+                        {isReadOnly(byId.get(e.portfolioId)) ? (
+                          <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={() => setRemoving({ portfolioId: e.portfolioId, asset: e.asset as StockSymbol })}
+                            >
+                              <X />
+                              {t.removeStock}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        ) : (
+                          <DropdownMenuContent align="end" className="w-36">
+                            <DropdownMenuItem onClick={() => setEditing(e)}>
+                              <Pencil className="text-muted-foreground" />
+                              {t.edit}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem variant="destructive" onClick={() => setDeleting(e)}>
+                              <Trash2 />
+                              {t.delete}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        )}
                       </DropdownMenu>
                     )}
                   </TableCell>
@@ -194,6 +216,28 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!removing} onOpenChange={(open) => !open && setRemoving(undefined)}>
+        <AlertDialogContent size="sm" className="gap-6 p-6">
+          <AlertDialogTitle className="text-sm font-normal text-muted-foreground">
+            {t.confirmRemoveStock[0]}{' '}
+            <span className="font-mono text-foreground">{removing && assetLabel(removing.asset)}</span>{' '}
+            {t.confirmRemoveStock[1]}
+          </AlertDialogTitle>
+          <AlertDialogFooter className="-mx-6 -mb-6 px-6 py-4">
+            <AlertDialogCancel variant="secondary">{t.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (removing) removeStock(removing.portfolioId, removing.asset)
+                setRemoving(undefined)
+              }}
+            >
+              {t.removeStock}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   )
 }
@@ -208,7 +252,7 @@ export function EntriesTableSkeleton() {
           <TableHead className={cn(head, 'hidden pl-0 sm:table-cell')}>{t.date}</TableHead>
           <TableHead className={cn(head, 'max-sm:pl-0 sm:text-right')}>{t.amount}</TableHead>
           <TableHead className={cn(head, 'hidden pl-6 sm:table-cell')}>{t.note}</TableHead>
-          <TableHead className={cn(head, 'hidden text-right sm:table-cell')}>USD</TableHead>
+          <TableHead className={cn(head, 'hidden text-right sm:table-cell')}>$</TableHead>
           <TableHead className={cn(head, 'w-10 pr-0')} />
         </TableRow>
       </TableHeader>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetClose, SheetContent, SheetFooter, SheetTitle } from '@/components/ui/sheet'
+import { currencySign } from '@/lib/assets'
 import { setPercents, type Portfolio } from '@/lib/entries'
 import { formatMoney } from '@/lib/format'
 import { useT } from '@/lib/i18n'
@@ -138,7 +139,7 @@ function Field({
           <span className="font-sans text-destructive">{error}</span>
         ) : (
           <>
-            {t.partOf(formatMoney(result), formatMoney(total))} {currency}
+            {t.partOf(formatMoney(result), formatMoney(total))} {currencySign(currency)}
           </>
         )}
       </span>

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { currencySign } from '@/lib/assets'
 import { useSignOut } from '@/lib/auth'
 import { LANGUAGES, setLanguage, useLanguage, useT, type Language } from '@/lib/i18n'
 import { CURRENCIES, setCurrency, setFake, usePreferences, type Currency } from '@/lib/preferences'
@@ -100,7 +101,7 @@ export function UserMenu({ email, image }: { email: string; image?: string }) {
         <Choice<Currency>
           label={t.currency}
           value={currency}
-          options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+          options={CURRENCIES.map((c) => ({ value: c, label: currencySign(c) }))}
           onChange={setCurrency}
         />
         <Choice<Language> label={t.language} value={language} options={LANGUAGES} onChange={setLanguage} />
