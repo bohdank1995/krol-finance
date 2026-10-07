@@ -77,7 +77,11 @@ export default defineSchema({
     token: v.string(),
     /** The card list from the last check, so connecting needs no extra Monobank call. */
     accounts: v.any(),
-  }).index('by_user', ['userId']),
+    /** Secret part of the webhook address Monobank posts new transactions to. */
+    webhookSecret: v.optional(v.string()),
+  })
+    .index('by_user', ['userId'])
+    .index('by_webhook_secret', ['webhookSecret']),
 
   ibkrTokens: defineTable({
     userId: v.id('users'),

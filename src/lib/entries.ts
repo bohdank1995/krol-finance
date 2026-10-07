@@ -228,9 +228,10 @@ export type MonobankCard = {
   connected: boolean
 }
 
-/** Checks the token with Monobank and lists the cards it can see. */
-export async function listMonobankCards(token: string) {
-  return (await call(api.monobank.cards, { token }, dict().monobank.unreachable)) as MonobankCard[]
+/** Lists the cards Monobank shows. Pass the token the first time; after that leave it out and the
+    server uses the kept one (null means no token is kept yet). */
+export async function listMonobankCards(token?: string) {
+  return (await call(api.monobank.cards, { token }, dict().monobank.unreachable)) as MonobankCard[] | null
 }
 
 /** Creates a portfolio for the card with its last 31 days of transactions. Returns its id. */

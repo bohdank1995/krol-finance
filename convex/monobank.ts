@@ -77,22 +77,40 @@ export async function userOf(ctx: ActionCtx) {
 
 /* ---------- Called by the app ---------- */
 
+const cardsOf = (accounts: Account[], connected: Set<string>): Card[] =>
+  accounts.map((a) => ({
+    id: a.id,
+    type: a.type,
+    last4: (a.maskedPan?.[0] ?? a.iban ?? '').slice(-4),
+    asset: ASSETS[a.currencyCode] ?? null,
+    balance: decimal(a.balance),
+    connected: connected.has(a.id),
+  }))
+
+/** Lists the cards. With a token: checks and keeps it. Without: uses the kept one (null if none),
+    so the token is only ever pasted once. */
 export const cards = action({
-  args: { token: v.string() },
-  handler: async (ctx, args): Promise<Card[]> => {
+  args: { token: v.optional(v.string()) },
+  handler: async (ctx, args): Promise<Card[] | null> => {
     const userId = await userOf(ctx)
-    const token = args.token.trim()
-    if (!token) throw fail('Paste your Monobank token.')
-    const { accounts } = await mono<{ accounts: Account[] }>(token, '/personal/client-info')
+    const given = args.token?.trim()
+    const stored: Doc<'monobankTokens'> | null = await ctx.runQuery(internal.monobank.stored, { userId })
+    if (args.token !== undefined && !given) throw fail('Paste your Monobank token.')
+    const token = given || stored?.token
+    if (!token) return null
+    let accounts: Account[]
+    try {
+      accounts = (await mono<{ accounts: Account[] }>(token, '/personal/client-info')).accounts
+    } catch (e) {
+      // Monobank allows one request a minute: show the last known list instead of an error.
+      if (!given && stored && e instanceof ConvexError && String(e.data).includes('one request')) {
+        const linked = new Set<string>(await ctx.runMutation(internal.monobank.saveToken, { userId, token, accounts: stored.accounts }))
+        return cardsOf(stored.accounts as Account[], linked)
+      }
+      throw e
+    }
     const connected = new Set<string>(await ctx.runMutation(internal.monobank.saveToken, { userId, token, accounts }))
-    return accounts.map((a) => ({
-      id: a.id,
-      type: a.type,
-      last4: (a.maskedPan?.[0] ?? a.iban ?? '').slice(-4),
-      asset: ASSETS[a.currencyCode] ?? null,
-      balance: decimal(a.balance),
-      connected: connected.has(a.id),
-    }))
+    return cardsOf(accounts, connected)
   },
 })
 
@@ -137,11 +155,95 @@ export const connect = action({
       syncedAt: to * 1000,
       entries,
     })
+    await ensureWebhook(ctx, userId, stored.token)
     return id
   },
 })
 
-/* ---------- Called by the hourly cron ---------- */
+/* ---------- Real time: Monobank calls us when a transaction happens ---------- */
+
+/** Tells Monobank to post every new transaction to our webhook, at a secret address only this
+    user's token row knows. Best effort: if it fails, the hourly sync still catches up. */
+async function ensureWebhook(ctx: ActionCtx, userId: Id<'users'>, token: string) {
+  try {
+    const site = process.env.CONVEX_SITE_URL
+    if (!site) return
+    const row: Doc<'monobankTokens'> | null = await ctx.runQuery(internal.monobank.stored, { userId })
+    if (row?.webhookSecret) return
+    const secret = Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(16).padStart(2, '0')).join('')
+    await ctx.runMutation(internal.monobank.setWebhookSecret, { userId, secret })
+    const res = await fetch(MONO + '/personal/webhook', {
+      method: 'POST',
+      headers: { 'X-Token': token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ webHookUrl: `${site}/monobank/webhook/${secret}` }),
+    })
+    // Monobank checks the address with a GET first; if it refused, forget the secret to retry later.
+    if (!res.ok) await ctx.runMutation(internal.monobank.setWebhookSecret, { userId, secret: undefined })
+  } catch {
+    /* ignored on purpose */
+  }
+}
+
+/** Handles one webhook call from Monobank (see `http.ts`). */
+export const receive = internalMutation({
+  args: { secret: v.string(), accountId: v.string(), item: v.any() },
+  handler: async (ctx, { secret, accountId, item }) => {
+    const row = await ctx.db
+      .query('monobankTokens')
+      .withIndex('by_webhook_secret', (q) => q.eq('webhookSecret', secret))
+      .unique()
+    if (!row) return false
+    const p = (
+      await ctx.db
+        .query('portfolios')
+        .withIndex('by_user_source', (q) => q.eq('userId', row.userId).eq('source', 'monobank'))
+        .collect()
+    ).find((x) => x.externalAccountId === accountId)
+    const account = (row.accounts as Account[]).find((a) => a.id === accountId)
+    const asset = account && ASSETS[account.currencyCode]
+    if (!p || !asset) return false
+    const tx = item as Item
+    const seen = await ctx.db
+      .query('entries')
+      .withIndex('by_portfolio_external', (q) => q.eq('portfolioId', p.id).eq('externalId', tx.id))
+      .first()
+    if (!seen) await ctx.db.insert('entries', { ...entryOf(asset, tx), userId: p.userId, portfolioId: p.id })
+    // `balance` is the card balance right after this transaction: add an adjustment if we differ.
+    const all = await ctx.db
+      .query('entries')
+      .withIndex('by_portfolio_external', (q) => q.eq('portfolioId', p.id))
+      .collect()
+    const total = all.reduce((sum, e) => sum + Math.round(Number(e.amount) * 100), 0)
+    const difference = tx.balance - total
+    if (difference !== 0) {
+      await ctx.db.insert('entries', {
+        id: crypto.randomUUID(),
+        userId: p.userId,
+        portfolioId: p.id,
+        asset,
+        amount: decimal(difference),
+        createdAt: iso(tx.time),
+        note: 'Balance adjustment',
+        externalId: `adjustment-${tx.time}-${tx.id}`,
+      })
+    }
+    await ctx.db.patch(p._id, { syncedAt: Date.now() })
+    return true
+  },
+})
+
+export const setWebhookSecret = internalMutation({
+  args: { userId: v.id('users'), secret: v.optional(v.string()) },
+  handler: async (ctx, { userId, secret }) => {
+    const row = await ctx.db
+      .query('monobankTokens')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .unique()
+    if (row) await ctx.db.patch(row._id, { webhookSecret: secret })
+  },
+})
+
+/* ---------- Called by the hourly cron (a safety net behind the webhook) ---------- */
 
 export const sync = internalAction({
   args: {},
@@ -157,6 +259,7 @@ export const sync = internalAction({
     const { accounts } = await mono<{ accounts: Account[] }>(stored.token, '/personal/client-info')
     const to = now()
     await ctx.runMutation(internal.monobank.saveToken, { userId: portfolio.userId, token: stored.token, accounts })
+    await ensureWebhook(ctx, portfolio.userId, stored.token)
     const account = accounts.find((a) => a.id === portfolio.externalAccountId)
     const asset = account && ASSETS[account.currencyCode]
     if (!account || !asset) {

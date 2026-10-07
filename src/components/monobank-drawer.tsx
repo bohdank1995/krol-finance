@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -57,6 +57,19 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
+  // The server keeps the token after the first time, so ask it for the cards before showing the token step.
+  const [checking, setChecking] = useState(true)
+
+  useEffect(() => {
+    let live = true
+    listMonobankCards()
+      .then((found) => live && found && setCards(found))
+      .catch(() => {})
+      .finally(() => live && setChecking(false))
+    return () => {
+      live = false
+    }
+  }, [])
 
   const run = async (task: () => Promise<void>) => {
     setBusy(true)
@@ -74,7 +87,7 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
     e.preventDefault()
     if (busy) return
     if (!cards) {
-      if (token.trim()) run(async () => setCards(await listMonobankCards(token.trim())))
+      if (token.trim()) run(async () => setCards((await listMonobankCards(token.trim())) ?? []))
     } else if (picked && name.trim()) {
       run(async () => {
         const id = await connectMonobankCard(picked.id, name.trim())
@@ -88,6 +101,14 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
     setPicked(card)
     setName(`Mono ${cardLabel(card)}`)
   }
+
+  if (checking)
+    return (
+      <>
+        <SheetTitle className="text-sm font-normal text-muted-foreground">{t.monobank.connect}</SheetTitle>
+        <Loader2 className="animate-spin text-muted-foreground" />
+      </>
+    )
 
   const valid = cards ? !!picked && !!name.trim() : !!token.trim()
 
