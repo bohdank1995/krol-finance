@@ -153,6 +153,9 @@ const en = {
     shares: 'sh',
     followsNew: 'New stocks you buy will be added automatically.',
     unreachable: 'Could not reach Interactive Brokers. Try again.',
+    syncNow: 'Sync now',
+    syncing: 'Syncing…',
+    syncResult: (n: number) => (n ? `${n} new ${n === 1 ? 'row' : 'rows'} added` : 'No new purchases'),
   },
 }
 
@@ -297,6 +300,9 @@ const uk: Dictionary = {
     shares: 'шт.',
     followsNew: 'Нові акції, які ви купите, додаватимуться автоматично.',
     unreachable: 'Не вдалося зʼєднатися з Interactive Brokers. Спробуйте ще раз.',
+    syncNow: 'Синхронізувати зараз',
+    syncing: 'Синхронізація…',
+    syncResult: (n) => (n ? `Додано нових рядків: ${n}` : 'Нових покупок немає'),
   },
 }
 

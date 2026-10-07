@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS as DndCSS } from '@dnd-kit/utilities'
-import { ChartCandlestick, ChartPie, Eye, EyeOff, Landmark, MoreHorizontal, Pencil, Percent, Plus, Trash2, Unlink, WalletCards } from 'lucide-react'
+import { ChartCandlestick, ChartPie, Eye, EyeOff, Landmark, MoreHorizontal, Pencil, Percent, Plus, RefreshCw, Trash2, Unlink, WalletCards } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +24,7 @@ import {
   deletePortfolio,
   isReadOnly,
   netWorthEntries,
+  refreshIbkr,
   reorderPortfolios,
   scaleEntries,
   setInNetWorth,
@@ -80,6 +81,7 @@ type Props = Valuation & {
 export function PortfolioCards({ portfolios, entries, status, selected, onSelect, readOnly, ...valuation }: Props) {
   const t = useT()
   const [creating, setCreating] = useState(false)
+  const [syncStatus, setSyncStatus] = useState<Record<string, string>>({})
   const [connecting, setConnecting] = useState<'monobank' | 'ibkr'>()
   const [renaming, setRenaming] = useState<Portfolio>()
   const [deleting, setDeleting] = useState<Portfolio>()
@@ -93,6 +95,21 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
     () => scaleEntries(portfolios, netWorthEntries(portfolios, entries), 'netWorth'),
     [portfolios, entries],
   )
+  /** "Sync now": shows progress and the result in the card's hint line, then goes back to "Synced …". */
+  const syncIbkr = async (id: string) => {
+    const show = (text?: string) =>
+      setSyncStatus((all) => {
+        const { [id]: _, ...rest } = all
+        return text ? { ...rest, [id]: text } : rest
+      })
+    show(t.ibkr.syncing)
+    try {
+      show(t.ibkr.syncResult(await refreshIbkr()))
+    } catch (e) {
+      show(e instanceof Error ? e.message : t.ibkr.unreachable)
+    }
+    setTimeout(() => show(), 5000)
+  }
   const ownEntries = (id: string) => entries.filter((e) => e.portfolioId === id)
   const slides = [{ id: NET_WORTH, label: t.netWorth }, ...portfolios.map((p) => ({ id: p.id, label: p.name }))]
 
@@ -169,7 +186,7 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
                   hidden={!h.inNetWorth}
                   share={h.cardPercent / 100}
                   netWorthShare={h.inNetWorth ? h.netWorthPercent : undefined}
-                  hint={h.syncedAt && t.synced(formatAgo(h.syncedAt))}
+                  hint={syncStatus[h.id] ?? (h.syncedAt && t.synced(formatAgo(h.syncedAt)))}
                   entries={scaleEntries([h], ownEntries(h.id), 'card')}
                   {...valuation}
                   active={selected === h.id}
@@ -190,6 +207,12 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
                           <MoreHorizontal />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
+                          {h.source === 'ibkr' && (
+                            <DropdownMenuItem onClick={() => syncIbkr(h.id)}>
+                              <RefreshCw className="text-muted-foreground" />
+                              {t.ibkr.syncNow}
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem onClick={() => setRenaming(h)}>
                             <Pencil className="text-muted-foreground" />
                             {t.rename}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -109,6 +109,25 @@ function IbkrFlow({ onCreated, onDone }: { onCreated?: (id: string) => void; onD
   const [name, setName] = useState('Interactive Brokers')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
+  // The server keeps the token + Query ID after the first time: ask it for the stocks before showing the guide.
+  const [checking, setChecking] = useState(true)
+
+  const show = (list: IbkrPosition[]) => {
+    setPositions(list)
+    // Everything that can be connected starts selected; untick what to leave out.
+    setPicked(new Set(list.filter((p) => !p.connected && p.value !== null).map((p) => p.asset)))
+  }
+
+  useEffect(() => {
+    let live = true
+    listIbkrPositions()
+      .then((found) => live && found && show(found))
+      .catch(() => {})
+      .finally(() => live && setChecking(false))
+    return () => {
+      live = false
+    }
+  }, [])
 
   const run = async (task: () => Promise<void>) => {
     setBusy(true)
@@ -133,10 +152,7 @@ function IbkrFlow({ onCreated, onDone }: { onCreated?: (id: string) => void; onD
     if (!positions) {
       if (token.trim() && queryId.trim())
         run(async () => {
-          const list = await listIbkrPositions(token.trim(), queryId.trim())
-          setPositions(list)
-          // Everything that can be connected starts selected; untick what to leave out.
-          setPicked(new Set(list.filter((p) => !p.connected && p.value !== null).map((p) => p.asset)))
+          show((await listIbkrPositions(token.trim(), queryId.trim())) ?? [])
         })
     } else if (picked.size && name.trim()) {
       run(async () => {
@@ -155,6 +171,17 @@ function IbkrFlow({ onCreated, onDone }: { onCreated?: (id: string) => void; onD
       else next.delete(asset)
       return next
     })
+
+  if (checking)
+    return (
+      <>
+        <SheetTitle className="text-sm font-normal text-muted-foreground">{t.ibkr.connect}</SheetTitle>
+        <p className="flex items-center gap-2 text-xs text-faint-foreground">
+          <Loader2 className="animate-spin" />
+          {t.ibkr.preparing}
+        </p>
+      </>
+    )
 
   const valid = positions ? picked.size > 0 && !!name.trim() : !!token.trim() && !!queryId.trim()
 

@@ -1,8 +1,8 @@
+import { getAuthUserId } from '@convex-dev/auth/server'
 import { ConvexError, v } from 'convex/values'
 import { internal } from './_generated/api'
 import type { Id } from './_generated/dataModel'
-import { action, internalAction, internalMutation, internalQuery, type QueryCtx } from './_generated/server'
-import { userOf } from './monobank'
+import { action, internalAction, internalMutation, internalQuery, type ActionCtx, type QueryCtx } from './_generated/server'
 
 /* Interactive Brokers stocks + stock prices. The app calls `positions` (run the Flex Query, keep
    the token, list the stocks), `connect` (create a portfolio with one entry per picked stock),
@@ -37,6 +37,12 @@ const quantity = (n: number) => String(Number(n.toFixed(8)))
 const tickerOf = (asset: string) => asset.slice('stock:'.length)
 /** Errors thrown as ConvexError show their message in the app. */
 const fail = (message: string) => new ConvexError(message)
+
+async function userOf(ctx: ActionCtx) {
+  const userId = await getAuthUserId(ctx)
+  if (!userId) throw fail('Please sign in again.')
+  return userId
+}
 
 /* ---------- IBKR Flex Web Service ---------- */
 
@@ -219,17 +225,34 @@ const stockAssets = (assets: string[]) => assets.filter((a) => a.startsWith('sto
 /* ---------- Called by the app ---------- */
 
 export const positions = action({
-  args: { token: v.string(), queryId: v.string() },
-  handler: async (ctx, args): Promise<Listed[]> => {
+  // Without a token the kept one is used; null comes back when none is kept yet.
+  args: { token: v.optional(v.string()), queryId: v.optional(v.string()) },
+  handler: async (ctx, args): Promise<Listed[] | null> => {
     const userId = await userOf(ctx)
-    const token = args.token.trim()
-    const queryId = args.queryId.trim()
-    if (!token || !queryId) throw fail('Paste both the token and the Query ID.')
-    if (!/^\d+$/.test(queryId)) throw fail('The Query ID is a number. Copy it from the Flex Queries list.')
-    const list = parsePositions(await report(token, queryId))
-    const priced: Position[] = await Promise.all(
-      list.map(async (p) => ({ ...p, price: (await usdPrice(tickerOf(p.asset))) ?? null })),
+    const given = args.token !== undefined || args.queryId !== undefined
+    const stored: { token: string; queryId: string; positions: Position[] } | null = await ctx.runQuery(
+      internal.ibkr.stored,
+      { userId },
     )
+    const token = given ? (args.token ?? '').trim() : stored?.token
+    const queryId = given ? (args.queryId ?? '').trim() : stored?.queryId
+    if (!token || !queryId) {
+      if (given) throw fail('Paste both the token and the Query ID.')
+      return null
+    }
+    if (!/^\d+$/.test(queryId)) throw fail('The Query ID is a number. Copy it from the Flex Queries list.')
+
+    let priced: Position[]
+    try {
+      const list = parsePositions(await report(token, queryId))
+      priced = await Promise.all(list.map(async (p) => ({ ...p, price: (await usdPrice(tickerOf(p.asset))) ?? null })))
+    } catch (e) {
+      // IBKR is busy or limiting requests: show the last known list instead of an error. (A bad or
+      // expired token still fails, so the app asks for a new one.)
+      const busy = e instanceof ConvexError && /limiting|still preparing|not responding/.test(String(e.data))
+      if (!given && stored && busy) priced = stored.positions
+      else throw e
+    }
     const taken: string[] | 'all' = await ctx.runMutation(internal.ibkr.saveToken, { userId, token, queryId, positions: priced })
     return priced.map((p) => ({
       asset: p.asset,
@@ -292,6 +315,24 @@ export const sync = internalAction({
   handler: async (ctx): Promise<object> => {
     const userId: Id<'users'> | null = await ctx.runQuery(internal.ibkr.due)
     if (!userId) return { synced: null }
+    return syncUser(ctx, userId)
+  },
+})
+
+/** "Sync now": the signed-in user's IBKR cards, on demand. IBKR limits requests, so not more than once a minute. */
+export const refresh = action({
+  args: {},
+  handler: async (ctx): Promise<number> => {
+    const userId = await userOf(ctx)
+    const last: number | null = await ctx.runQuery(internal.ibkr.lastSync, { userId })
+    if (last !== null && Date.now() - last < 60_000) throw fail('Just synced. Try again in a minute.')
+    const result = (await syncUser(ctx, userId)) as { changed: number }
+    return result.changed
+  },
+})
+
+/** Reads the IBKR report and adds a new row for every stock whose share count changed (a purchase or a sale). */
+async function syncUser(ctx: ActionCtx, userId: Id<'users'>): Promise<object> {
     const to = now()
     const state: SyncState = await ctx.runQuery(internal.ibkr.state, { userId })
 
@@ -334,10 +375,21 @@ export const sync = internalAction({
     }
     await ctx.runMutation(internal.ibkr.record, { userId, syncedAt: to * 1000, entries })
     return { synced: userId, portfolios: state.portfolios.length, changed: entries.length }
-  },
-})
+}
 
 /* ---------- Database steps (server-only) ---------- */
+
+/** The user's kept token, Query ID and last stock list. */
+export const stored = internalQuery({
+  args: { userId: v.id('users') },
+  handler: async (ctx, { userId }) => {
+    const row = await ctx.db
+      .query('ibkrTokens')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .unique()
+    return row && { token: row.token, queryId: row.queryId, positions: row.positions as Position[] }
+  },
+})
 
 /** Stocks already followed by the user's IBKR portfolios; 'all' if one of them follows everything. */
 async function claimed(ctx: QueryCtx, userId: Id<'users'>) {
@@ -425,6 +477,19 @@ export const due = internalQuery({
       .first()
     if (!p || (p.syncedAt !== undefined && p.syncedAt > Date.now() - 20 * 3600_000)) return null
     return p.userId
+  },
+})
+
+/** When the user's IBKR cards were last synced (ms), or null if never. */
+export const lastSync = internalQuery({
+  args: { userId: v.id('users') },
+  handler: async (ctx, { userId }) => {
+    const rows = await ctx.db
+      .query('portfolios')
+      .withIndex('by_user_source', (q) => q.eq('userId', userId).eq('source', 'ibkr'))
+      .collect()
+    const times = rows.map((r) => r.syncedAt).filter((t): t is number => t !== undefined)
+    return times.length ? Math.max(...times) : null
   },
 })
 

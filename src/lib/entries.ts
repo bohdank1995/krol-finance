@@ -254,12 +254,18 @@ export type IbkrPosition = {
   connected: boolean
 }
 
-/** Runs the Flex Query and lists the stocks in the account. */
-export async function listIbkrPositions(token: string, queryId: string) {
-  return (await call(api.ibkr.positions, { token, queryId }, dict().ibkr.unreachable)) as IbkrPosition[]
+/** Runs the Flex Query and lists the stocks in the account. Pass the token + Query ID the first time;
+    after that leave them out and the server uses the kept ones (null means none are kept yet). */
+export async function listIbkrPositions(token?: string, queryId?: string) {
+  return (await call(api.ibkr.positions, { token, queryId }, dict().ibkr.unreachable)) as IbkrPosition[] | null
 }
 
 /** Creates a portfolio with the picked stocks (`all`: every stock, also ones bought later). Returns its id. */
 export function connectIbkr(name: string, assets: StockSymbol[], all: boolean) {
   return call(api.ibkr.connect, { name, assets, all }, dict().ibkr.unreachable)
+}
+
+/** "Sync now" for Interactive Brokers: adds a new row for every stock whose share count changed. Returns how many rows were added. */
+export function refreshIbkr() {
+  return call(api.ibkr.refresh, {}, dict().ibkr.unreachable)
 }

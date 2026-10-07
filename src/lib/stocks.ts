@@ -6,9 +6,9 @@ import type { PriceStatus } from './prices'
 
 /* Stock prices in USD, from Yahoo Finance via the `ibkr` server functions (Yahoo can't be called from
    the browser). There is no free tick-by-tick stream for stocks, so live prices are re-fetched
-   every 30 seconds while the tab is visible, and right away when it becomes visible again. */
+   every 15 seconds while the tab is visible, and right away when it becomes visible again. */
 
-const EVERY = 30_000
+const EVERY = 15_000
 
 export function useStockPrices(watchKey: string) {
   const [prices, setPrices] = useState<Partial<Record<StockSymbol, number>>>({})
