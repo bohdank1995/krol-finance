@@ -19,10 +19,10 @@ function App() {
   const me = useQuery(api.users.me, isAuthenticated ? {} : 'skip')
   if (isLoading) return null
   if (!isAuthenticated) return <SignIn />
-  return <Signed email={me?.email ?? ''} />
+  return <Signed email={me?.email ?? ''} image={me?.image} />
 }
 
-function Signed({ email }: { email: string }) {
+function Signed({ email, image }: { email: string; image?: string }) {
   const portfolios = usePortfolios()
   const real = useEntries()
   const loaded = useLoaded()
@@ -56,7 +56,7 @@ function Signed({ email }: { email: string }) {
 
   return (
     <div className="min-h-svh px-6 pb-28 sm:pb-14">
-      <Header email={email} />
+      <Header email={email} image={image} />
       <main className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-10 sm:mt-6">
         <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
           <PeriodFilter period={period} onChange={setPeriod} />

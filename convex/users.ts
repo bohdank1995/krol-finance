@@ -10,7 +10,7 @@ export const me = query({
     const userId = await getAuthUserId(ctx)
     const user = userId && (await ctx.db.get(userId))
     if (!user) return null
-    return { email: user.email ?? '', language: user.language }
+    return { email: user.email ?? '', language: user.language, image: user.image }
   },
 })
 

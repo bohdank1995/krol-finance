@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { EyeOff, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -9,8 +10,19 @@ import { CURRENCIES, setCurrency, setFake, usePreferences, type Currency } from 
 import { cn } from '@/lib/utils'
 
 /** Round avatar: the email's first letter over a blurred brand glow (placed from the email, so it's stable). */
-function Avatar({ email, className }: { email: string; className?: string }) {
+function Avatar({ email, image, className }: { email: string; image?: string; className?: string }) {
+  const [failed, setFailed] = useState(false)
   const seed = [...email].reduce((n, c) => n + c.charCodeAt(0), 0)
+  if (image && !failed)
+    return (
+      <img
+        src={image}
+        alt=""
+        referrerPolicy="no-referrer"
+        onError={() => setFailed(true)}
+        className={cn('size-8 shrink-0 rounded-full object-cover', className)}
+      />
+    )
   return (
     <span
       className={cn('relative flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted', className)}
@@ -60,7 +72,7 @@ function Choice<T extends string>({
 }
 
 /** Compact header profile button (avatar only); the popover holds the account, currency, language, Fake numbers and Log out. */
-export function UserMenu({ email }: { email: string }) {
+export function UserMenu({ email, image }: { email: string; image?: string }) {
   const t = useT()
   const language = useLanguage()
   const signOut = useSignOut()
@@ -70,7 +82,7 @@ export function UserMenu({ email }: { email: string }) {
       <PopoverTrigger
         render={<Button variant="ghost" size="icon" aria-label={t.account} className="relative rounded-full" />}
       >
-        <Avatar email={email} className="size-7 text-xs" />
+        <Avatar email={email} image={image} className="size-7 text-xs" />
         {fake && (
           <span
             title={t.fakeNumbersOn}
@@ -82,7 +94,7 @@ export function UserMenu({ email }: { email: string }) {
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 gap-4 p-4">
         <div className="flex flex-col items-center gap-2 text-center">
-          <Avatar email={email} className="size-14 text-xl" />
+          <Avatar email={email} image={image} className="size-14 text-xl" />
           <span className="max-w-full truncate text-sm">{email}</span>
         </div>
         <Choice<Currency>

@@ -12,10 +12,10 @@ import { PERIODS, type Period } from '@/lib/period'
 import { UserMenu } from './user-menu'
 
 /** Top bar, pinned while scrolling: the left side is kept free (for a logo later), the account sits on the right. */
-export function Header({ email }: { email: string }) {
+export function Header({ email, image }: { email: string; image?: string }) {
   return (
     <header className="sticky top-0 z-20 -mx-6 flex items-center justify-end gap-3 bg-background/85 px-6 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur-md">
-      <UserMenu email={email} />
+      <UserMenu email={email} image={image} />
     </header>
   )
 }
