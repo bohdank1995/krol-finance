@@ -10,9 +10,11 @@ import { netWorthEntries, netWorthPortfolios, scaleEntries, scalePayouts, setInP
 import { fakeEntries, fakePayouts } from '@/lib/fake'
 import { useDailyPrices } from '@/lib/history'
 import { inRange, rangeOf, type Period } from '@/lib/period'
-import { firstDay, growth, passiveIn, series, withPayouts } from '@/lib/portfolio'
+import { balance, firstDay, growth, passiveIn, series, withPayouts } from '@/lib/portfolio'
 import { usePreferences } from '@/lib/preferences'
 import { useLivePrices } from '@/lib/prices'
+import { useReveal } from '@/lib/reveal'
+import { cn } from '@/lib/utils'
 
 function App() {
   const { isLoading, isAuthenticated } = useConvexAuth()
@@ -83,13 +85,19 @@ function Signed({ email, image }: { email: string; image?: string }) {
   }, [selected, portfolios, entries, payouts, daily, prices, currency, range])
   const rows = useMemo(() => shown.filter((e) => inRange(e.createdAt, range)), [shown, range])
 
+  // Reveal the page once its numbers are real: data in, every asset priced, graph history in.
+  const priced = loaded && !balance(entries, prices, currency).pricing
+  const { ready, slow } = useReveal(loaded, priced && historyReady)
+  /** Placeholders (slow loads only) just fade in; the real content slides in when ready. */
+  const placeholder = 'animate-in fade-in duration-500'
+
   return (
     <div className="min-h-svh px-6 pb-28 sm:pb-14">
       <Header email={email} image={image} />
       <main className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-10 sm:mt-6">
         <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
-          <PeriodFilter period={period} onChange={setPeriod} />
-          {loaded ? (
+          {(ready || slow) && <PeriodFilter period={period} onChange={setPeriod} />}
+          {ready ? (
             <PortfolioCards
               portfolios={portfolios}
               entries={entries}
@@ -103,21 +111,31 @@ function Signed({ email, image }: { email: string; image?: string }) {
               readOnly={fake}
             />
           ) : (
-            <PortfolioCardsSkeleton />
+            slow && (
+              <div className={placeholder}>
+                <PortfolioCardsSkeleton />
+              </div>
+            )
           )}
         </div>
-        {!loaded ? (
-          <>
-            <BalanceChartSkeleton />
-            <EntriesTableSkeleton />
-          </>
+        {!ready ? (
+          slow && (
+            <div className={cn(placeholder, 'grid gap-10')}>
+              <BalanceChartSkeleton />
+              <EntriesTableSkeleton />
+            </div>
+          )
         ) : (
           <>
             {historyReady ? (
               <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_1px_16rem] lg:gap-8">
-                <BalanceChart points={points} currency={currency} />
-                <div aria-hidden className="h-px bg-border lg:h-auto lg:w-px" />
-                <PassiveIncome total={passive.total} parts={parts} currency={currency} onToggle={fake ? undefined : setInPassiveIncome} />
+                <div className="animate-enter min-w-0" style={{ animationDelay: '200ms' }}>
+                  <BalanceChart points={points} currency={currency} />
+                </div>
+                <div aria-hidden className="animate-enter h-px bg-border lg:h-auto lg:w-px" style={{ animationDelay: '260ms' }} />
+                <div className="animate-enter" style={{ animationDelay: '300ms' }}>
+                  <PassiveIncome total={passive.total} parts={parts} currency={currency} onToggle={fake ? undefined : setInPassiveIncome} />
+                </div>
               </div>
             ) : (
               <BalanceChartSkeleton />

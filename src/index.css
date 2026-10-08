@@ -127,3 +127,17 @@
     line-height: 1.5;
   }
 }
+/* Page load: elements fade in while sliding from the left, one after another (each sets its own
+   animation-delay). `translate` rather than `transform`, so dragged cards keep their own transform. */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    translate: -0.75rem 0;
+  }
+}
+@utility animate-enter {
+  animation: page-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}

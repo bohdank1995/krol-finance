@@ -47,6 +47,8 @@ type Props = {
 }
 
 const head = 'h-10 text-xs font-normal text-faint-foreground'
+/** Fades in after the cards and the graph on page load. */
+const enter = { animationDelay: '380ms' }
 
 export function EntriesTable({ entries, portfolios, prices, portfolioId, currency, readOnly, filtered }: Props) {
   const t = useT()
@@ -67,7 +69,7 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
       {editable.length > 0 && !synced && <EntryActions portfolios={editable} portfolioId={portfolioId} />}
 
       {rows.length === 0 && (
-        <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed px-6 py-14 text-center">
+        <div className="animate-enter flex flex-col items-center gap-4 rounded-xl border border-dashed px-6 py-14 text-center" style={enter}>
           <p className="text-sm text-muted-foreground">
             {portfolios.length === 0
               ? t.empty.noPortfolios
@@ -83,7 +85,7 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
       )}
 
       {rows.length > 0 && (
-        <Table>
+        <Table className="animate-enter" style={enter}>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className={cn(head, 'hidden pl-0 sm:table-cell')}>{t.date}</TableHead>

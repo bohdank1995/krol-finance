@@ -172,6 +172,7 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
         >
           <Card
             id={NET_WORTH}
+            order={0}
             label={t.netWorth}
             entries={counted}
             {...valuation}
@@ -181,10 +182,11 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
           />
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <SortableContext items={portfolios.map((p) => p.id)} strategy={horizontalListSortingStrategy}>
-              {portfolios.map((h) => (
+              {portfolios.map((h, i) => (
                 <Card
                   key={h.id}
                   id={h.id}
+                  order={i + 1}
                   sortable={!readOnly}
                   label={h.name}
                   hidden={!h.inNetWorth}
@@ -248,7 +250,8 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
                   variant="outline"
                   size="icon"
                   aria-label={t.addPortfolio}
-                  className="pointer-events-auto rounded-full text-muted-foreground shadow-sm hover:text-foreground aria-expanded:text-foreground max-sm:size-7"
+                  style={{ animationDelay: `${(portfolios.length + 1) * 60}ms` }}
+                  className="animate-enter pointer-events-auto rounded-full text-muted-foreground shadow-sm hover:text-foreground aria-expanded:text-foreground max-sm:size-7"
                 />
               }
             >
@@ -379,6 +382,8 @@ export function PortfolioCardsSkeleton() {
 
 type CardProps = Valuation & {
   id: string
+  /** Place in the row: the cards fade in one after another, left to right. */
+  order: number
   /** Portfolio cards can be dragged; Net worth stays first. */
   sortable?: boolean
   label: string
@@ -403,7 +408,7 @@ type CardProps = Valuation & {
 
 const dayBefore = (day: string) => new Date(Date.parse(`${day}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
 
-function Card({ id, sortable, label, hidden, share = 1, netWorthShare, hint, syncing, message, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
+function Card({ id, order, sortable, label, hidden, share = 1, netWorthShare, hint, syncing, message, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
   const t = useT()
   const drag = useSortable({ id, disabled: !sortable })
   const points = useMemo(() => series(entries, daily, prices, currency), [entries, daily, prices, currency])
@@ -419,9 +424,12 @@ function Card({ id, sortable, label, hidden, share = 1, netWorthShare, hint, syn
       ref={sortable ? drag.setNodeRef : undefined}
       {...(sortable ? drag.listeners : {})}
       data-slide={id}
-      style={sortable ? { transform: DndCSS.Translate.toString(drag.transform), transition: drag.transition } : undefined}
+      style={{
+        animationDelay: `${order * 60}ms`,
+        ...(sortable ? { transform: DndCSS.Translate.toString(drag.transform), transition: drag.transition } : {}),
+      }}
       className={cn(
-        'relative w-[calc(100vw-4rem)] shrink-0 snap-center snap-always touch-manipulation sm:w-62',
+        'animate-enter relative w-[calc(100vw-4rem)] shrink-0 snap-center snap-always touch-manipulation sm:w-62',
         drag.isDragging && 'z-10 opacity-80',
       )}
     >

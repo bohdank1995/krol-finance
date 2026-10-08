@@ -26,8 +26,13 @@ export function PeriodFilter({ period, onChange }: { period: Period; onChange: (
         // Clicking the already-chosen one would empty the group: keep it.
         onValueChange={(v: string[]) => v[0] && onChange(v[0] as Period)}
       >
-        {PERIODS.map((p) => (
-          <ToggleGroupItem key={p} value={p} className="px-3 text-xs text-muted-foreground aria-pressed:text-foreground">
+        {PERIODS.map((p, i) => (
+          <ToggleGroupItem
+            key={p}
+            value={p}
+            style={{ animationDelay: `${i * 40}ms` }}
+            className="animate-enter px-3 text-xs text-muted-foreground aria-pressed:text-foreground"
+          >
             {t.periods[p]}
           </ToggleGroupItem>
         ))}
