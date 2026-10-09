@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/sheet'
 import { addPortfolio, renamePortfolio, type Portfolio } from '@/lib/entries'
 import { useT } from '@/lib/i18n'
-import { EmojiPicker } from './emoji-picker'
 
 type Props = {
   open: boolean
@@ -55,18 +54,15 @@ function PortfolioForm({
         {portfolio ? t.renamePortfolio : t.newPortfolio}
       </SheetTitle>
 
-      <div className="flex items-center gap-1">
-        <Input
-          autoFocus
-          autoComplete="off"
-          placeholder={t.name}
-          aria-label={t.name}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="h-12 flex-1"
-        />
-        <EmojiPicker onPick={(emoji) => setName((n) => n + emoji)} />
-      </div>
+      <Input
+        autoFocus
+        autoComplete="off"
+        placeholder={t.name}
+        aria-label={t.name}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        className="h-12"
+      />
 
       <SheetFooter>
         <SheetClose render={<Button type="button" variant="secondary" />}>{t.cancel}</SheetClose>

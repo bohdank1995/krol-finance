@@ -13,7 +13,6 @@ import { connectMonobankCard, listMonobankCards, type MonobankCard } from '@/lib
 import { formatAmount } from '@/lib/format'
 import { useT } from '@/lib/i18n'
 import { cn, masked, noAutofill } from '@/lib/utils'
-import { EmojiPicker } from './emoji-picker'
 
 type Props = {
   open: boolean
@@ -180,17 +179,14 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
           </div>
 
           {picked && (
-            <div className="flex items-center gap-1">
-              <Input
-                autoComplete="off"
-                placeholder={t.name}
-                aria-label={t.name}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="h-12 flex-1"
-              />
-              <EmojiPicker onPick={(emoji) => setName((n) => n + emoji)} />
-            </div>
+            <Input
+              autoComplete="off"
+              placeholder={t.name}
+              aria-label={t.name}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="h-12"
+            />
           )}
         </div>
       )}

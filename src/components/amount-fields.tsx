@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { assetsFor, type AssetSymbol, type EntryType } from '@/lib/assets'
+import { evaluate, isExpression } from '@/lib/calc'
 import { cleanAmount, groupAmount } from '@/lib/format'
 import { useT } from '@/lib/i18n'
 
@@ -22,15 +23,18 @@ type Props = {
 }
 
 const isDigit = (c: string) => (c >= '0' && c <= '9') || c === '.'
+/** Characters an expression keeps: digits, point, operators, brackets. */
+const isCalc = (c: string) => isDigit(c) || '+-−*/×÷()'.includes(c)
 
 /**
  * Amount input that groups thousands as you type ("1,000,000.5") while `amount` stays plain
  * ("1000000.5"). A typed comma counts as the decimal point, since many phone keyboards only offer ",".
+ * Once an operator is typed the text is a calculation ("15+190") and is kept as typed, without grouping.
  */
 function useGroupedAmount(amount: string, onAmountChange: (v: string) => void) {
   const ref = useRef<HTMLInputElement>(null)
   const caret = useRef<number>(undefined)
-  const shown = groupAmount(amount)
+  const shown = isExpression(amount) ? amount : groupAmount(amount)
 
   // Regrouping rewrites the text; put the caret back after the same digit it followed.
   useLayoutEffect(() => {
@@ -52,6 +56,14 @@ function useGroupedAmount(amount: string, onAmountChange: (v: string) => void) {
     if (inputType === 'insertFromPaste' && !text.includes('.') && /^[^,]*,(\d{0,2}|\d{4,})$/.test(text.replace(/\s/g, '')))
       text = text.replace(',', '.')
 
+    // A calculation keeps its operators; the grouping commas of the number it started from go away.
+    if (isExpression(text)) {
+      const kept = [...text.slice(0, at)].filter(isCalc).length
+      caret.current = kept
+      onAmountChange([...text].filter(isCalc).join(''))
+      return
+    }
+
     const clean = cleanAmount(text)
     const digitsBefore = [...text.slice(0, at)].filter(isDigit).length
     const next = groupAmount(clean)
@@ -68,27 +80,56 @@ function useGroupedAmount(amount: string, onAmountChange: (v: string) => void) {
 export function AmountFields({ amount, onAmountChange, type, asset, onAssetChange, autoFocus }: Props) {
   const t = useT()
   const field = useGroupedAmount(amount, onAmountChange)
+  // A calculation shows its result faintly on the right; Tab, "=" or a tap on it puts it in the field.
+  const result = isExpression(amount) ? evaluate(amount) : undefined
+  const answer = result !== undefined && Number(result) > 0 ? result : undefined
+  const apply = () => answer && onAmountChange(answer)
   return (
     // Wraps on narrow screens or large text: the asset picker drops below, full width.
     <div className="flex flex-wrap items-center gap-2">
-      <Input
-        autoFocus={autoFocus}
-        inputMode="decimal"
-        autoComplete="off"
-        placeholder="0.00"
-        aria-label={t.amount}
-        {...field}
-        className="h-12 flex-[999_1_8rem] font-mono text-xl tabular-nums md:text-xl"
-      />
+      <div className="relative flex-[999_1_8rem]">
+        <Input
+          autoFocus={autoFocus}
+          inputMode="decimal"
+          autoComplete="off"
+          placeholder="0.00"
+          aria-label={t.amount}
+          aria-describedby={answer ? 'amount-result' : undefined}
+          {...field}
+          onKeyDown={(e) => {
+            if (answer && ((e.key === 'Tab' && !e.shiftKey) || e.key === '=')) {
+              e.preventDefault()
+              apply()
+            }
+          }}
+          // Room on the right for the result, so long calculations don't run under it.
+          style={answer ? { paddingRight: `calc(${groupAmount(answer).length + 2}ch + 1.5rem)` } : undefined}
+          className="h-12 font-mono text-xl tabular-nums md:text-xl"
+        />
+        {answer && (
+          <button
+            key={answer}
+            id="amount-result"
+            type="button"
+            tabIndex={-1}
+            title={t.useResult}
+            onClick={apply}
+            className="absolute inset-y-0 right-0 flex animate-in items-center px-3 font-mono text-xl text-faint-foreground tabular-nums duration-300 fade-in hover:text-muted-foreground"
+          >
+            = {groupAmount(answer)}
+          </button>
+        )}
+      </div>
       <Select value={asset} onValueChange={(v) => v && onAssetChange(v as AssetSymbol)}>
-        <SelectTrigger aria-label={t.asset} className="h-12! w-28 grow font-mono">
+        <SelectTrigger aria-label={t.asset} className="w-28 grow font-mono">
           <SelectValue />
         </SelectTrigger>
-        <SelectContent>
+        {/* Opens below the picker, wide enough for the full names; long ones cut off with "…". */}
+        <SelectContent alignItemWithTrigger={false} align="end" className="w-80">
           {assetsFor(type).map((a) => (
             <SelectItem key={a.symbol} value={a.symbol}>
-              <span className="w-12 font-mono">{a.symbol}</span>
-              <span className="text-faint-foreground">{t.assetNames[a.symbol] ?? a.name}</span>
+              <span className="w-14 shrink-0 font-mono">{a.symbol}</span>
+              <span className="min-w-0 truncate text-faint-foreground">{t.assetNames[a.symbol] ?? a.name}</span>
             </SelectItem>
           ))}
         </SelectContent>
@@ -106,7 +147,7 @@ export function DateField({ value, onChange }: { value: string; onChange: (v: st
       value={value}
       max={new Date().toLocaleDateString('en-CA')}
       onChange={(e) => onChange(e.target.value)}
-      className="h-10 w-44 font-mono tabular-nums scheme-dark"
+      className="h-12 w-44 font-mono tabular-nums scheme-dark"
     />
   )
 }

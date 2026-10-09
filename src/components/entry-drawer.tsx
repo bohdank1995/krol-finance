@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -15,9 +14,11 @@ import {
   SheetFooter,
   SheetTitle,
 } from '@/components/ui/sheet'
+import { Textarea } from '@/components/ui/textarea'
 import { assetsFor, typeOf, type AssetSymbol, type EntryType } from '@/lib/assets'
 import { addEntry, updateEntry, type Entry, type Portfolio } from '@/lib/entries'
 import { dayToIso, parseAmount } from '@/lib/format'
+import { resolveAmount } from '@/lib/calc'
 import { useT } from '@/lib/i18n'
 import { AmountFields, DateField } from './amount-fields'
 
@@ -66,7 +67,8 @@ function EntryForm({
   const [asset, setAsset] = useState<AssetSymbol>(() => entry?.asset ?? assetsFor(type)[0].symbol)
   const [day, setDay] = useState(() => new Date(entry?.createdAt ?? Date.now()).toLocaleDateString('en-CA'))
   const [target, setTarget] = useState(entry?.portfolioId ?? portfolioId ?? portfolios[0]?.id)
-  const size = parseAmount(amount)?.replace(/^[+-]/, '')
+  // A calculation ("15+190") counts as its result.
+  const size = parseAmount(resolveAmount(amount))?.replace(/^[+-]/, '')
   const parsed = size && (direction === 'out' ? `-${size}` : size)
   const valid = !!parsed && !!target && !!day
 
@@ -96,7 +98,7 @@ function EntryForm({
             onValueChange={(v) => v && setTarget(v)}
             items={portfolios.map((p) => ({ value: p.id, label: p.name }))}
           >
-            <SelectTrigger aria-label={t.portfolio} className="h-10! min-w-40 flex-1">
+            <SelectTrigger aria-label={t.portfolio} className="min-w-40 flex-1">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -110,14 +112,14 @@ function EntryForm({
         )}
       </div>
 
-      <Input
+      <Textarea
         placeholder={t.note}
         aria-label={t.note}
         autoComplete="off"
         maxLength={200}
+        rows={3}
         value={note}
         onChange={(e) => setNote(e.target.value)}
-        className="h-10"
       />
 
       <SheetFooter>

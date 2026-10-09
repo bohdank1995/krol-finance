@@ -31,7 +31,6 @@ const en = {
   asset: 'Asset',
   portfolio: 'Portfolio',
   token: 'Token',
-  addEmoji: 'Add emoji',
   somethingWrong: 'Something went wrong. Try again.',
   alreadyConnected: 'Already connected',
 
@@ -69,6 +68,9 @@ const en = {
   hiddenFromNetWorth: 'Hidden from net worth',
   hideFromPassive: (name: string) => `Leave ${name} out of passive income`,
   showInPassive: (name: string) => `Count ${name} in passive income`,
+  hide: 'Hide',
+  useResult: 'Use the result (Tab)',
+  show: 'Show',
   removeStock: 'Remove stock',
   /** Text before and after the stock in the remove confirmation. */
   confirmRemoveStock: ['Remove', 'and all its rows from this portfolio? Syncs won’t add it back.'],
@@ -182,7 +184,6 @@ const uk: Dictionary = {
   asset: 'Актив',
   portfolio: 'Портфель',
   token: 'Токен',
-  addEmoji: 'Додати емодзі',
   somethingWrong: 'Щось пішло не так. Спробуйте ще раз.',
   alreadyConnected: 'Уже підключено',
 
@@ -224,6 +225,9 @@ const uk: Dictionary = {
   hiddenFromNetWorth: 'Не враховується в капіталі',
   hideFromPassive: (name) => `Не враховувати ${name} в пасивному доході`,
   showInPassive: (name) => `Враховувати ${name} в пасивному доході`,
+  hide: 'Сховати',
+  useResult: 'Підставити результат (Tab)',
+  show: 'Показати',
   removeStock: 'Прибрати акцію',
   confirmRemoveStock: ['Прибрати', 'і всі її записи з цього портфеля? Синхронізація не додасть її знову.'],
   countsInNetWorth: (percent) => `${percent}% враховується в капіталі`,

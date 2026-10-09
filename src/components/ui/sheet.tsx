@@ -112,7 +112,7 @@ function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="sheet-footer"
       // Pinned to the drawer's bottom edge (right above the keyboard on phones); buttons split the width.
       className={cn(
-        "sticky bottom-0 -mx-6 mt-auto grid auto-cols-fr grid-flow-col gap-2 bg-popover px-6 pt-2 pb-[max(1.5rem,env(safe-area-inset-bottom))] *:h-11 *:text-sm",
+        "sticky bottom-0 -mx-6 mt-auto grid auto-cols-fr grid-flow-col gap-2 bg-popover px-6 pt-2 pb-[max(1.5rem,env(safe-area-inset-bottom))]",
         className
       )}
       {...props}

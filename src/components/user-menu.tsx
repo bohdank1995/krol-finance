@@ -81,13 +81,14 @@ export function UserMenu({ email, image }: { email: string; image?: string }) {
   return (
     <Popover>
       <PopoverTrigger
-        render={<Button variant="ghost" size="icon" aria-label={t.account} className="relative rounded-full" />}
+        render={<Button variant="outline" size="icon-lg" aria-label={t.account} className="relative" />}
       >
-        <Avatar email={email} image={image} className="size-7 text-xs" />
+        {/* Fills the button inside its border, which matches the "+" button. */}
+        <Avatar email={email} image={image} className="size-full text-base" />
         {fake && (
           <span
             title={t.fakeNumbersOn}
-            className="absolute -right-0.5 -bottom-0.5 flex size-3.5 items-center justify-center rounded-full bg-background text-muted-foreground"
+            className="absolute right-0 bottom-0 flex size-4 items-center justify-center rounded-full bg-background text-muted-foreground"
           >
             <EyeOff className="size-2.5!" />
           </span>
@@ -112,7 +113,7 @@ export function UserMenu({ email, image }: { email: string; image?: string }) {
           </span>
           <Switch checked={fake} onCheckedChange={setFake} />
         </label>
-        <Button variant="outline" onClick={() => signOut()}>
+        <Button variant="secondary" onClick={() => signOut()}>
           <LogOut data-icon="inline-start" />
           {t.logOut}
         </Button>

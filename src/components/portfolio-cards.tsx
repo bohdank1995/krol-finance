@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS as DndCSS } from '@dnd-kit/utilities'
-import { ChartCandlestick, ChartPie, Eye, EyeOff, Landmark, MoreHorizontal, Pencil, Percent, Plus, RefreshCw, Trash2, Unlink, WalletCards } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChartCandlestick, ChartPie, Eye, EyeOff, Landmark, MoreHorizontal, Pencil, Percent, Plus, RefreshCw, Trash2, Unlink, WalletCards } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +39,7 @@ import { balance, series, valueOn } from '@/lib/portfolio'
 import type { Currency } from '@/lib/preferences'
 import type { PriceStatus } from '@/lib/prices'
 import { cn } from '@/lib/utils'
+import { FAB, FAB_BAR } from './add-entry-menu'
 import { IbkrDrawer } from './ibkr-drawer'
 import { MonobankDrawer } from './monobank-drawer'
 import { PercentsDrawer } from './percents-drawer'
@@ -76,9 +77,11 @@ type Props = Valuation & {
   onSelect: (id: string) => void
   /** Fake numbers mode: no renaming, deleting or dragging. */
   readOnly: boolean
+  /** Sits above the cards, left of the "+" on phones (the period picker). */
+  toolbar?: ReactNode
 }
 
-export function PortfolioCards({ portfolios, entries, status, selected, onSelect, readOnly, ...valuation }: Props) {
+export function PortfolioCards({ portfolios, entries, status, selected, onSelect, readOnly, toolbar, ...valuation }: Props) {
   const t = useT()
   const [creating, setCreating] = useState(false)
   const [syncing, setSyncing] = useState<string[]>([])
@@ -161,14 +164,52 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
     if (el) row.scrollTo({ left: el.offsetLeft - (row.clientWidth - el.offsetWidth) / 2, behavior: 'smooth' })
   }, [selected, portfolios.length])
 
+  /** "+" menu: in the toolbar next to the period on phones, pinned to the right of the cards on wider screens. */
+  const addMenu = (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            variant="outline"
+            size="icon-lg"
+            aria-label={t.addPortfolio}
+            style={{ animationDelay: `${(portfolios.length + 1) * 60}ms` }}
+            className="animate-enter pointer-events-auto text-muted-foreground shadow-sm hover:text-foreground aria-expanded:text-foreground"
+          />
+        }
+      >
+        <Plus />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuItem onClick={() => setCreating(true)}>
+          <WalletCards className="text-muted-foreground" />
+          {t.custom}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setConnecting('monobank')}>
+          <Landmark className="text-muted-foreground" />
+          Monobank
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setConnecting('ibkr')}>
+          <ChartCandlestick className="text-muted-foreground" />
+          Interactive Brokers
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+
   return (
     <div>
+      {/* Same edges as the cards and everything below them. */}
+      <div className="mb-3 flex items-center justify-between gap-3">
+        {toolbar}
+        <span className="sm:hidden">{addMenu}</span>
+      </div>
       <div className="relative">
         <div
           ref={rowRef}
           role="tablist"
           aria-label={t.portfolios}
-          className="relative -mx-6 flex snap-x snap-mandatory gap-2 overflow-x-auto px-8 pb-2 max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden sm:snap-none sm:gap-3 sm:px-6 sm:pr-24"
+          className="relative -mx-6 flex snap-x snap-mandatory gap-2 overflow-x-auto px-6 pb-2 max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden sm:snap-none sm:gap-3 sm:pr-24"
         >
           <Card
             id={NET_WORTH}
@@ -205,16 +246,16 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
                         <DropdownMenuTrigger
                           render={
                             <Button
-                              variant="ghost"
-                              size="icon-sm"
+                              variant="secondary"
+                              size="icon"
                               aria-label={t.portfolioActions(h.name)}
-                              className="absolute top-2 right-2 text-faint-foreground hover:text-foreground aria-expanded:text-foreground"
+                              className="absolute top-3 right-3 text-muted-foreground hover:text-foreground aria-expanded:text-foreground"
                             />
                           }
                         >
                           <MoreHorizontal />
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuContent align="end" className="w-64">
                           <DropdownMenuItem onClick={() => setRenaming(h)}>
                             <Pencil className="text-muted-foreground" />
                             {t.rename}
@@ -242,36 +283,8 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
         </div>
 
         {/* Pinned to the right over a fade: stays put while the cards scroll underneath. */}
-        <div className="pointer-events-none absolute inset-y-0 -right-6 flex w-16 items-center justify-end bg-linear-to-l from-background via-background/80 to-transparent pr-0.5 pb-2 sm:w-28 sm:pr-6">
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label={t.addPortfolio}
-                  style={{ animationDelay: `${(portfolios.length + 1) * 60}ms` }}
-                  className="animate-enter pointer-events-auto rounded-full text-muted-foreground shadow-sm hover:text-foreground aria-expanded:text-foreground max-sm:size-7"
-                />
-              }
-            >
-              <Plus />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={() => setCreating(true)}>
-                <WalletCards className="text-muted-foreground" />
-                {t.custom}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setConnecting('monobank')}>
-                <Landmark className="text-muted-foreground" />
-                Monobank
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setConnecting('ibkr')}>
-                <ChartCandlestick className="text-muted-foreground" />
-                Interactive Brokers
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="pointer-events-none absolute inset-y-0 -right-6 flex w-16 max-sm:hidden items-center justify-end bg-linear-to-l from-background via-background/80 to-transparent pr-0.5 pb-2 sm:w-28 sm:pr-6">
+          {addMenu}
         </div>
       </div>
 
@@ -297,17 +310,14 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
         </div>
       )}
 
-      {/* IBKR card picked: a quiet floating "Sync now" where Deposit / Withdraw sit for other cards. */}
+      {/* IBKR card picked: a floating "Sync now" where Deposit / Withdraw sit for other cards, styled like Withdraw. */}
       {!readOnly && portfolios.find((p) => p.id === selected)?.source === 'ibkr' && (
-        <Button
-          variant="outline"
-          disabled={syncing.includes(selected)}
-          onClick={() => syncIbkr(selected)}
-          className="fixed right-4 bottom-4 z-40 h-10 gap-2 rounded-full bg-background/80 px-4 text-muted-foreground shadow-sm backdrop-blur hover:text-foreground sm:right-6 sm:bottom-6"
-        >
-          <RefreshCw className={cn(syncing.includes(selected) && 'animate-spin')} />
-          {syncing.includes(selected) ? t.ibkr.syncing : t.ibkr.syncNow}
-        </Button>
+        <div className={FAB_BAR}>
+          <Button variant="secondary" disabled={syncing.includes(selected)} onClick={() => syncIbkr(selected)} className={FAB}>
+            <RefreshCw className={cn(syncing.includes(selected) && 'animate-spin')} />
+            {syncing.includes(selected) ? t.ibkr.syncing : t.ibkr.syncNow}
+          </Button>
+        </div>
       )}
 
       <PortfolioDrawer open={creating} onOpenChange={setCreating} onCreated={onSelect} />
@@ -366,11 +376,11 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
 export function PortfolioCardsSkeleton() {
   const t = useT()
   return (
-    <div aria-busy="true" aria-label={t.loadingPortfolios} className="-mx-6 flex gap-2 overflow-hidden px-8 pb-2 sm:gap-3 sm:px-6">
+    <div aria-busy="true" aria-label={t.loadingPortfolios} className="-mx-6 flex gap-2 overflow-hidden px-6 pb-2 sm:gap-3">
       {[0, 1, 2].map((i) => (
         <div
           key={i}
-          className="flex min-h-30 w-[calc(100vw-4rem)] shrink-0 flex-col justify-between rounded-xl border bg-card p-5 sm:min-h-26 sm:w-62"
+          className="flex min-h-30 w-[calc(100vw-3rem)] shrink-0 flex-col justify-between rounded-xl border bg-card p-5 sm:min-h-26 sm:w-62"
         >
           <Skeleton className="h-3.5 w-20" />
           <Skeleton className="mt-4 h-6 w-28 sm:h-5" />
@@ -429,7 +439,7 @@ function Card({ id, order, sortable, label, hidden, share = 1, netWorthShare, hi
         ...(sortable ? { transform: DndCSS.Translate.toString(drag.transform), transition: drag.transition } : {}),
       }}
       className={cn(
-        'animate-enter relative w-[calc(100vw-4rem)] shrink-0 snap-center snap-always touch-manipulation sm:w-62',
+        'animate-enter relative w-[calc(100vw-3rem)] shrink-0 snap-center snap-always touch-manipulation sm:w-62',
         drag.isDragging && 'z-10 opacity-80',
       )}
     >
@@ -445,7 +455,7 @@ function Card({ id, order, sortable, label, hidden, share = 1, netWorthShare, hi
           drag.isDragging && 'cursor-grabbing shadow-lg',
         )}
       >
-        <span className="flex items-center gap-2 pr-6 text-sm text-muted-foreground">
+        <span className="flex items-center gap-2 pr-10 text-sm text-muted-foreground">
           <span className="truncate">{label}</span>
           {syncing ? <RefreshCw className="size-3.5 shrink-0 animate-spin" /> : live && <LiveDot status={live} />}
           {hidden && (
@@ -477,9 +487,10 @@ function Card({ id, order, sortable, label, hidden, share = 1, netWorthShare, hi
               {t.shareOf(Math.round(share * 1000) / 10, formatMoney(total / share))}
             </span>
           )}
+          {/* Change during the period: gains in green with an arrow up, losses stay muted with an arrow down. */}
           {change !== undefined && (
-            <span className="text-xs text-muted-foreground">
-              {change < 0 ? '−' : '+'}
+            <span className={cn('flex items-center gap-0.5 text-xs', change < 0 ? 'text-muted-foreground' : 'text-brand')}>
+              {change < 0 ? <ArrowDown className="size-3" /> : <ArrowUp className="size-3" />}
               {formatMoney(Math.abs(change))}
             </span>
           )}

@@ -5,8 +5,8 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
+import { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { currencySign } from '@/lib/assets'
 import { formatDay, formatMoney } from '@/lib/format'
@@ -82,12 +82,26 @@ export function BalanceChart({ points, currency }: { points: { date: string; val
 
 export type PassivePart = { id: string; name: string; value: number; counted: boolean }
 
-/** The big passive-income number; on Net worth also where it comes from, with an eye per portfolio
-    to leave it out of the total (and bring it back). */
+/** The big passive-income number; on Net worth also where it comes from. Each row toggles that portfolio
+    in or out of the total: the row fades and gets struck through right away, the total follows once the
+    animation is done (recomputing it is the slow part). */
 export function PassiveIncome({ total, parts, currency, onToggle }: { total: number; parts?: PassivePart[]; currency: Currency; onToggle?: (id: string, counted: boolean) => void }) {
   const t = useT()
+  // Clicked rows, shown in their new state until the change is saved.
+  const [pending, setPending] = useState<Record<string, boolean>>({})
+  const toggle = (id: string, counted: boolean) => {
+    setPending((all) => ({ ...all, [id]: counted }))
+    setTimeout(() => {
+      onToggle?.(id, counted)
+      setPending((all) => {
+        const rest = { ...all }
+        delete rest[id]
+        return rest
+      })
+    }, 300)
+  }
   return (
-    <div className="flex min-h-64 flex-col justify-between gap-4">
+    <div className="flex flex-col gap-1 lg:min-h-64 lg:justify-between lg:gap-4">
       <span className="text-sm text-muted-foreground">{t.passiveIncome}</span>
       <div className="flex flex-col gap-3 font-mono tabular-nums">
         <span className="flex flex-wrap items-baseline gap-x-1.5">
@@ -98,30 +112,57 @@ export function PassiveIncome({ total, parts, currency, onToggle }: { total: num
           <span className="text-xs text-muted-foreground">{currencySign(currency)}</span>
         </span>
         {parts && parts.length > 0 && (
-          <ul className="flex flex-col gap-0.5 font-sans text-xs text-muted-foreground">
-            {parts.map((p) => (
-              <li key={p.id} className={cn('flex items-center justify-between gap-3', !p.counted && 'text-faint-foreground')}>
-                <span className="truncate">{p.name}</span>
-                <span className="flex items-center gap-1">
-                  <span className={cn('font-mono tabular-nums', !p.counted && 'line-through')}>
-                    {p.value < 0 ? '−' : '+'}
-                    {formatMoney(Math.abs(p.value))}
+          <ul className="-mx-2 flex flex-col font-sans text-sm text-muted-foreground">
+            {parts.map((p) => {
+              const counted = pending[p.id] ?? p.counted
+              const row = (
+                <>
+                  <span className="truncate">{p.name}</span>
+                  <span className="flex items-center gap-2">
+                    {onToggle && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground opacity-0 transition-opacity duration-200 group-hover/row:opacity-100 group-focus-visible/row:opacity-100">
+                        {counted ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                        {counted ? t.hide : t.show}
+                      </span>
+                    )}
+                    <span className="relative font-mono tabular-nums">
+                      {p.value < 0 ? '−' : '+'}
+                      {formatMoney(Math.abs(p.value))}
+                      {/* Strike-through that draws in from the left. */}
+                      <span
+                        aria-hidden
+                        className={cn(
+                          'absolute inset-x-0 top-1/2 h-px origin-left bg-current transition-transform duration-300 ease-out',
+                          counted ? 'scale-x-0' : 'scale-x-100',
+                        )}
+                      />
+                    </span>
                   </span>
-                  {onToggle && (
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      aria-label={p.counted ? t.hideFromPassive(p.name) : t.showInPassive(p.name)}
-                      title={p.counted ? t.hideFromPassive(p.name) : t.showInPassive(p.name)}
-                      onClick={() => onToggle(p.id, !p.counted)}
-                      className="-my-1 text-faint-foreground hover:text-foreground"
+                </>
+              )
+              const look = cn(
+                'flex w-full items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left transition-colors duration-300',
+                !counted && 'text-faint-foreground',
+              )
+              return (
+                <li key={p.id}>
+                  {onToggle ? (
+                    <button
+                      type="button"
+                      aria-pressed={counted}
+                      aria-label={counted ? t.hideFromPassive(p.name) : t.showInPassive(p.name)}
+                      title={counted ? t.hideFromPassive(p.name) : t.showInPassive(p.name)}
+                      onClick={() => toggle(p.id, !counted)}
+                      className={cn(look, 'group/row cursor-pointer outline-none hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50')}
                     >
-                      {p.counted ? <Eye /> : <EyeOff />}
-                    </Button>
+                      {row}
+                    </button>
+                  ) : (
+                    <div className={look}>{row}</div>
                   )}
-                </span>
-              </li>
-            ))}
+                </li>
+              )
+            })}
           </ul>
         )}
       </div>

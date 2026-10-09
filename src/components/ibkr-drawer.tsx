@@ -14,7 +14,6 @@ import { connectIbkr, listIbkrPositions, type IbkrPosition } from '@/lib/entries
 import { formatAmount, formatMoney } from '@/lib/format'
 import { useLanguage, useT, type Language } from '@/lib/i18n'
 import { cn, masked, noAutofill } from '@/lib/utils'
-import { EmojiPicker } from './emoji-picker'
 
 type Props = {
   open: boolean
@@ -294,17 +293,14 @@ function IbkrFlow({ onCreated, onDone }: { onCreated?: (id: string) => void; onD
 
           {picked.size > 0 && (
             <div className="grid gap-2">
-              <div className="flex items-center gap-1">
-                <Input
-                  autoComplete="off"
-                  placeholder={t.name}
-                  aria-label={t.name}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="h-12 flex-1"
-                />
-                <EmojiPicker onPick={(emoji) => setName((n) => n + emoji)} />
-              </div>
+              <Input
+                autoComplete="off"
+                placeholder={t.name}
+                aria-label={t.name}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="h-12"
+              />
               {followsNew && (
                 <p className="text-xs text-faint-foreground">{t.ibkr.followsNew}</p>
               )}

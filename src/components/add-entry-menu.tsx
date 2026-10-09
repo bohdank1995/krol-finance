@@ -31,7 +31,7 @@ export function AddEntryMenu({ portfolios, portfolioId, direction, trigger }: Pr
     <>
       <DropdownMenu>
         <DropdownMenuTrigger render={trigger} />
-        <DropdownMenuContent align="end" className="w-40">
+        <DropdownMenuContent align="end" className="w-56">
           {ENTRY_TYPES.map((e) => (
             <DropdownMenuItem key={e.value} disabled={'soon' in e} onClick={() => setType(e.value)}>
               {t.entryTypes[e.value]}
@@ -53,17 +53,21 @@ export function AddEntryMenu({ portfolios, portfolioId, direction, trigger }: Pr
   )
 }
 
+/** Where the floating buttons sit: full width on phones (4 from the edges), bottom-right on desktop. */
+export const FAB_BAR = 'fixed inset-x-4 bottom-4 z-40 flex gap-3 sm:inset-x-auto sm:right-6 sm:bottom-6'
+/** A floating button: half the screen each when paired (full width alone) on phones. */
+export const FAB = 'shadow-lg max-sm:flex-1'
+
 /** Floating Deposit + Withdraw pair: half the screen width each on phones, hugging their labels on desktop. */
 export function EntryActions(props: Omit<Props, 'direction' | 'trigger'>) {
   const t = useT()
-  const fab = 'h-12 gap-2 rounded-full px-5 text-base shadow-lg max-sm:flex-1 [&_svg]:size-5'
   return (
-    <div className="fixed inset-x-4 bottom-4 z-40 flex gap-3 sm:inset-x-auto sm:right-6 sm:bottom-6">
+    <div className={FAB_BAR}>
       <AddEntryMenu
         {...props}
         direction="out"
         trigger={
-          <Button variant="secondary" className={`${fab} border-border`}>
+          <Button variant="secondary" className={FAB}>
             <Minus />
             {t.withdraw}
           </Button>
@@ -73,7 +77,7 @@ export function EntryActions(props: Omit<Props, 'direction' | 'trigger'>) {
         {...props}
         direction="in"
         trigger={
-          <Button className={fab}>
+          <Button className={FAB}>
             <Plus />
             {t.deposit}
           </Button>

@@ -145,10 +145,10 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
                         <DropdownMenuTrigger
                           render={
                             <Button
-                              variant="ghost"
-                              size="icon-sm"
+                              variant="secondary"
+                              size="icon"
                               aria-label={t.rowActions}
-                              className="text-faint-foreground group-hover:text-foreground aria-expanded:text-foreground"
+                              className="text-muted-foreground hover:text-foreground aria-expanded:text-foreground"
                             />
                           }
                         >
@@ -156,7 +156,7 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
                         </DropdownMenuTrigger>
                         {/* IBKR rows can't be edited, but a whole stock can be removed from the portfolio. */}
                         {isReadOnly(byId.get(e.portfolioId)) ? (
-                          <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuContent align="end" className="w-60">
                             <DropdownMenuItem
                               variant="destructive"
                               onClick={() => setRemoving({ portfolioId: e.portfolioId, asset: e.asset as StockSymbol })}
@@ -166,7 +166,7 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         ) : (
-                          <DropdownMenuContent align="end" className="w-36">
+                          <DropdownMenuContent align="end" className="w-48">
                             <DropdownMenuItem onClick={() => setEditing(e)}>
                               <Pencil className="text-muted-foreground" />
                               {t.edit}

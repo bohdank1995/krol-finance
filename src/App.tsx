@@ -71,6 +71,7 @@ function Signed({ email, image }: { email: string; image?: string }) {
     )
   }, [valued, daily, prices, currency, range, portfolios, payouts, selected])
   // Net worth: where the passive income comes from, per portfolio (zeros left out unless switched off, losses kept).
+  // Sorted by value only, so hiding one doesn't make the rows jump around.
   const parts = useMemo(() => {
     if (selected !== NET_WORTH) return undefined
     return netWorthPortfolios(portfolios)
@@ -81,7 +82,7 @@ function Signed({ email, image }: { email: string; image?: string }) {
         return { id: h.id, name: h.name, value: total, counted: h.inPassiveIncome }
       })
       .filter((p) => !p.counted || Math.abs(p.value) >= 0.005)
-      .sort((a, b) => Number(b.counted) - Number(a.counted) || b.value - a.value)
+      .sort((a, b) => b.value - a.value)
   }, [selected, portfolios, entries, payouts, daily, prices, currency, range])
   const rows = useMemo(() => shown.filter((e) => inRange(e.createdAt, range)), [shown, range])
 
@@ -96,9 +97,9 @@ function Signed({ email, image }: { email: string; image?: string }) {
       <Header email={email} image={image} />
       <main className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-10 sm:mt-6">
         <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
-          {(ready || slow) && <PeriodFilter period={period} onChange={setPeriod} />}
           {ready ? (
             <PortfolioCards
+              toolbar={<PeriodFilter period={period} onChange={setPeriod} />}
               portfolios={portfolios}
               entries={entries}
               prices={prices}
@@ -112,7 +113,8 @@ function Signed({ email, image }: { email: string; image?: string }) {
             />
           ) : (
             slow && (
-              <div className={placeholder}>
+              <div className={cn(placeholder, 'grid gap-3')}>
+                <PeriodFilter period={period} onChange={setPeriod} />
                 <PortfolioCardsSkeleton />
               </div>
             )
@@ -132,8 +134,9 @@ function Signed({ email, image }: { email: string; image?: string }) {
                 <div className="animate-enter min-w-0" style={{ animationDelay: '200ms' }}>
                   <BalanceChart points={points} currency={currency} />
                 </div>
-                <div aria-hidden className="animate-enter h-px bg-border lg:h-auto lg:w-px" style={{ animationDelay: '260ms' }} />
-                <div className="animate-enter" style={{ animationDelay: '300ms' }}>
+                {/* On phones passive income comes first, above the graph. */}
+                <div aria-hidden className="animate-enter h-px bg-border max-lg:-order-1 lg:h-auto lg:w-px" style={{ animationDelay: '260ms' }} />
+                <div className="animate-enter max-lg:-order-2" style={{ animationDelay: '300ms' }}>
                   <PassiveIncome total={passive.total} parts={parts} currency={currency} onToggle={fake ? undefined : setInPassiveIncome} />
                 </div>
               </div>
