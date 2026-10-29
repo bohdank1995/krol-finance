@@ -48,6 +48,11 @@ used before (or create a "Web application" one). Add the authorised redirect URI
 `npx convex deploy` pushes to the production deployment, which has its own data and environment
 variables (repeat step 2 there with `--prod`). Builds use `VITE_CONVEX_URL` of that deployment.
 
+Vercel does this on every push to `main` (`vercel.json`): its production build runs
+`npx convex deploy --cmd 'npm run build'`, so the functions and the app ship together. It needs a
+production deploy key (Convex dashboard → Settings → Deploy keys) saved in Vercel as
+`CONVEX_DEPLOY_KEY`, Production only. Preview builds only build the app.
+
 ## Syncs
 
 `crons.ts` runs the Monobank sync at :07 and the IBKR sync at :37 every hour. Runs and their logs
