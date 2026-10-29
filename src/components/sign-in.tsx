@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import dashboard from '@/assets/landing-dashboard.png'
 import logo from '@/assets/koshel-logo.svg'
 import { Button } from '@/components/ui/button'
 import { useSignInWithGoogle } from '@/lib/auth'
@@ -10,12 +11,6 @@ function GoogleIcon() {
     </svg>
   )
 }
-
-const POINTS = [
-  'Portfolios for every account: type entries by hand or sync them automatically.',
-  'Live prices, a net worth graph and the passive income your investments earn.',
-  'Private: bank tokens only read data and are stored encrypted. Delete your account any time.',
-]
 
 export function SignIn() {
   const [busy, setBusy] = useState(false)
@@ -36,50 +31,52 @@ export function SignIn() {
   }
 
   return (
-    <main className="mx-auto flex min-h-svh max-w-md flex-col justify-center gap-10 px-4 py-16">
-      {/* The home page for visitors (and Google's app review): what Koshel is, then sign-in. */}
-      <div className="flex flex-col gap-5">
+    <main className="flex min-h-svh flex-col items-center gap-14 overflow-x-clip px-4 pt-16 pb-10 sm:pt-24">
+      {/* The home page for visitors (and Google's app review): what Koshel is for, sign-in, a look at the app. */}
+      <div className="flex max-w-xl flex-col items-center gap-6 text-center">
         <span
           role="img"
           aria-label="Koshel"
           style={{ maskImage: `url(${logo})`, WebkitMaskImage: `url(${logo})` }}
-          className="aspect-958/370 h-14 self-start bg-foreground mask-contain mask-no-repeat"
+          className="aspect-958/370 h-14 bg-foreground mask-contain mask-no-repeat"
         />
-        <h1 className="text-2xl font-medium text-foreground">All your money in one place</h1>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Koshel is a personal finance tracker. Add your cash, crypto and stocks, connect Monobank cards and
-          Interactive Brokers, and see your net worth and how it changes over time — in USD, EUR or UAH.
+        <h1 className="text-3xl font-medium text-balance text-foreground sm:text-5xl">Make financial freedom real</h1>
+        <p className="max-w-md text-base text-balance text-muted-foreground">
+          A finance tracker designed to show your passive income — and encourage you to grow it.
         </p>
-        <ul className="flex flex-col gap-2 text-sm text-muted-foreground">
-          {POINTS.map((p) => (
-            <li key={p} className="flex gap-3">
-              <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-brand" />
-              {p}
-            </li>
-          ))}
-        </ul>
+        <div className="flex w-full max-w-xs flex-col gap-3">
+          <Button onClick={google} disabled={busy} className="h-12 gap-2">
+            <GoogleIcon />
+            Continue with Google
+          </Button>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <p className="text-xs text-faint-foreground">
+            By continuing you agree to the{' '}
+            <a href="/terms" className="underline underline-offset-4 hover:text-foreground">
+              Terms
+            </a>{' '}
+            and{' '}
+            <a href="/privacy" className="underline underline-offset-4 hover:text-foreground">
+              Privacy policy
+            </a>
+            .
+          </p>
+        </div>
       </div>
 
-      <div className="flex flex-col gap-3">
-        <Button onClick={google} disabled={busy} className="h-12 gap-2">
-          <GoogleIcon />
-          Continue with Google
-        </Button>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <p className="text-center text-xs text-faint-foreground">
-          By continuing you agree to the{' '}
-          <a href="/terms" className="underline underline-offset-4 hover:text-foreground">
-            Terms
-          </a>{' '}
-          and{' '}
-          <a href="/privacy" className="underline underline-offset-4 hover:text-foreground">
-            Privacy policy
-          </a>
-          .
-        </p>
+      {/* The dashboard (fake numbers, neutral names), cut off below the graph and fading into the page. */}
+      <div className="relative w-full max-w-5xl">
+        <div className="overflow-hidden rounded-t-xl border border-b-0 border-border shadow-[0_24px_80px_-12px_rgb(0_0_0/0.7)]">
+          <img
+            src={dashboard}
+            alt="The Koshel dashboard: portfolio cards, a net worth graph and passive income"
+            className="w-full"
+          />
+        </div>
+        <div aria-hidden className="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-b from-transparent to-background" />
       </div>
 
-      <footer className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-faint-foreground">
+      <footer className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-faint-foreground">
         <a href="/privacy" className="hover:text-foreground">
           Privacy
         </a>
