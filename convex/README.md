@@ -26,22 +26,15 @@ used before (or create a "Web application" one). Add the authorised redirect URI
     npx convex env set AUTH_GOOGLE_ID <client id>
     npx convex env set AUTH_GOOGLE_SECRET <client secret>
 
-## 3. Copy the data from Supabase (once)
+## 3. Token encryption key
 
-1. Open the app and sign in once (this creates your Convex user).
-2. Copy the Project URL and the **secret** key (`sb_secret_…`, or the legacy `service_role` key)
-   from Supabase → Project Settings → API Keys, and run:
+Monobank and IBKR tokens are stored encrypted (`secrets.ts`). Each deployment needs its own key:
 
-        npx convex env set SUPABASE_URL https://<ref>.supabase.co
-        npx convex env set SUPABASE_SERVICE_ROLE_KEY <secret key>
-        npx convex run migrate:fromSupabase '{"email":"<your Google email>"}'
+    npx convex env set TOKEN_KEY "$(openssl rand -base64 32)"
 
-   Portfolios, entries, percentages, card order and the Monobank / IBKR connections all come over.
-   Running it twice is safe: rows already copied are skipped.
-3. Remove the secret again:
-
-        npx convex env remove SUPABASE_SERVICE_ROLE_KEY
-        npx convex env remove SUPABASE_URL
+(and again with `--prod`). Never change or remove it once tokens are saved: they couldn't be read
+any more and every user would have to paste theirs again. Tokens saved before encryption are
+encrypted by `npx convex run secrets:encryptAll` (safe to repeat).
 
 ## Production
 

@@ -91,7 +91,13 @@ IBKR (`convex/ibkr.ts`): keeps the Flex Web Service token + Query ID, reads Open
 the Flex report (as of the last business day), and an hourly cron syncs the stalest user's IBKR
 cards (≈ daily). It also serves stock quotes and daily history (Yahoo Finance) to signed-in users.
 
-`convex/migrate.ts` is the one-time copy from the old Supabase project.
+Tokens are encrypted with the deployment's `TOKEN_KEY` (`convex/secrets.ts`: actions `seal` before saving,
+`open` after reading). The user menu's "Delete account" runs `account.deleteAccount`, which wipes every
+row of the user. Stock price lookups are rate-limited per user (`convex/limits.ts`). Public mutations
+cap text lengths and reject app ids that are already taken (`convex/data.ts`).
+
+Legal pages: `/privacy` and `/terms` (`src/components/legal.tsx`), public, rendered from `src/main.tsx`
+before sign-in; `vercel.json` rewrites every path to `index.html`.
 
 <!-- convex-ai-start -->
 

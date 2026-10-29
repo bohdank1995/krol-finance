@@ -98,7 +98,7 @@ export default defineSchema({
     .index('by_user', ['userId'])
     .index('by_portfolio_external', ['portfolioId', 'externalId']),
 
-  // Server-only secrets: no public function ever returns these.
+  // Server-only secrets: no public function ever returns these. Tokens are encrypted (secrets.ts).
   monobankTokens: defineTable({
     userId: v.id('users'),
     token: v.string(),
@@ -117,4 +117,13 @@ export default defineSchema({
     /** The stock list from the last check, so connecting needs no extra IBKR call. */
     positions: v.any(),
   }).index('by_user', ['userId']),
+
+  // Per-user call counts for the stock price lookups (see limits.ts).
+  rateLimits: defineTable({
+    userId: v.id('users'),
+    kind: v.string(),
+    /** When the current one-minute window started (ms). */
+    windowStart: v.number(),
+    count: v.number(),
+  }).index('by_user_kind', ['userId', 'kind']),
 })

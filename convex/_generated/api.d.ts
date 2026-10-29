@@ -8,13 +8,15 @@
  * @module
  */
 
+import type * as account from "../account.js";
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
 import type * as data from "../data.js";
 import type * as http from "../http.js";
 import type * as ibkr from "../ibkr.js";
-import type * as migrate from "../migrate.js";
+import type * as limits from "../limits.js";
 import type * as monobank from "../monobank.js";
+import type * as secrets from "../secrets.js";
 import type * as users from "../users.js";
 
 import type {
@@ -24,13 +26,15 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  account: typeof account;
   auth: typeof auth;
   crons: typeof crons;
   data: typeof data;
   http: typeof http;
   ibkr: typeof ibkr;
-  migrate: typeof migrate;
+  limits: typeof limits;
   monobank: typeof monobank;
+  secrets: typeof secrets;
   users: typeof users;
 }>;
 

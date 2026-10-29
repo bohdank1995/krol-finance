@@ -41,6 +41,9 @@ const en = {
   fakeNumbersHint: 'Random values, safe to share',
   fakeNumbersOn: 'Fake numbers on',
   logOut: 'Log out',
+  deleteAccount: 'Delete account',
+  confirmDeleteAccount: 'Delete your account and all its data, including connected Monobank and IBKR tokens? This can’t be undone.',
+  deleteAccountFailed: 'Could not delete the account. Try again.',
 
   period: 'Period',
   periods: {
@@ -194,6 +197,9 @@ const uk: Dictionary = {
   fakeNumbersHint: 'Безпечно для скриншотів',
   fakeNumbersOn: 'Вигадані числа увімкнено',
   logOut: 'Вийти',
+  deleteAccount: 'Видалити акаунт',
+  confirmDeleteAccount: 'Видалити акаунт і всі його дані, разом із підключеними токенами Monobank та IBKR? Це не можна скасувати.',
+  deleteAccountFailed: 'Не вдалося видалити акаунт. Спробуйте ще раз.',
 
   period: 'Період',
   periods: {

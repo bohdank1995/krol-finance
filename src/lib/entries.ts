@@ -243,6 +243,11 @@ export async function call<A extends FunctionReference<'action'>>(
   }
 }
 
+/** Deletes the signed-in user and everything they own (`account.deleteAccount`). */
+export function deleteAccount() {
+  return call(api.account.deleteAccount, {}, dict().deleteAccountFailed)
+}
+
 /* Monobank: the token goes to the `monobank` server functions, which keep it server-side, talk
    to Monobank and write the portfolio + entries (they then arrive through the live data). */
 

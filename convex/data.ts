@@ -32,6 +32,21 @@ async function ownEntry(ctx: QueryCtx, userId: Id<'users'>, id: string) {
   return e
 }
 
+/** Throws if a text is longer than allowed (names, notes, amounts…), so nobody can store huge rows. */
+function short(value: string | undefined, max: number, what: string) {
+  if (value !== undefined && value.length > max) throw new ConvexError(`The ${what} is too long.`)
+}
+
+/** New rows bring their own app id: it must not be taken, or `.unique()` lookups of it would break. */
+async function freshId(ctx: QueryCtx, table: 'portfolios' | 'entries', id: string) {
+  short(id, 64, 'id')
+  const taken = await ctx.db
+    .query(table)
+    .withIndex('by_app_id', (q) => q.eq('id', id))
+    .first()
+  if (taken) throw new ConvexError('This id is already used.')
+}
+
 /** Entries can only be typed into manual portfolios. */
 async function manualPortfolio(ctx: QueryCtx, userId: Id<'users'>, id: string) {
   const p = await ownPortfolio(ctx, userId, id)
@@ -92,6 +107,9 @@ export const addPortfolio = mutation({
   args: { id: v.string(), name: v.string(), createdAt: v.string() },
   handler: async (ctx, { id, name, createdAt }) => {
     const userId = await signedIn(ctx)
+    await freshId(ctx, 'portfolios', id)
+    short(name, 100, 'name')
+    short(createdAt, 40, 'date')
     await ctx.db.insert('portfolios', {
       id,
       userId,
@@ -118,6 +136,7 @@ export const updatePortfolio = mutation({
   handler: async (ctx, { id, ...patch }) => {
     const userId = await signedIn(ctx)
     const p = await ownPortfolio(ctx, userId, id)
+    short(patch.name, 100, 'name')
     const { cardPercent, netWorthPercent } = patch
     if (cardPercent !== undefined && !(cardPercent > 0 && cardPercent <= 100))
       throw new ConvexError('Card percent must be over 0 and at most 100.')
@@ -132,6 +151,7 @@ export const reorderPortfolios = mutation({
   args: { ids: v.array(v.string()) },
   handler: async (ctx, { ids }) => {
     const userId = await signedIn(ctx)
+    if (ids.length > 500) throw new ConvexError('Too many portfolios.')
     for (const [position, id] of ids.entries()) {
       const p = await ownPortfolio(ctx, userId, id)
       if (p.position !== position) await ctx.db.patch(p._id, { position })
@@ -163,6 +183,14 @@ export async function deleteEntriesOf(ctx: MutationCtx, portfolioId: string) {
   for (const r of payouts) await ctx.db.delete(r._id)
 }
 
+/** Entry texts: asset like "BTC" or "stock:VWCE.DE", amount a decimal string, date ISO. */
+function checkEntry(e: { asset: string; amount: string; createdAt: string; note?: string }) {
+  short(e.asset, 40, 'asset')
+  short(e.amount, 40, 'amount')
+  short(e.createdAt, 40, 'date')
+  short(e.note, 500, 'note')
+}
+
 const entryFields = {
   portfolioId: v.string(),
   asset: v.string(),
@@ -175,6 +203,8 @@ export const addEntry = mutation({
   args: { id: v.string(), ...entryFields },
   handler: async (ctx, entry) => {
     const userId = await signedIn(ctx)
+    await freshId(ctx, 'entries', entry.id)
+    checkEntry(entry)
     await manualPortfolio(ctx, userId, entry.portfolioId)
     await ctx.db.insert('entries', { ...entry, userId })
   },
@@ -185,6 +215,7 @@ export const updateEntry = mutation({
   handler: async (ctx, { id, ...patch }) => {
     const userId = await signedIn(ctx)
     const e = await ownEntry(ctx, userId, id)
+    checkEntry(patch)
     await manualPortfolio(ctx, userId, e.portfolioId)
     await manualPortfolio(ctx, userId, patch.portfolioId)
     await ctx.db.replace(e._id, { ...patch, id, userId })

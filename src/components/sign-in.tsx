@@ -35,6 +35,17 @@ export function SignIn() {
         Continue with Google
       </Button>
       {error && <p className="text-sm text-destructive">{error}</p>}
+      <p className="text-center text-xs text-faint-foreground">
+        By continuing you agree to the{' '}
+        <a href="/terms" className="underline underline-offset-4 hover:text-foreground">
+          Terms
+        </a>{' '}
+        and{' '}
+        <a href="/privacy" className="underline underline-offset-4 hover:text-foreground">
+          Privacy policy
+        </a>
+        .
+      </p>
     </div>
   )
 }

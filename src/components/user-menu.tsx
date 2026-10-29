@@ -1,11 +1,19 @@
 import { useState } from 'react'
-import { EyeOff, LogOut } from 'lucide-react'
+import { EyeOff, LogOut, Trash2 } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { currencySign } from '@/lib/assets'
 import { useSignOut } from '@/lib/auth'
+import { deleteAccount } from '@/lib/entries'
 import { LANGUAGES, setLanguage, useLanguage, useT, type Language } from '@/lib/i18n'
 import { CURRENCIES, setCurrency, setFake, usePreferences, type Currency } from '@/lib/preferences'
 import { cn } from '@/lib/utils'
@@ -78,46 +86,87 @@ export function UserMenu({ email, image }: { email: string; image?: string }) {
   const language = useLanguage()
   const signOut = useSignOut()
   const { currency, fake } = usePreferences()
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const remove = async () => {
+    setBusy(true)
+    setError('')
+    try {
+      await deleteAccount()
+      // The server has already ended the session; this clears it in the browser too.
+      await signOut().catch(() => {})
+    } catch (e) {
+      setBusy(false)
+      setError(e instanceof Error ? e.message : t.deleteAccountFailed)
+    }
+  }
+
   return (
-    <Popover>
-      <PopoverTrigger
-        render={<Button variant="outline" size="icon-lg" aria-label={t.account} className="relative" />}
-      >
-        {/* Fills the button inside its border, which matches the "+" button. */}
-        <Avatar email={email} image={image} className="size-full text-base" />
-        {fake && (
-          <span
-            title={t.fakeNumbersOn}
-            className="absolute right-0 bottom-0 flex size-4 items-center justify-center rounded-full bg-background text-muted-foreground"
-          >
-            <EyeOff className="size-2.5!" />
-          </span>
-        )}
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-72 gap-4 p-4">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <Avatar email={email} image={image} className="size-14 text-xl" />
-          <span className="max-w-full truncate text-sm">{email}</span>
-        </div>
-        <Choice<Currency>
-          label={t.currency}
-          value={currency}
-          options={CURRENCIES.map((c) => ({ value: c, label: currencySign(c) }))}
-          onChange={setCurrency}
-        />
-        <Choice<Language> label={t.language} value={language} options={LANGUAGES} onChange={setLanguage} />
-        <label className="flex cursor-pointer items-center justify-between gap-3 text-sm">
-          <span className="flex flex-col">
-            {t.fakeNumbers}
-            <span className="text-xs text-muted-foreground">{t.fakeNumbersHint}</span>
-          </span>
-          <Switch checked={fake} onCheckedChange={setFake} />
-        </label>
-        <Button variant="secondary" onClick={() => signOut()}>
-          <LogOut data-icon="inline-start" />
-          {t.logOut}
-        </Button>
-      </PopoverContent>
-    </Popover>
+    <>
+      <Popover>
+        <PopoverTrigger
+          render={<Button variant="outline" size="icon-lg" aria-label={t.account} className="relative" />}
+        >
+          {/* Fills the button inside its border, which matches the "+" button. */}
+          <Avatar email={email} image={image} className="size-full text-base" />
+          {fake && (
+            <span
+              title={t.fakeNumbersOn}
+              className="absolute right-0 bottom-0 flex size-4 items-center justify-center rounded-full bg-background text-muted-foreground"
+            >
+              <EyeOff className="size-2.5!" />
+            </span>
+          )}
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-72 gap-4 p-4">
+          <div className="flex flex-col items-center gap-2 text-center">
+            <Avatar email={email} image={image} className="size-14 text-xl" />
+            <span className="max-w-full truncate text-sm">{email}</span>
+          </div>
+          <Choice<Currency>
+            label={t.currency}
+            value={currency}
+            options={CURRENCIES.map((c) => ({ value: c, label: currencySign(c) }))}
+            onChange={setCurrency}
+          />
+          <Choice<Language> label={t.language} value={language} options={LANGUAGES} onChange={setLanguage} />
+          <label className="flex cursor-pointer items-center justify-between gap-3 text-sm">
+            <span className="flex flex-col">
+              {t.fakeNumbers}
+              <span className="text-xs text-muted-foreground">{t.fakeNumbersHint}</span>
+            </span>
+            <Switch checked={fake} onCheckedChange={setFake} />
+          </label>
+          <Button variant="secondary" onClick={() => signOut()}>
+            <LogOut data-icon="inline-start" />
+            {t.logOut}
+          </Button>
+          {/* Fake numbers make the app read-only, so this is hidden then too. */}
+          {!fake && (
+            <Button variant="ghost" size="sm" className="text-faint-foreground" onClick={() => setConfirming(true)}>
+              <Trash2 data-icon="inline-start" />
+              {t.deleteAccount}
+            </Button>
+          )}
+        </PopoverContent>
+      </Popover>
+
+      <AlertDialog open={confirming} onOpenChange={(open) => !busy && setConfirming(open)}>
+        <AlertDialogContent size="sm" className="gap-6 p-6">
+          <AlertDialogTitle className="text-sm font-normal text-muted-foreground">{t.confirmDeleteAccount}</AlertDialogTitle>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <AlertDialogFooter className="-mx-6 -mb-6 px-6 py-4">
+            <AlertDialogCancel variant="secondary" disabled={busy}>
+              {t.cancel}
+            </AlertDialogCancel>
+            <Button variant="destructive" disabled={busy} onClick={remove}>
+              {t.deleteAccount}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

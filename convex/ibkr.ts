@@ -4,6 +4,8 @@ import { internal } from './_generated/api'
 import type { Id } from './_generated/dataModel'
 import { action, internalAction, internalMutation, internalQuery, mutation, type ActionCtx, type QueryCtx } from './_generated/server'
 import { signedIn } from './data'
+import { hit } from './limits'
+import { open, seal } from './secrets'
 
 /* Interactive Brokers stocks + stock prices. The app calls `positions` (run the Flex Query, keep
    the token, list the stocks), `connect` (create a portfolio with one entry per picked stock),
@@ -357,7 +359,7 @@ export const positions = action({
       internal.ibkr.stored,
       { userId },
     )
-    const token = given ? (args.token ?? '').trim() : stored?.token
+    const token = given ? (args.token ?? '').trim() : stored && (await open(stored.token))
     const queryId = given ? (args.queryId ?? '').trim() : stored?.queryId
     if (!token || !queryId) {
       if (given) throw fail('Paste both the token and the Query ID.')
@@ -375,7 +377,12 @@ export const positions = action({
       if (!given && stored && !badCredentials(e)) priced = stored.positions
       else throw e
     }
-    const taken: string[] | 'all' = await ctx.runMutation(internal.ibkr.saveToken, { userId, token, queryId, positions: priced })
+    const taken: string[] | 'all' = await ctx.runMutation(internal.ibkr.saveToken, {
+      userId,
+      token: await seal(token),
+      queryId,
+      positions: priced,
+    })
     return priced.map((p) => ({
       asset: p.asset,
       symbol: p.symbol,
@@ -393,6 +400,7 @@ export const connect = action({
     const userId = await userOf(ctx)
     const name = args.name.trim()
     if (!name) throw fail('Give the portfolio a name.')
+    if (name.length > 100) throw fail('The name is too long.')
     const id = crypto.randomUUID()
     await ctx.runMutation(internal.ibkr.create, {
       userId,
@@ -409,7 +417,7 @@ export const connect = action({
 export const quotes = action({
   args: { assets: v.array(v.string()) },
   handler: async (ctx, args) => {
-    await userOf(ctx)
+    await hit(ctx, await userOf(ctx), 'quotes')
     const prices: Record<string, number> = {}
     await Promise.all(
       stockAssets(args.assets).map(async (asset) => {
@@ -424,7 +432,7 @@ export const quotes = action({
 export const history = action({
   args: { asset: v.string(), since: v.string() },
   handler: async (ctx, { asset, since }) => {
-    await userOf(ctx)
+    await hit(ctx, await userOf(ctx), 'history')
     if (!asset.startsWith('stock:') || !/^\d{4}-\d{2}-\d{2}$/.test(since)) throw fail('Unknown stock or day.')
     // [day, price] pairs: a Convex object can't hold more than 1024 days (about four years).
     return Object.entries(await dailyUsd(tickerOf(asset), since))
@@ -497,6 +505,7 @@ async function olderReports(token: string, queryId: string, known: Map<string, s
 async function syncUser(ctx: ActionCtx, userId: Id<'users'>): Promise<object> {
     const to = now()
     const state: SyncState = await ctx.runQuery(internal.ibkr.state, { userId })
+    if (state.token) state.token.token = await open(state.token.token)
 
     let held: Map<string, number>
     let payments: Payment[]

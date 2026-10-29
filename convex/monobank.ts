@@ -3,6 +3,7 @@ import { ConvexError, v } from 'convex/values'
 import { internal } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
 import { action, internalAction, internalMutation, internalQuery, type ActionCtx } from './_generated/server'
+import { open, seal } from './secrets'
 
 /* Monobank card sync. The app calls `cards` (check the token, keep it, list the cards) and
    `connect` (create a portfolio for a card with its last 31 days); the hourly cron calls `sync`
@@ -96,7 +97,7 @@ export const cards = action({
     const given = args.token?.trim()
     const stored: Doc<'monobankTokens'> | null = await ctx.runQuery(internal.monobank.stored, { userId })
     if (args.token !== undefined && !given) throw fail('Paste your Monobank token.')
-    const token = given || stored?.token
+    const token = given || (stored && (await open(stored.token)))
     if (!token) return null
     let accounts: Account[]
     try {
@@ -104,12 +105,16 @@ export const cards = action({
     } catch (e) {
       // Monobank allows one request a minute: show the last known list instead of an error.
       if (!given && stored && e instanceof ConvexError && String(e.data).includes('one request')) {
-        const linked = new Set<string>(await ctx.runMutation(internal.monobank.saveToken, { userId, token, accounts: stored.accounts }))
+        const linked = new Set<string>(
+          await ctx.runMutation(internal.monobank.saveToken, { userId, token: await seal(token), accounts: stored.accounts }),
+        )
         return cardsOf(stored.accounts as Account[], linked)
       }
       throw e
     }
-    const connected = new Set<string>(await ctx.runMutation(internal.monobank.saveToken, { userId, token, accounts }))
+    const connected = new Set<string>(
+      await ctx.runMutation(internal.monobank.saveToken, { userId, token: await seal(token), accounts }),
+    )
     return cardsOf(accounts, connected)
   },
 })
@@ -120,15 +125,17 @@ export const connect = action({
     const userId = await userOf(ctx)
     const name = args.name.trim()
     if (!name) throw fail('Give the card a name.')
+    if (name.length > 100) throw fail('The name is too long.')
     const stored: Doc<'monobankTokens'> | null = await ctx.runQuery(internal.monobank.stored, { userId })
     if (!stored) throw fail('Add your Monobank token first.')
+    const token = await open(stored.token)
     const account = (stored.accounts as Account[]).find((a) => a.id === args.accountId)
     const asset = account && ASSETS[account.currencyCode]
     if (!account || !asset) throw fail('This card can’t be connected.')
 
     const to = now()
     const from = to - 31 * DAY
-    const items = await statement(stored.token, account.id, from, to)
+    const items = await statement(token, account.id, from, to)
 
     // Start from the balance before the oldest transaction, so the entries add up to today's balance.
     // Monobank returns at most 500 transactions; if cut off, history starts at the oldest one returned.
@@ -155,7 +162,7 @@ export const connect = action({
       syncedAt: to * 1000,
       entries,
     })
-    await ensureWebhook(ctx, userId, stored.token)
+    await ensureWebhook(ctx, userId, token)
     return id
   },
 })
@@ -254,12 +261,13 @@ export const sync = internalAction({
       userId: portfolio.userId,
     })
     if (!stored) throw new Error(`No Monobank token for portfolio ${portfolio.id}`)
+    const token = await open(stored.token)
 
     // Balance first, then only transactions up to that moment, so the two always agree.
-    const { accounts } = await mono<{ accounts: Account[] }>(stored.token, '/personal/client-info')
+    const { accounts } = await mono<{ accounts: Account[] }>(token, '/personal/client-info')
     const to = now()
-    await ctx.runMutation(internal.monobank.saveToken, { userId: portfolio.userId, token: stored.token, accounts })
-    await ensureWebhook(ctx, portfolio.userId, stored.token)
+    await ctx.runMutation(internal.monobank.saveToken, { userId: portfolio.userId, token: await seal(token), accounts })
+    await ensureWebhook(ctx, portfolio.userId, token)
     const account = accounts.find((a) => a.id === portfolio.externalAccountId)
     const asset = account && ASSETS[account.currencyCode]
     if (!account || !asset) {
@@ -270,7 +278,7 @@ export const sync = internalAction({
 
     const last = portfolio.syncedAt ? Math.floor(portfolio.syncedAt / 1000) : 0
     const from = Math.max(last - DAY, to - 31 * DAY)
-    const items = await statement(stored.token, account.id, from, to)
+    const items = await statement(token, account.id, from, to)
     const adjusted: boolean = await ctx.runMutation(internal.monobank.applySync, {
       portfolioId: portfolio.id,
       syncedAt: to * 1000,
