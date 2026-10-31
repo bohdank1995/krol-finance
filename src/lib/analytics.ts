@@ -3,10 +3,10 @@ import type { CaptureResult, PostHog } from 'posthog-js'
 /* Anonymous usage statistics through PostHog: page views and the sign-in event below, and nothing else.
    No cookies, no user profiles and no session recording. Never send names, emails, amounts, assets or
    portfolio names, and update the privacy policy (`legal.tsx`) if what's collected changes.
-   Off without VITE_POSTHOG_KEY, so local work doesn't count as visits. */
+   Off without POSTHOG_KEY, so local work doesn't count as visits. */
 
-const KEY = import.meta.env.VITE_POSTHOG_KEY
-const HOST = import.meta.env.VITE_POSTHOG_HOST
+const KEY = import.meta.env.POSTHOG_KEY
+const HOST = import.meta.env.POSTHOG_HOST
 
 /** Addresses keep only their path: Google's sign-in code arrives in the query (`/?code=…`). */
 function bare(value: unknown): unknown {

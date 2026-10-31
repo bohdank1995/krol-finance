@@ -100,7 +100,7 @@ cap text lengths and reject app ids that are already taken (`convex/data.ts`).
 
 Analytics: PostHog (`src/lib/analytics.ts`), anonymous page views plus a sign-in event. No cookies,
 profiles, autocapture or session recording, and addresses lose their query (Google's sign-in code). Never send
-names, emails, amounts, assets or portfolio names. Set `VITE_POSTHOG_KEY` / `VITE_POSTHOG_HOST` on Vercel to turn it on.
+names, emails, amounts, assets or portfolio names. Set `POSTHOG_KEY` / `POSTHOG_HOST` on Vercel to turn it on.
 
 Public pages: home, `/faq`, `/privacy`, `/terms`, and `/blog` once an article is published. They're listed in
 `src/lib/site.ts` (title, description, breadcrumbs, structured data) and shown by `src/components/site.tsx`.
