@@ -214,7 +214,7 @@ export function Legal({ path }: { path: string }) {
       <header className="flex flex-col gap-2">
         <Breadcrumbs path={path} />
         <h1 className="text-2xl font-medium text-foreground">{title}</h1>
-        <p className="text-faint-foreground">Last updated {UPDATED}</p>
+        <p className="text-muted-foreground">Last updated {UPDATED}</p>
       </header>
       {privacy ? <Privacy /> : <Terms />}
       <SiteFooter />
