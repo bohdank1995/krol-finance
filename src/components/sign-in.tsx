@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Landing } from '@/components/landing'
+import { track } from '@/lib/analytics'
 import { useSignInWithGoogle } from '@/lib/auth'
 
 export function SignIn() {
@@ -10,6 +11,7 @@ export function SignIn() {
   const google = async () => {
     setBusy(true)
     setError('')
+    track('sign_in_started')
     // On success the browser leaves for Google, so only errors land here.
     try {
       await signInWithGoogle()
