@@ -6,6 +6,8 @@ statements.
 React 19 + TypeScript + Tailwind 4 on Vite. `npm run dev` (port 5173),
 `npm run build`, `npm run lint` (oxlint).
 
+Branching, commits, shipping and the SEO rules for public pages follow `DEVELOPMENT.md`.
+
 ## UI
 
 shadcn/ui (style `base-nova`, Base UI primitives, neutral base color, lucide icons),
@@ -96,8 +98,11 @@ Tokens are encrypted with the deployment's `TOKEN_KEY` (`convex/secrets.ts`: act
 row of the user. Stock price lookups are rate-limited per user (`convex/limits.ts`). Public mutations
 cap text lengths and reject app ids that are already taken (`convex/data.ts`).
 
-Legal pages: `/privacy` and `/terms` (`src/components/legal.tsx`), public, rendered from `src/main.tsx`
-before sign-in; `vercel.json` rewrites every path to `index.html`.
+Public pages: home, `/faq`, `/privacy`, `/terms`, and `/blog` once an article is published. They're listed in
+`src/lib/site.ts` (title, description, breadcrumbs, structured data) and shown by `src/components/site.tsx`.
+`npm run build` writes each as real HTML, plus `sitemap.xml` and `404.html` (`scripts/prerender.mjs`), so a
+new public page only needs adding to that list. Articles live in `src/content/articles.tsx`, FAQ in `src/content/faq.ts`.
+Public pages can't use Convex directly: they render at build time, without a backend.
 
 <!-- convex-ai-start -->
 

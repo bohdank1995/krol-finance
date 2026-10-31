@@ -1,4 +1,5 @@
-import { useEffect, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
+import { Breadcrumbs, SiteFooter } from '@/components/site'
 
 /* Privacy policy and terms, at /privacy and /terms. Public (no sign-in) and English only, like the
    sign-in page: Google's consent screen links here. Update UPDATED whenever the text changes. */
@@ -208,27 +209,15 @@ function Terms() {
 export function Legal({ path }: { path: string }) {
   const privacy = path === '/privacy'
   const title = privacy ? 'Privacy policy' : 'Terms of service'
-  useEffect(() => {
-    document.title = `${title} · Koshel`
-  }, [title])
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-10 px-4 py-16 text-sm leading-relaxed text-muted-foreground">
       <header className="flex flex-col gap-2">
-        <a href="/" className="text-faint-foreground hover:text-foreground">
-          ← Koshel
-        </a>
+        <Breadcrumbs path={path} />
         <h1 className="text-2xl font-medium text-foreground">{title}</h1>
         <p className="text-faint-foreground">Last updated {UPDATED}</p>
       </header>
       {privacy ? <Privacy /> : <Terms />}
-      <footer className="flex gap-4 border-t border-border pt-6 text-faint-foreground">
-        <a href="/privacy" className="hover:text-foreground">
-          Privacy
-        </a>
-        <a href="/terms" className="hover:text-foreground">
-          Terms
-        </a>
-      </footer>
+      <SiteFooter />
     </main>
   )
 }

@@ -9,3 +9,13 @@ export function useSignInWithGoogle() {
 }
 
 export const useSignOut = () => useAuthActions().signOut
+
+/** True with a saved session, or when coming back from Google with a sign-in code. */
+export function mayBeSignedIn() {
+  if (new URLSearchParams(window.location.search).has('code')) return true
+  try {
+    return Object.keys(localStorage).some((key) => key.startsWith('__convexAuthJWT'))
+  } catch {
+    return false
+  }
+}

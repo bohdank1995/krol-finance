@@ -4,18 +4,18 @@ import { ConvexAuthProvider } from '@convex-dev/auth/react'
 import { convex } from '@/lib/convex'
 import './index.css'
 import App from './App.tsx'
-import { Legal } from '@/components/legal'
+import { PublicPage } from '@/components/site'
 
-const path = window.location.pathname.replace(/\/$/, '')
+const path = window.location.pathname.replace(/\/$/, '') || '/'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {path === '/privacy' || path === '/terms' ? (
-      <Legal path={path} />
-    ) : (
+    {path === '/' ? (
       <ConvexAuthProvider client={convex}>
         <App />
       </ConvexAuthProvider>
+    ) : (
+      <PublicPage path={path} />
     )}
   </StrictMode>,
 )

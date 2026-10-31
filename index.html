@@ -11,9 +11,17 @@
       name="description"
       content="Koshel is a personal finance tracker: add cash, crypto and stocks, connect Monobank cards and Interactive Brokers, and see your net worth over time."
     />
+    <!--seo-->
   </head>
   <body>
     <div id="root"></div>
+    <!-- The ready-made home page is for visitors: returning users go straight to the app (see mayBeSignedIn). -->
+    <script>
+      try {
+        if (location.search.includes('code=') || Object.keys(localStorage).some((k) => k.startsWith('__convexAuthJWT')))
+          document.getElementById('root').replaceChildren()
+      } catch {}
+    </script>
     <noscript>
       Koshel is a personal finance tracker: add cash, crypto and stocks, connect Monobank cards and Interactive Brokers,
       and see your net worth over time. Privacy policy: https://www.koshel.me/privacy · Terms: https://www.koshel.me/terms

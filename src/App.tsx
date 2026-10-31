@@ -6,6 +6,7 @@ import { NET_WORTH, PortfolioCards, PortfolioCardsSkeleton } from '@/components/
 import { SignIn } from '@/components/sign-in'
 import { useConvexAuth, useQuery } from 'convex/react'
 import { api } from '../convex/_generated/api'
+import { mayBeSignedIn } from '@/lib/auth'
 import { netWorthEntries, netWorthPortfolios, scaleEntries, scalePayouts, setInPassiveIncome, useEntries, useLoaded, usePayouts, usePortfolios } from '@/lib/entries'
 import { fakeEntries, fakePayouts } from '@/lib/fake'
 import { useDailyPrices } from '@/lib/history'
@@ -19,7 +20,8 @@ import { cn } from '@/lib/utils'
 function App() {
   const { isLoading, isAuthenticated } = useConvexAuth()
   const me = useQuery(api.users.me, isAuthenticated ? {} : 'skip')
-  if (isLoading) return null
+  // Visitors keep seeing the home page while this loads; returning users see nothing yet, as before.
+  if (isLoading) return mayBeSignedIn() ? null : <SignIn />
   if (!isAuthenticated) return <SignIn />
   return <Signed email={me?.email ?? ''} image={me?.image} />
 }
