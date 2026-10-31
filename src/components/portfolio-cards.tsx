@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS as DndCSS } from '@dnd-kit/utilities'
@@ -81,7 +81,7 @@ type Props = Valuation & {
   toolbar?: ReactNode
 }
 
-export function PortfolioCards({ portfolios, entries, status, selected, onSelect, readOnly, toolbar, ...valuation }: Props) {
+export const PortfolioCards = memo(function PortfolioCards({ portfolios, entries, status, selected, onSelect, readOnly, toolbar, ...valuation }: Props) {
   const t = useT()
   const [creating, setCreating] = useState(false)
   const [syncing, setSyncing] = useState<string[]>([])
@@ -97,6 +97,11 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
   })
   const counted = useMemo(
     () => scaleEntries(portfolios, netWorthEntries(portfolios, entries), 'netWorth'),
+    [portfolios, entries],
+  )
+  // Kept between renders: each card's graph maths only reruns when its entries really change.
+  const scaled = useMemo(
+    () => new Map(portfolios.map((h) => [h.id, scaleEntries([h], entries.filter((e) => e.portfolioId === h.id), 'card')])),
     [portfolios, entries],
   )
   /** "Sync now": shows progress and the result in the card's hint line, then goes back to "Synced …". */
@@ -236,7 +241,7 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
                   syncing={syncing.includes(h.id)}
                   message={syncStatus[h.id]}
                   hint={syncStatus[h.id] ?? (h.syncedAt && t.synced(formatAgo(h.syncedAt)))}
-                  entries={scaleEntries([h], ownEntries(h.id), 'card')}
+                  entries={scaled.get(h.id) ?? []}
                   {...valuation}
                   active={selected === h.id}
                   onSelect={() => onSelect(h.id)}
@@ -370,7 +375,7 @@ export function PortfolioCards({ portfolios, entries, status, selected, onSelect
       </AlertDialog>
     </div>
   )
-}
+})
 
 /** Placeholder row while portfolios load: Net worth plus two cards, same size as the real ones. */
 export function PortfolioCardsSkeleton() {

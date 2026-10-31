@@ -5,7 +5,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { currencySign } from '@/lib/assets'
@@ -23,7 +23,7 @@ export function BalanceChartSkeleton() {
   return <Skeleton aria-busy="true" aria-label={t.loadingGraph} className="h-64 w-full rounded-xl" />
 }
 
-export function BalanceChart({ points, currency }: { points: { date: string; value: number }[]; currency: Currency }) {
+export const BalanceChart = memo(function BalanceChart({ points, currency }: { points: { date: string; value: number }[]; currency: Currency }) {
   // Also re-renders the month names when the language changes.
   const t = useT()
   const config = { value: { label: t.value, color: 'var(--chart-1)' } } satisfies ChartConfig
@@ -78,14 +78,14 @@ export function BalanceChart({ points, currency }: { points: { date: string; val
       </LineChart>
     </ChartContainer>
   )
-}
+})
 
 export type PassivePart = { id: string; name: string; value: number; counted: boolean }
 
 /** The big passive-income number; on Net worth also where it comes from. Each row toggles that portfolio
     in or out of the total: the row fades and gets struck through right away, the total follows once the
     animation is done (recomputing it is the slow part). */
-export function PassiveIncome({ total, parts, currency, onToggle }: { total: number; parts?: PassivePart[]; currency: Currency; onToggle?: (id: string, counted: boolean) => void }) {
+export const PassiveIncome = memo(function PassiveIncome({ total, parts, currency, onToggle }: { total: number; parts?: PassivePart[]; currency: Currency; onToggle?: (id: string, counted: boolean) => void }) {
   const t = useT()
   // Clicked rows, shown in their new state until the change is saved.
   const [pending, setPending] = useState<Record<string, boolean>>({})
@@ -168,4 +168,4 @@ export function PassiveIncome({ total, parts, currency, onToggle }: { total: num
       </div>
     </div>
   )
-}
+})

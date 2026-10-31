@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { BalanceChart, BalanceChartSkeleton, PassiveIncome } from '@/components/balance-chart'
 import { EntriesTable, EntriesTableSkeleton } from '@/components/entries-table'
 import { Header, PeriodFilter } from '@/components/header'
@@ -8,7 +8,7 @@ import { fakeEntries, fakePayouts } from '@/lib/fake'
 import { useDailyPrices } from '@/lib/history'
 import { inRange, rangeOf, type Period } from '@/lib/period'
 import { balance, firstDay, growth, passiveIn, series, withPayouts } from '@/lib/portfolio'
-import { usePreferences } from '@/lib/preferences'
+import { CURRENCIES, usePreferences } from '@/lib/preferences'
 import { useLivePrices } from '@/lib/prices'
 import { useReveal } from '@/lib/reveal'
 import { cn } from '@/lib/utils'
@@ -19,7 +19,9 @@ export default function Dashboard({ email, image }: { email: string; image?: str
   const portfolios = usePortfolios()
   const real = useEntries()
   const loaded = useLoaded()
-  const { currency, fake, fakeSeed } = usePreferences()
+  const { currency: chosen, fake, fakeSeed } = usePreferences()
+  // The menu's switch answers at once; the page recalculates right after, without holding it up.
+  const currency = useDeferredValue(chosen)
   // Fake mode swaps the amounts before anything else sees them (and makes the app read-only).
   const realPayouts = usePayouts()
   const payouts = useMemo(() => (fake ? fakePayouts(realPayouts, fakeSeed) : realPayouts), [realPayouts, fake, fakeSeed])
@@ -39,10 +41,12 @@ export default function Dashboard({ email, image }: { email: string; image?: str
     [portfolios, shown, selected],
   )
 
-  // The display currency is priced too, to convert USD values into it.
+  // The display currency is priced too, to convert USD values into it. Every currency is kept
+  // priced, so switching needs no download.
   const assets = useMemo(() => [...entries.map((e) => e.asset), currency], [entries, currency])
-  const { prices, status } = useLivePrices(assets)
-  const { prices: daily, ready: historyReady } = useDailyPrices(assets, firstDay(entries))
+  const live = useMemo(() => [...entries.map((e) => e.asset), ...CURRENCIES], [entries])
+  const { prices, status } = useLivePrices(live)
+  const { prices: daily, ready: historyReady } = useDailyPrices(assets, firstDay(entries), CURRENCIES)
   const points = useMemo(
     () => series(valued, daily, prices, currency).filter((p) => (!range.from || p.date >= range.from) && p.date <= range.to),
     [valued, daily, prices, currency, range],
@@ -83,14 +87,25 @@ export default function Dashboard({ email, image }: { email: string; image?: str
   /** Placeholders (slow loads only) just fade in; the real content slides in when ready. */
   const placeholder = 'animate-in fade-in duration-500'
 
+  // A soft settle when the numbers change currency, instead of a hard jump.
+  const mainRef = useRef<HTMLElement>(null)
+  const lastCurrency = useRef(currency)
+  useEffect(() => {
+    if (lastCurrency.current === currency) return
+    lastCurrency.current = currency
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    mainRef.current?.animate({ opacity: [0.5, 1] }, { duration: 220, easing: 'ease-out' })
+  }, [currency])
+  const toolbar = useMemo(() => <PeriodFilter period={period} onChange={setPeriod} />, [period])
+
   return (
     <div className="min-h-svh px-6 pb-28 sm:pb-14">
       <Header email={email} image={image} />
-      <main className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-10 sm:mt-6">
+      <main ref={mainRef} className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-10 sm:mt-6">
         <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
           {ready ? (
             <PortfolioCards
-              toolbar={<PeriodFilter period={period} onChange={setPeriod} />}
+              toolbar={toolbar}
               portfolios={portfolios}
               entries={entries}
               prices={prices}
@@ -105,7 +120,7 @@ export default function Dashboard({ email, image }: { email: string; image?: str
           ) : (
             slow && (
               <div className={cn(placeholder, 'grid gap-3')}>
-                <PeriodFilter period={period} onChange={setPeriod} />
+                {toolbar}
                 <PortfolioCardsSkeleton />
               </div>
             )
