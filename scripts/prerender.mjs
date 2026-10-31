@@ -1,11 +1,15 @@
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { canonicalOf, PAGES, render, renderNotFound, SITE_URL, structuredData } from '../dist-ssr/entry-server.js'
 
 /* Runs after `vite build`: writes each public page as real HTML (so Google reads it without running
    JavaScript), plus 404.html and the sitemap. The browser then starts the app on top as usual. */
 
+// The styles go right into each page and the main font is requested early, so the first paint doesn't wait for them.
+const font = readdirSync('dist/assets').find((f) => /^geist-latin-wght-normal-.*\.woff2$/.test(f))
 const template = readFileSync('dist/index.html', 'utf8')
+  .replace(/<link rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/, (_, href) => `<style>${readFileSync(join('dist', href), 'utf8')}</style>`)
+  .replace('<!--seo-->', `<link rel="preload" href="/assets/${font}" as="font" type="font/woff2" crossorigin /><!--seo-->`)
 const escape = (text) => text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
 
 function html(body, { title, description, head = '' }) {

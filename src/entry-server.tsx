@@ -7,4 +7,4 @@ import { NotFound, PublicPage } from '@/components/site'
 export { canonicalOf, PAGES, SITE_URL, structuredData } from '@/lib/site'
 
 export const render = (path: string) => renderToString(<StrictMode><PublicPage path={path} /></StrictMode>)
-export const renderNotFound = () => renderToString(<NotFound />)
+export const renderNotFound = () => renderToString(<StrictMode><NotFound /></StrictMode>)

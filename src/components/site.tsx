@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Legal } from '@/components/legal'
-import { Landing } from '@/components/sign-in'
+import { Landing } from '@/components/landing'
 import { articles, AUTHOR } from '@/content/articles'
 import { FAQ } from '@/content/faq'
 import { hasBlog, pageAt } from '@/lib/site'
@@ -12,7 +12,7 @@ export function Breadcrumbs({ path }: { path: string }) {
   const crumbs = pageAt(path)?.crumbs ?? []
   return (
     <nav aria-label="Breadcrumb">
-      <ol className="flex flex-wrap gap-x-2 text-faint-foreground">
+      <ol className="flex flex-wrap gap-x-2 text-muted-foreground">
         {crumbs.map((c, i) => (
           <li key={c.path} className="flex gap-x-2">
             {i > 0 && <span aria-hidden>/</span>}
@@ -39,7 +39,7 @@ export function SiteFooter() {
     { href: 'mailto:hello@koshel.me', label: 'hello@koshel.me' },
   ]
   return (
-    <footer className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-faint-foreground">
+    <footer className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
       {links.map((l) => (
         <a key={l.href} href={l.href} className="hover:text-foreground">
           {l.label}
@@ -84,7 +84,7 @@ function Blog() {
             </a>
           </h2>
           <p>{a.description}</p>
-          <time dateTime={a.published} className="font-mono text-faint-foreground tabular-nums">
+          <time dateTime={a.published} className="font-mono text-muted-foreground tabular-nums">
             {a.published}
           </time>
         </article>
@@ -104,7 +104,7 @@ function ArticlePage({ slug }: { slug: string }) {
         <header className="flex flex-col gap-2">
           <Breadcrumbs path={`/blog/${slug}`} />
           <h1 className="text-2xl font-medium text-foreground">{article.title}</h1>
-          <p className="text-faint-foreground">
+          <p className="text-muted-foreground">
             {author.url ? (
               <a href={author.url} rel="author" className="hover:text-foreground">
                 {author.name}
@@ -121,7 +121,7 @@ function ArticlePage({ slug }: { slug: string }) {
         <div className="flex flex-col gap-4 [&_h2]:mt-4 [&_h2]:text-base [&_h2]:font-medium [&_h2]:text-foreground [&_ul]:flex [&_ul]:list-disc [&_ul]:flex-col [&_ul]:gap-2 [&_ul]:pl-5">
           {article.body}
         </div>
-        {author.bio && <p className="border-t border-border pt-6 text-faint-foreground">{author.bio}</p>}
+        {author.bio && <p className="border-t border-border pt-6 text-muted-foreground">{author.bio}</p>}
       </article>
       <SiteFooter />
     </main>
