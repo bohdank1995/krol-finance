@@ -53,11 +53,12 @@ async function fetchBinanceDaily(asset: AssetSymbol, sinceDay: string) {
   return out
 }
 
-export function useDailyPrices(assets: AssetSymbol[], sinceDay: string | undefined) {
-  const assetKey = useMemo(
-    () => [...new Set(assets)].filter((a) => !isDollar(a)).sort().join(','),
-    [assets],
-  )
+const keyOf = (assets: readonly AssetSymbol[]) => [...new Set(assets)].filter((a) => !isDollar(a)).sort().join(',')
+
+/** `preload` is fetched too, but nothing waits for it: the histories a later switch will need. */
+export function useDailyPrices(assets: AssetSymbol[], sinceDay: string | undefined, preload: readonly AssetSymbol[] = []) {
+  const needed = useMemo(() => keyOf(assets), [assets])
+  const assetKey = useMemo(() => keyOf([...assets, ...preload]), [assets, preload])
   const [prices, setPrices] = useState<DailyPrices>({})
 
   useEffect(() => {
@@ -74,6 +75,7 @@ export function useDailyPrices(assets: AssetSymbol[], sinceDay: string | undefin
   }, [assetKey, sinceDay])
 
   // Ready once every asset's history has arrived (an empty one counts: the request failed).
-  const ready = !assetKey || assetKey.split(',').every((a) => a in prices)
+  // No entries means no history to wait for.
+  const ready = !sinceDay || !needed || needed.split(',').every((a) => a in prices)
   return { prices, ready }
 }

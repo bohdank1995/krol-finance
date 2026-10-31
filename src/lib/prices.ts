@@ -19,6 +19,9 @@ export function pairFor(asset: AssetSymbol) {
 
 export const toUsd = (price: number, invert: boolean) => (invert ? 1 / price : price)
 
+/** Every pair ticks about once a second: collect them into one update, so the page recalculates once. */
+const TICK_EVERY = 1000
+
 export function useLivePrices(assets: AssetSymbol[]) {
   const watched = useMemo(
     () => [...new Set(assets)].filter((a) => !isDollar(a)).sort(),
@@ -37,19 +40,29 @@ export function useLivePrices(assets: AssetSymbol[]) {
     let retry: number | undefined
     let attempt = 0
     let closed = false
+    let pending: Partial<Record<AssetSymbol, number>> = {}
+    let tick: number | undefined
 
     const apply = (pair: string, raw: string) => {
       const asset = byPair.get(pair)
       const price = Number(raw)
       if (!asset || !Number.isFinite(price) || price <= 0) return
-      setPrices((p) => ({ ...p, [asset]: toUsd(price, pairFor(asset).invert) }))
+      pending[asset] = toUsd(price, pairFor(asset).invert)
+    }
+    const flush = () => {
+      const fresh = pending
+      pending = {}
+      tick = undefined
+      setPrices((p) => ({ ...p, ...fresh }))
     }
 
     const symbols = encodeURIComponent(JSON.stringify([...byPair.keys()]))
     fetch(`https://api.binance.com/api/v3/ticker/price?symbols=${symbols}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((rows: { symbol: string; price: string }[]) => {
-        if (!closed) rows.forEach((r) => apply(r.symbol, r.price))
+        if (closed) return
+        rows.forEach((r) => apply(r.symbol, r.price))
+        flush()
       })
       .catch(() => {})
 
@@ -63,6 +76,7 @@ export function useLivePrices(assets: AssetSymbol[]) {
       socket.onmessage = (e) => {
         const msg = JSON.parse(e.data) as { data?: { s: string; c: string } }
         if (msg.data) apply(msg.data.s, msg.data.c)
+        tick ??= window.setTimeout(flush, TICK_EVERY)
       }
       socket.onclose = () => {
         if (closed) return
@@ -75,11 +89,16 @@ export function useLivePrices(assets: AssetSymbol[]) {
     return () => {
       closed = true
       window.clearTimeout(retry)
+      window.clearTimeout(tick)
       socket?.close()
     }
   }, [watchKey])
 
-  const usd: Partial<Record<AssetSymbol, number>> = { ...prices, ...stocks.prices, USD: 1, USDC: 1 }
+  // The same object until a price changes, so calculations built on it aren't redone for nothing.
+  const usd = useMemo<Partial<Record<AssetSymbol, number>>>(
+    () => ({ ...prices, ...stocks.prices, USD: 1, USDC: 1 }),
+    [prices, stocks.prices],
+  )
   // Both feeds in use: live only when both are, reconnecting if either dropped.
   const feeds = [watchKey && status, watched.some(isStock) && stocks.status].filter(Boolean) as PriceStatus[]
   const combined: PriceStatus = !feeds.length

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { MoreHorizontal, Pencil, Trash2, X } from 'lucide-react'
 import {
   AlertDialog,
@@ -50,7 +50,7 @@ const head = 'h-10 text-xs font-normal text-faint-foreground'
 /** Fades in after the cards and the graph on page load. */
 const enter = { animationDelay: '380ms' }
 
-export function EntriesTable({ entries, portfolios, prices, portfolioId, currency, readOnly, filtered }: Props) {
+export const EntriesTable = memo(function EntriesTable({ entries, portfolios, prices, portfolioId, currency, readOnly, filtered }: Props) {
   const t = useT()
   const [editing, setEditing] = useState<Entry>()
   const [deleting, setDeleting] = useState<Entry>()
@@ -242,7 +242,7 @@ export function EntriesTable({ entries, portfolios, prices, portfolioId, currenc
       </AlertDialog>
     </section>
   )
-}
+})
 
 /** Placeholder rows while entries load, laid out like the real table. */
 export function EntriesTableSkeleton() {
