@@ -4,7 +4,7 @@ import { Breadcrumbs, SiteFooter } from '@/components/site'
 /* Privacy policy and terms, at /privacy and /terms. Public (no sign-in) and English only, like the
    sign-in page: Google's consent screen links here. Update UPDATED whenever the text changes. */
 
-const UPDATED = 'October 29, 2026'
+const UPDATED = 'November 1, 2026'
 const CONTACT = 'hello@koshel.me'
 
 const Mail = () => (
@@ -56,7 +56,12 @@ function Privacy() {
             switch, kept in your browser’s local storage.
           </li>
         </ul>
-        <p>We don’t use advertising, tracking cookies or analytics.</p>
+        <p>
+          We don’t use advertising or tracking cookies. We do count anonymous usage with PostHog: which pages are
+          visited, where visitors came from, and when someone starts signing in.
+          It isn’t linked to your account and never includes your name, email, amounts, assets or portfolio names.
+          PostHog uses your IP address and browser details to tell visits apart, and we don’t record your screen.
+        </p>
       </Section>
 
       <Section title="How we use it">
@@ -82,6 +87,7 @@ function Privacy() {
           <li>Convex: stores your data and runs Koshel’s server.</li>
           <li>Vercel: hosts the website.</li>
           <li>Google: sign-in.</li>
+          <li>PostHog: anonymous usage statistics.</li>
           <li>Monobank and Interactive Brokers: read with the tokens you give, only if you connect them.</li>
           <li>
             Binance and Yahoo Finance: public prices. Your browser connects to Binance directly; Yahoo Finance only

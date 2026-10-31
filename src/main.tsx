@@ -2,6 +2,7 @@ import { StrictMode, type ReactNode } from 'react'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 import './index.css'
 import { PublicPage } from '@/components/site'
+import { startAnalytics } from '@/lib/analytics'
 
 const path = window.location.pathname.replace(/\/$/, '') || '/'
 const root = document.getElementById('root')!
@@ -15,3 +16,5 @@ function show(page: ReactNode) {
 
 if (path === '/') void import('./home').then(({ Home }) => show(<Home />))
 else show(<PublicPage path={path} />)
+
+startAnalytics()

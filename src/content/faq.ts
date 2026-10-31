@@ -33,7 +33,7 @@ export const FAQ: { question: string; answer: string }[] = [
   {
     question: 'How is my data protected?',
     answer:
-      'Sign-in is through Google, and each account can only reach its own data. Monobank and Interactive Brokers tokens are stored encrypted. There are no ads, tracking cookies or analytics.',
+      'Sign-in is through Google, and each account can only reach its own data. Monobank and Interactive Brokers tokens are stored encrypted. There are no ads or tracking cookies. Koshel counts anonymous usage with PostHog, which never includes your name, email or financial data.',
   },
   {
     question: 'Which languages and currencies does Koshel support?',
