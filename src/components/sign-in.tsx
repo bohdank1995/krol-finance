@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import dashboard from '@/assets/landing-dashboard.png'
+import dashboardSmall from '@/assets/landing-dashboard-1440.webp'
+import dashboard from '@/assets/landing-dashboard.webp'
 import logo from '@/assets/koshel-logo.svg'
+import { SiteFooter } from '@/components/site'
 import { Button } from '@/components/ui/button'
 import { useSignInWithGoogle } from '@/lib/auth'
 
@@ -30,6 +32,11 @@ export function SignIn() {
     }
   }
 
+  return <Landing onGoogle={google} busy={busy} error={error} />
+}
+
+/** The home page itself, without sign-in logic: it's also rendered ahead of time for search engines. */
+export function Landing({ onGoogle, busy, error }: { onGoogle?: () => void; busy?: boolean; error?: string }) {
   return (
     <main className="flex min-h-svh flex-col items-center gap-14 overflow-x-clip px-4 pt-16 pb-10 sm:pt-24">
       {/* The home page for visitors (and Google's app review): what Koshel is for, sign-in, a look at the app. */}
@@ -45,7 +52,7 @@ export function SignIn() {
           A finance tracker designed to show your passive income — and encourage you to grow it.
         </p>
         <div className="flex w-full max-w-xs flex-col gap-3">
-          <Button onClick={google} disabled={busy} className="h-12 gap-2">
+          <Button onClick={onGoogle} disabled={busy} className="h-12 gap-2">
             <GoogleIcon />
             Continue with Google
           </Button>
@@ -69,24 +76,19 @@ export function SignIn() {
         <div className="overflow-hidden rounded-t-xl border border-b-0 border-border shadow-[0_24px_80px_-12px_rgb(0_0_0/0.7)]">
           <img
             src={dashboard}
+            srcSet={`${dashboardSmall} 1440w, ${dashboard} 2880w`}
+            sizes="(min-width: 1024px) 1024px, 100vw"
+            width={2880}
+            height={1236}
+            fetchPriority="high"
             alt="The Koshel dashboard: portfolio cards, a net worth graph and passive income"
-            className="w-full"
+            className="h-auto w-full"
           />
         </div>
         <div aria-hidden className="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-b from-transparent to-background" />
       </div>
 
-      <footer className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-faint-foreground">
-        <a href="/privacy" className="hover:text-foreground">
-          Privacy
-        </a>
-        <a href="/terms" className="hover:text-foreground">
-          Terms
-        </a>
-        <a href="mailto:hello@koshel.me" className="hover:text-foreground">
-          hello@koshel.me
-        </a>
-      </footer>
+      <SiteFooter />
     </main>
   )
 }
