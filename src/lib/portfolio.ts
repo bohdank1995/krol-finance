@@ -68,10 +68,12 @@ function* days(entries: Entry[], daily: DailyPrices, live: Prices): Generator<Da
       const close = date === today ? live[asset] : daily[asset]?.[date]
       if (close !== undefined) lastPrice.set(asset, close)
       else if (!lastPrice.has(asset)) {
-        // Before the first known candle: use the earliest one available.
+        // Before the first known candle: use the earliest one available. With no history at all, use
+        // today's price: the holding then looks flat, not worth nothing until today.
         const days = daily[asset]
         const first = days && Object.keys(days).sort()[0]
-        if (first) lastPrice.set(asset, days[first])
+        const known = first ? days[first] : live[asset]
+        if (known !== undefined) lastPrice.set(asset, known)
       }
       return lastPrice.get(asset) ?? 0
     }

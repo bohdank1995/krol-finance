@@ -13,13 +13,22 @@ export type DailyPrices = Partial<Record<AssetSymbol, Record<string, number>>>
 
 const cache = new Map<string, Promise<Record<string, number>>>()
 
+/** Asks a few times: one failed lookup would otherwise leave the asset without a history. */
+async function loadDaily(asset: AssetSymbol, sinceDay: string, attempts = 3) {
+  for (let attempt = 1; ; attempt++) {
+    const days: Record<string, number> = await (isStock(asset) ? fetchStockDaily(asset, sinceDay) : fetchBinanceDaily(asset, sinceDay)).catch(() => ({}))
+    if (Object.keys(days).length || attempt === attempts) return days
+    await new Promise((done) => setTimeout(done, 1000 * attempt))
+  }
+}
+
 function fetchDaily(asset: AssetSymbol, sinceDay: string) {
   const key = `${asset}:${sinceDay}`
   let hit = cache.get(key)
   if (!hit) {
-    hit = (isStock(asset) ? fetchStockDaily(asset, sinceDay) : fetchBinanceDaily(asset, sinceDay)).catch(() => {
-      cache.delete(key) // let a later render retry
-      return {}
+    hit = loadDaily(asset, sinceDay).then((days) => {
+      if (!Object.keys(days).length) cache.delete(key) // let a later render retry
+      return days
     })
     cache.set(key, hit)
   }

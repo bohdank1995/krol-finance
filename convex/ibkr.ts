@@ -249,14 +249,23 @@ type Chart = {
   indicators?: { quote?: { close?: (number | null)[] }[] }
 }
 
-async function chart(ticker: string, query: string): Promise<Chart | undefined> {
-  try {
-    const res = await fetch(`${YAHOO}${encodeURIComponent(ticker)}?${query}`, { headers: HEADERS })
-    if (!res.ok) return undefined
-    const body = await res.json()
-    return body?.chart?.result?.[0]
-  } catch {
-    return undefined
+/** Tries again when Yahoo is busy (too many requests, a server error, no connection): asking for
+    every stock at once can fail a few of them. Undefined if it still fails or doesn't know the ticker. */
+async function chart(ticker: string, query: string, attempts = 3): Promise<Chart | undefined> {
+  for (let attempt = 1; ; attempt++) {
+    let busy = true
+    try {
+      const res = await fetch(`${YAHOO}${encodeURIComponent(ticker)}?${query}`, { headers: HEADERS })
+      if (res.ok) {
+        const body = await res.json()
+        return body?.chart?.result?.[0]
+      }
+      busy = res.status === 429 || res.status >= 500
+    } catch {
+      // No connection or a broken answer: worth another try.
+    }
+    if (!busy || attempt === attempts) return undefined
+    await sleep(500 * attempt)
   }
 }
 
@@ -312,6 +321,8 @@ function dailyUsd(ticker: string, since: string): Promise<Record<string, number>
       if (fx && !fxDays.length) continue
       out[day] = close * scale * rate
     }
+    // A failed lookup isn't remembered, so the next request asks Yahoo again.
+    if (!Object.keys(out).length) memo.delete(`daily:${ticker}:${since}`)
     return out
   })
 }
