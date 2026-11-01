@@ -17,18 +17,39 @@ function bare(value: unknown): unknown {
   return value
 }
 
-const withoutQueries = (event: CaptureResult | null) =>
-  event && { ...event, properties: bare(event.properties) as CaptureResult['properties'] }
+/* Where this visit came from: the link's utm_source, else the referring site, else "direct". Remembered
+   for the tab, or coming back from Google would look like a new visit from Google. */
+const VISIT_SOURCE = 'koshel:visit-source'
+
+function readSource() {
+  const tag = new URLSearchParams(window.location.search).get('utm_source')?.trim().toLowerCase()
+  if (tag) return tag.slice(0, 50)
+  const referrer = document.referrer && new URL(document.referrer).hostname.replace(/^www\./, '')
+  return referrer && referrer !== window.location.hostname.replace(/^www\./, '') ? referrer : 'direct'
+}
+
+function visitSource() {
+  try {
+    const source = sessionStorage.getItem(VISIT_SOURCE) ?? readSource()
+    sessionStorage.setItem(VISIT_SOURCE, source)
+    return source
+  } catch {
+    return readSource()
+  }
+}
 
 let client: Promise<PostHog> | undefined
 
 function load() {
   client ??= import('posthog-js').then(({ posthog }) => {
+    const source = visitSource()
     posthog.init(KEY!, {
       api_host: HOST,
       cookieless_mode: 'always',
       person_profiles: 'never',
-      before_send: withoutQueries,
+      // The same `source` on page views and sign-ups lets one chart split both by it.
+      before_send: (event) =>
+        event && { ...event, properties: { ...(bare(event.properties) as CaptureResult['properties']), source } },
       // Clicks and recordings could pick up balances from the screen. Each one is off here, and scripts
       // can't load from PostHog, so a switch in its dashboard can't turn them on.
       autocapture: false,
