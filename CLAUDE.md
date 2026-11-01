@@ -98,7 +98,8 @@ Tokens are encrypted with the deployment's `TOKEN_KEY` (`convex/secrets.ts`: act
 row of the user. Stock price lookups are rate-limited per user (`convex/limits.ts`). Public mutations
 cap text lengths and reject app ids that are already taken (`convex/data.ts`).
 
-Analytics: PostHog (`src/lib/analytics.ts`), anonymous page views plus sign-in events (`google_button_clicked`, then `sign_up` for a new account or `login` for an existing one). No cookies,
+Analytics: PostHog (`src/lib/analytics.ts`), anonymous page views plus sign-in events (`google_button_clicked`, then `sign_up` for a new account or `login` for an existing one). Every event carries `source`: the
+link's `utm_source`, else the referring site, else `direct`, remembered for the browser tab. No cookies,
 profiles, autocapture or session recording, and addresses lose their query (Google's sign-in code). Never send
 names, emails, amounts, assets or portfolio names. Set `POSTHOG_KEY` / `POSTHOG_HOST` on Vercel to turn it on.
 
