@@ -58,7 +58,7 @@ export function startAnalytics() {
   else window.addEventListener('load', start, { once: true })
 }
 
-function track(event: 'sign_in_started' | 'sign_in_completed' | 'sign_up_completed') {
+function track(event: 'google_button_clicked' | 'sign_up' | 'login') {
   if (!KEY) return
   void load()
     .then((posthog) => posthog.capture(event))
@@ -68,11 +68,11 @@ function track(event: 'sign_in_started' | 'sign_in_completed' | 'sign_up_complet
 /* The browser leaves for Google mid sign-in, so this note carries the attempt across the trip. Only a
    sign-in that started here counts: people with a saved session aren't signing in again on every visit. */
 const SIGN_IN_PENDING = 'koshel:sign-in-pending'
-/** An account this young was made by the sign-in that just finished. */
+/** An account this young was made by the sign-in that just finished: a sign-up, not a login. */
 const NEW_ACCOUNT_MS = 10 * 60 * 1000
 
-export function trackSignInStarted() {
-  track('sign_in_started')
+export function trackGoogleButtonClicked() {
+  track('google_button_clicked')
   try {
     sessionStorage.setItem(SIGN_IN_PENDING, '1')
   } catch {
@@ -81,13 +81,12 @@ export function trackSignInStarted() {
 }
 
 /** Call once the account is known. Does nothing unless a sign-in is pending in this tab. */
-export function trackSignInCompleted(accountCreatedAt: number) {
+export function trackSignedIn(accountCreatedAt: number) {
   try {
     if (!sessionStorage.getItem(SIGN_IN_PENDING)) return
     sessionStorage.removeItem(SIGN_IN_PENDING)
   } catch {
     return
   }
-  track('sign_in_completed')
-  if (Date.now() - accountCreatedAt < NEW_ACCOUNT_MS) track('sign_up_completed')
+  track(Date.now() - accountCreatedAt < NEW_ACCOUNT_MS ? 'sign_up' : 'login')
 }
