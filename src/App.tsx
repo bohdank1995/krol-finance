@@ -1,6 +1,7 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { useConvexAuth, useQuery } from 'convex/react'
 import { SignIn } from '@/components/sign-in'
+import { trackSignInCompleted } from '@/lib/analytics'
 import { mayBeSignedIn } from '@/lib/auth'
 import { api } from '../convex/_generated/api'
 
@@ -13,6 +14,9 @@ if (mayBeSignedIn()) void loadDashboard()
 function App() {
   const { isLoading, isAuthenticated } = useConvexAuth()
   const me = useQuery(api.users.me, isAuthenticated ? {} : 'skip')
+  useEffect(() => {
+    if (me) trackSignInCompleted(me.createdAt)
+  }, [me])
   // Visitors keep seeing the home page while this loads; returning users see nothing yet, as before.
   if (isLoading) return mayBeSignedIn() ? null : <SignIn />
   if (!isAuthenticated) return <SignIn />

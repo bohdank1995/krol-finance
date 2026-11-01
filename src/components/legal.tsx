@@ -4,7 +4,7 @@ import { Breadcrumbs, SiteFooter } from '@/components/site'
 /* Privacy policy and terms, at /privacy and /terms. Public (no sign-in) and English only, like the
    sign-in page: Google's consent screen links here. Update UPDATED whenever the text changes. */
 
-const UPDATED = 'November 1, 2026'
+const UPDATED = 'November 2, 2026'
 const CONTACT = 'hello@koshel.me'
 
 const Mail = () => (
@@ -58,7 +58,8 @@ function Privacy() {
         </ul>
         <p>
           We don’t use advertising or tracking cookies. We do count anonymous usage with PostHog: which pages are
-          visited, where visitors came from, and when someone starts signing in.
+          visited, where visitors came from, when someone starts and finishes signing in, and when a new account is
+          created.
           It isn’t linked to your account and never includes your name, email, amounts, assets or portfolio names.
           PostHog uses your IP address and browser details to tell visits apart, and we don’t record your screen.
         </p>

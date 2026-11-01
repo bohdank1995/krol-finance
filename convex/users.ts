@@ -3,14 +3,14 @@ import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { signedIn } from './data'
 
-/** The signed-in user's email and saved language; null when signed out. */
+/** The signed-in user's email, saved language and account age; null when signed out. */
 export const me = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx)
     const user = userId && (await ctx.db.get(userId))
     if (!user) return null
-    return { email: user.email ?? '', language: user.language, image: user.image }
+    return { email: user.email ?? '', language: user.language, image: user.image, createdAt: user._creationTime }
   },
 })
 
