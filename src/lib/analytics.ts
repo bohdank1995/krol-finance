@@ -1,6 +1,6 @@
 import type { CaptureResult, PostHog } from 'posthog-js'
 
-/* Anonymous usage statistics through PostHog: page views and the sign-in event below, and nothing else.
+/* Anonymous usage statistics through PostHog: page views and the sign-in events below, and nothing else.
    No cookies, no user profiles and no session recording. Never send names, emails, amounts, assets or
    portfolio names, and update the privacy policy (`legal.tsx`) if what's collected changes.
    Off without POSTHOG_KEY, so local work doesn't count as visits. */
@@ -58,9 +58,36 @@ export function startAnalytics() {
   else window.addEventListener('load', start, { once: true })
 }
 
-export function track(event: 'sign_in_started') {
+function track(event: 'sign_in_started' | 'sign_in_completed' | 'sign_up_completed') {
   if (!KEY) return
   void load()
     .then((posthog) => posthog.capture(event))
     .catch(() => {})
+}
+
+/* The browser leaves for Google mid sign-in, so this note carries the attempt across the trip. Only a
+   sign-in that started here counts: people with a saved session aren't signing in again on every visit. */
+const SIGN_IN_PENDING = 'koshel:sign-in-pending'
+/** An account this young was made by the sign-in that just finished. */
+const NEW_ACCOUNT_MS = 10 * 60 * 1000
+
+export function trackSignInStarted() {
+  track('sign_in_started')
+  try {
+    sessionStorage.setItem(SIGN_IN_PENDING, '1')
+  } catch {
+    // Blocked storage only loses the completed event.
+  }
+}
+
+/** Call once the account is known. Does nothing unless a sign-in is pending in this tab. */
+export function trackSignInCompleted(accountCreatedAt: number) {
+  try {
+    if (!sessionStorage.getItem(SIGN_IN_PENDING)) return
+    sessionStorage.removeItem(SIGN_IN_PENDING)
+  } catch {
+    return
+  }
+  track('sign_in_completed')
+  if (Date.now() - accountCreatedAt < NEW_ACCOUNT_MS) track('sign_up_completed')
 }
