@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Field } from '@/components/field'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -54,15 +55,15 @@ function PortfolioForm({
         {portfolio ? t.renamePortfolio : t.newPortfolio}
       </SheetTitle>
 
-      <Input
-        autoFocus
-        autoComplete="off"
-        placeholder={t.name}
-        aria-label={t.name}
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        className="h-12"
-      />
+      <Field label={t.name}>
+        <Input
+          autoFocus
+          autoComplete="off"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="h-12"
+        />
+      </Field>
 
       <SheetFooter>
         <SheetClose render={<Button type="button" variant="secondary" />}>{t.cancel}</SheetClose>

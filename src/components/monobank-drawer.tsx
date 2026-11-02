@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Field } from '@/components/field'
 import { Input } from '@/components/ui/input'
 import {
   Sheet,
@@ -140,15 +141,16 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
             </a>
             {t.monobank.intro[1]}
           </p>
-          <Input
-            autoFocus
-            {...noAutofill}
-            placeholder={t.token}
-            aria-label={t.monobank.tokenLabel}
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            className={cn('h-12 font-mono', masked)}
-          />
+          <Field label={t.token}>
+            <Input
+              autoFocus
+              {...noAutofill}
+              aria-label={t.monobank.tokenLabel}
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              className={cn('h-12 font-mono', masked)}
+            />
+          </Field>
         </div>
       ) : (
         <div className="grid gap-4">

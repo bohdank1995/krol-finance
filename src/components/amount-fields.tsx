@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef } from 'react'
+import { Field } from '@/components/field'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -87,53 +88,56 @@ export function AmountFields({ amount, onAmountChange, type, asset, onAssetChang
   return (
     // Wraps on narrow screens or large text: the asset picker drops below, full width.
     <div className="flex flex-wrap items-center gap-2">
-      <div className="relative flex-[999_1_8rem]">
-        <Input
-          autoFocus={autoFocus}
-          inputMode="decimal"
-          autoComplete="off"
-          placeholder="0.00"
-          aria-label={t.amount}
-          aria-describedby={answer ? 'amount-result' : undefined}
-          {...field}
-          onKeyDown={(e) => {
-            if (answer && ((e.key === 'Tab' && !e.shiftKey) || e.key === '=')) {
-              e.preventDefault()
-              apply()
-            }
-          }}
-          // Room on the right for the result, so long calculations don't run under it.
-          style={answer ? { paddingRight: `calc(${groupAmount(answer).length + 2}ch + 1.5rem)` } : undefined}
-          className="h-12 font-mono text-xl tabular-nums md:text-xl"
-        />
-        {answer && (
-          <button
-            key={answer}
-            id="amount-result"
-            type="button"
-            tabIndex={-1}
-            title={t.useResult}
-            onClick={apply}
-            className="absolute inset-y-0 right-0 flex animate-in items-center px-3 font-mono text-xl text-faint-foreground tabular-nums duration-300 fade-in hover:text-muted-foreground"
-          >
-            = {groupAmount(answer)}
-          </button>
-        )}
-      </div>
-      <Select value={asset} onValueChange={(v) => v && onAssetChange(v as AssetSymbol)}>
-        <SelectTrigger aria-label={t.asset} className="w-28 grow font-mono">
-          <SelectValue />
-        </SelectTrigger>
-        {/* Opens below the picker, wide enough for the full names; long ones cut off with "…". */}
-        <SelectContent alignItemWithTrigger={false} align="end" className="w-80">
-          {assetsFor(type).map((a) => (
-            <SelectItem key={a.symbol} value={a.symbol}>
-              <span className="w-14 shrink-0 font-mono">{a.symbol}</span>
-              <span className="min-w-0 truncate text-faint-foreground">{t.assetNames[a.symbol] ?? a.name}</span>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <Field label={t.amount} className="flex-[999_1_8rem]">
+        <div className="relative">
+          <Input
+            autoFocus={autoFocus}
+            inputMode="decimal"
+            autoComplete="off"
+            placeholder="0.00"
+            aria-describedby={answer ? 'amount-result' : undefined}
+            {...field}
+            onKeyDown={(e) => {
+              if (answer && ((e.key === 'Tab' && !e.shiftKey) || e.key === '=')) {
+                e.preventDefault()
+                apply()
+              }
+            }}
+            // Room on the right for the result, so long calculations don't run under it.
+            style={answer ? { paddingRight: `calc(${groupAmount(answer).length + 2}ch + 1.5rem)` } : undefined}
+            className="h-12 font-mono text-xl tabular-nums md:text-xl"
+          />
+          {answer && (
+            <button
+              key={answer}
+              id="amount-result"
+              type="button"
+              tabIndex={-1}
+              title={t.useResult}
+              onClick={apply}
+              className="absolute inset-y-0 right-0 flex animate-in items-center px-3 font-mono text-xl text-faint-foreground tabular-nums duration-300 fade-in hover:text-muted-foreground"
+            >
+              = {groupAmount(answer)}
+            </button>
+          )}
+        </div>
+      </Field>
+      <Field label={t.asset} className="w-28 grow">
+        <Select value={asset} onValueChange={(v) => v && onAssetChange(v as AssetSymbol)}>
+          <SelectTrigger aria-label={t.asset} className="w-full font-mono">
+            <SelectValue />
+          </SelectTrigger>
+          {/* Opens below the picker, wide enough for the full names; long ones cut off with "…". */}
+          <SelectContent alignItemWithTrigger={false} align="end" className="w-80">
+            {assetsFor(type).map((a) => (
+              <SelectItem key={a.symbol} value={a.symbol}>
+                <span className="w-14 shrink-0 font-mono">{a.symbol}</span>
+                <span className="min-w-0 truncate text-faint-foreground">{t.assetNames[a.symbol] ?? a.name}</span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
     </div>
   )
 }
@@ -141,13 +145,14 @@ export function AmountFields({ amount, onAmountChange, type, asset, onAssetChang
 export function DateField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const t = useT()
   return (
-    <Input
-      type="date"
-      aria-label={t.date}
-      value={value}
-      max={new Date().toLocaleDateString('en-CA')}
-      onChange={(e) => onChange(e.target.value)}
-      className="h-12 w-44 font-mono tabular-nums scheme-dark"
-    />
+    <Field label={t.date} className="w-44">
+      <Input
+        type="date"
+        value={value}
+        max={new Date().toLocaleDateString('en-CA')}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-12 font-mono tabular-nums scheme-dark"
+      />
+    </Field>
   )
 }

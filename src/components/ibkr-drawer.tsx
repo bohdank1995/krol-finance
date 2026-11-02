@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Field } from '@/components/field'
 import { Input } from '@/components/ui/input'
 import {
   Sheet,
@@ -208,24 +209,26 @@ function IbkrFlow({ onCreated, onDone }: { onCreated?: (id: string) => void; onD
             ))}
           </ol>
           <div className="grid gap-2">
-            <Input
-              autoFocus
-              {...noAutofill}
-              placeholder={t.token}
-              aria-label={t.ibkr.tokenLabel}
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              className={cn('h-12 font-mono', masked)}
-            />
-            <Input
-              inputMode="numeric"
-              {...noAutofill}
-              placeholder={t.ibkr.queryId}
-              aria-label={t.ibkr.queryIdLabel}
-              value={queryId}
-              onChange={(e) => setQueryId(e.target.value)}
-              className="h-12 font-mono"
-            />
+            <Field label={t.token}>
+              <Input
+                autoFocus
+                {...noAutofill}
+                aria-label={t.ibkr.tokenLabel}
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                className={cn('h-12 font-mono', masked)}
+              />
+            </Field>
+            <Field label={t.ibkr.queryId}>
+              <Input
+                inputMode="numeric"
+                {...noAutofill}
+                aria-label={t.ibkr.queryIdLabel}
+                value={queryId}
+                onChange={(e) => setQueryId(e.target.value)}
+                className="h-12 font-mono"
+              />
+            </Field>
           </div>
           <p className="text-xs text-faint-foreground">
             {busy
@@ -293,14 +296,14 @@ function IbkrFlow({ onCreated, onDone }: { onCreated?: (id: string) => void; onD
 
           {picked.size > 0 && (
             <div className="grid gap-2">
-              <Input
-                autoComplete="off"
-                placeholder={t.name}
-                aria-label={t.name}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="h-12"
-              />
+              <Field label={t.name}>
+                <Input
+                  autoComplete="off"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="h-12"
+                />
+              </Field>
               {followsNew && (
                 <p className="text-xs text-faint-foreground">{t.ibkr.followsNew}</p>
               )}
