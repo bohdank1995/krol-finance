@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Field } from '@/components/field'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -93,34 +94,36 @@ function EntryForm({
       <div className="flex flex-wrap items-center gap-2">
         <DateField value={day} onChange={setDay} />
         {!portfolioId && (
-          <Select
-            value={target}
-            onValueChange={(v) => v && setTarget(v)}
-            items={portfolios.map((p) => ({ value: p.id, label: p.name }))}
-          >
-            <SelectTrigger aria-label={t.portfolio} className="min-w-40 flex-1">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {portfolios.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Field label={t.portfolio} className="min-w-40 flex-1">
+            <Select
+              value={target}
+              onValueChange={(v) => v && setTarget(v)}
+              items={portfolios.map((p) => ({ value: p.id, label: p.name }))}
+            >
+              <SelectTrigger aria-label={t.portfolio} className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {portfolios.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
         )}
       </div>
 
-      <Textarea
-        placeholder={t.note}
-        aria-label={t.note}
-        autoComplete="off"
-        maxLength={200}
-        rows={3}
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-      />
+      <Field label={t.note}>
+        <Textarea
+          autoComplete="off"
+          maxLength={200}
+          rows={3}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+      </Field>
 
       <SheetFooter>
         <SheetClose render={<Button type="button" variant="secondary" />}>{t.cancel}</SheetClose>

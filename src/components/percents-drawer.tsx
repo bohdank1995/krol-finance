@@ -118,8 +118,8 @@ function Field({
 }) {
   const t = useT()
   return (
-    <label className="flex flex-col gap-2">
-      <span className="text-sm text-muted-foreground">{label}</span>
+    <label className="flex flex-col gap-1.5">
+      <span className="text-xs text-muted-foreground">{label}</span>
       <div className="relative">
         <Input
           autoFocus={autoFocus}
