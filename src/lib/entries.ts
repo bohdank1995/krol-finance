@@ -269,9 +269,10 @@ export async function listMonobankCards(token?: string) {
   return (await call(api.monobank.cards, { token }, dict().monobank.unreachable)) as MonobankCard[] | null
 }
 
-/** Creates a portfolio for the card with its last 31 days of transactions. Returns its id. */
-export function connectMonobankCard(accountId: string, name: string) {
-  return call(api.monobank.connect, { accountId, name }, dict().monobank.unreachable)
+/** Creates a portfolio per card from its balance; the server then loads their last 31 days, one card a
+    minute. Returns the new portfolios' ids. */
+export function connectMonobankCards(cards: { accountId: string; name: string }[]) {
+  return call(api.monobank.connect, { cards }, dict().monobank.unreachable)
 }
 
 /* Interactive Brokers: the Flex token + Query ID go to the `ibkr` server functions, which keep them

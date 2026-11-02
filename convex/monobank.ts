@@ -6,14 +6,18 @@ import { action, internalAction, internalMutation, internalQuery, type ActionCtx
 import { open, seal } from './secrets'
 
 /* Monobank card sync. The app calls `cards` (check the token, keep it, list the cards) and
-   `connect` (create a portfolio for a card with its last 31 days); the hourly cron calls `sync`
-   (refresh the stalest card). Tokens never leave the server.
+   `connect` (create a portfolio per picked card, then load their last 31 days one by one); the
+   hourly cron calls `sync` (refresh the stalest card). Tokens never leave the server.
 
    Monobank's personal API allows one request per minute per endpoint, so every action makes
    at most one call to each endpoint. Amounts come in minor units (kopiyky / cents). */
 
 const MONO = 'https://api.monobank.ua'
 const DAY = 86_400
+/** Wait between statement requests, just over Monobank's limit. */
+const NEXT_REQUEST = 61_000
+/** Times one card's history retries when another request took this minute's slot. */
+const RETRIES = 5
 /** ISO 4217 numeric codes of the currencies the app can price. */
 const ASSETS: Record<number, string> = { 980: 'UAH', 840: 'USD', 978: 'EUR', 985: 'PLN' }
 
@@ -29,6 +33,8 @@ type Account = {
 /** A card as the app lists it. */
 type Card = { id: string; type: string; last4: string; asset: string | null; balance: string; connected: boolean }
 type Item = { id: string; time: number; description: string; amount: number; balance: number }
+/** A new card waiting for its history. */
+type Queued = { portfolioId: string; accountId: string }
 
 const now = () => Math.floor(Date.now() / 1000)
 const iso = (seconds: number) => new Date(seconds * 1000).toISOString()
@@ -119,53 +125,96 @@ export const cards = action({
   },
 })
 
+/** Creates a portfolio per card straight away, starting from today's balance, and queues their history:
+    Monobank gives one statement a minute, so a card can only load after the one before it. */
 export const connect = action({
-  args: { accountId: v.string(), name: v.string() },
-  handler: async (ctx, args): Promise<string> => {
+  args: { cards: v.array(v.object({ accountId: v.string(), name: v.string() })) },
+  handler: async (ctx, args): Promise<string[]> => {
     const userId = await userOf(ctx)
-    const name = args.name.trim()
-    if (!name) throw fail('Give the card a name.')
-    if (name.length > 100) throw fail('The name is too long.')
     const stored: Doc<'monobankTokens'> | null = await ctx.runQuery(internal.monobank.stored, { userId })
     if (!stored) throw fail('Add your Monobank token first.')
-    const token = await open(stored.token)
-    const account = (stored.accounts as Account[]).find((a) => a.id === args.accountId)
-    const asset = account && ASSETS[account.currencyCode]
-    if (!account || !asset) throw fail('This card can’t be connected.')
-
+    const accounts = stored.accounts as Account[]
     const to = now()
-    const from = to - 31 * DAY
-    const items = await statement(token, account.id, from, to)
-
-    // Start from the balance before the oldest transaction, so the entries add up to today's balance.
-    // Monobank returns at most 500 transactions; if cut off, history starts at the oldest one returned.
-    const oldest = items[0]
-    const opening = oldest ? oldest.balance - oldest.amount : account.balance
-    const openingAt = oldest && items.length >= 500 ? oldest.time - 1 : from
-    const entries = items.map((item) => entryOf(asset, item))
-    if (opening !== 0)
-      entries.unshift({
+    const cards = args.cards.map(({ accountId, name }) => {
+      const trimmed = name.trim()
+      if (!trimmed) throw fail('Give the card a name.')
+      if (trimmed.length > 100) throw fail('The name is too long.')
+      const account = accounts.find((a) => a.id === accountId)
+      const asset = account && ASSETS[account.currencyCode]
+      if (!account || !asset) throw fail('This card can’t be connected.')
+      const opening = {
         id: crypto.randomUUID(),
         asset,
-        amount: decimal(opening),
-        createdAt: iso(openingAt),
+        amount: decimal(account.balance),
+        createdAt: iso(to - 31 * DAY),
         note: 'Opening balance',
         externalId: 'opening',
-      })
-
-    const id = crypto.randomUUID()
-    await ctx.runMutation(internal.monobank.create, {
-      userId,
-      id,
-      name,
-      accountId: account.id,
-      syncedAt: to * 1000,
-      entries,
+      }
+      return { id: crypto.randomUUID(), name: trimmed, accountId, opening: account.balance !== 0 ? opening : undefined }
     })
-    await ensureWebhook(ctx, userId, token)
-    return id
+    const queue: Queued[] = await ctx.runMutation(internal.monobank.create, { userId, syncedAt: to * 1000, cards })
+    if (queue.length) {
+      await ctx.scheduler.runAfter(0, internal.monobank.loadHistory, { userId, queue, tries: 0 })
+      await ensureWebhook(ctx, userId, await open(stored.token))
+    }
+    return queue.map((q) => q.portfolioId)
   },
 })
+
+/** Replaces a new card's starting balance with its real last 31 days, then moves on to the next card.
+    A card that can't load keeps today's balance, and the regular sync carries on from there. */
+export const loadHistory = internalAction({
+  args: {
+    userId: v.id('users'),
+    queue: v.array(v.object({ portfolioId: v.string(), accountId: v.string() })),
+    tries: v.number(),
+  },
+  handler: async (ctx, { userId, queue, tries }) => {
+    const [next, ...rest] = queue
+    if (!next) return
+    const stored: Doc<'monobankTokens'> | null = await ctx.runQuery(internal.monobank.stored, { userId })
+    const account = (stored?.accounts as Account[] | undefined)?.find((a) => a.id === next.accountId)
+    const asset = account && ASSETS[account.currencyCode]
+    if (stored && asset) {
+      try {
+        const to = now()
+        const from = to - 31 * DAY
+        const items = await statement(await open(stored.token), next.accountId, from, to)
+        await ctx.runMutation(internal.monobank.fillHistory, {
+          portfolioId: next.portfolioId,
+          entries: withOpening(asset, items, from),
+        })
+      } catch (e) {
+        if (e instanceof ConvexError && String(e.data).includes('one request') && tries < RETRIES) {
+          await ctx.scheduler.runAfter(NEXT_REQUEST, internal.monobank.loadHistory, { userId, queue, tries: tries + 1 })
+          return
+        }
+        console.error(`Monobank history failed for portfolio ${next.portfolioId}`, e)
+      }
+    }
+    if (rest.length) await ctx.scheduler.runAfter(NEXT_REQUEST, internal.monobank.loadHistory, { userId, queue: rest, tries: 0 })
+  },
+})
+
+/** The transactions plus the balance before the oldest one, so they add up to today's balance.
+    Monobank returns at most 500 transactions; if cut off, history starts at the oldest one returned.
+    Empty without transactions: the starting balance is already right. */
+function withOpening(asset: string, items: Item[], from: number) {
+  const entries = items.map((item) => entryOf(asset, item))
+  const oldest = items[0]
+  if (!oldest) return entries
+  const opening = oldest.balance - oldest.amount
+  if (opening !== 0)
+    entries.unshift({
+      id: crypto.randomUUID(),
+      asset,
+      amount: decimal(opening),
+      createdAt: iso(items.length >= 500 ? oldest.time - 1 : from),
+      note: 'Opening balance',
+      externalId: 'opening',
+    })
+  return entries
+}
 
 /* ---------- Real time: Monobank calls us when a transaction happens ---------- */
 
@@ -318,29 +367,66 @@ export const saveToken = internalMutation({
   },
 })
 
+/** Creates the portfolios, skipping cards that already have one. Returns the ones created. */
 export const create = internalMutation({
   args: {
     userId: v.id('users'),
-    id: v.string(),
-    name: v.string(),
-    accountId: v.string(),
     syncedAt: v.number(),
-    entries: v.array(syncedEntry),
+    cards: v.array(
+      v.object({ id: v.string(), name: v.string(), accountId: v.string(), opening: v.optional(syncedEntry) }),
+    ),
   },
-  handler: async (ctx, { userId, id, name, accountId, syncedAt, entries }) => {
-    await ctx.db.insert('portfolios', {
-      id,
-      userId,
-      name,
-      createdAt: new Date(syncedAt).toISOString(),
-      source: 'monobank',
-      externalAccountId: accountId,
-      syncedAt,
-      inNetWorth: true,
-      cardPercent: 100,
-      netWorthPercent: 100,
-    })
-    for (const e of entries) await ctx.db.insert('entries', { ...e, userId, portfolioId: id })
+  handler: async (ctx, { userId, syncedAt, cards }) => {
+    const linked = await ctx.db
+      .query('portfolios')
+      .withIndex('by_user_source', (q) => q.eq('userId', userId).eq('source', 'monobank'))
+      .collect()
+    const taken = new Set(linked.map((p) => p.externalAccountId))
+    const queue: Queued[] = []
+    for (const { id, name, accountId, opening } of cards) {
+      if (taken.has(accountId)) continue
+      taken.add(accountId)
+      await ctx.db.insert('portfolios', {
+        id,
+        userId,
+        name,
+        createdAt: new Date(syncedAt).toISOString(),
+        source: 'monobank',
+        externalAccountId: accountId,
+        syncedAt,
+        inNetWorth: true,
+        cardPercent: 100,
+        netWorthPercent: 100,
+      })
+      if (opening) await ctx.db.insert('entries', { ...opening, userId, portfolioId: id })
+      queue.push({ portfolioId: id, accountId })
+    }
+    return queue
+  },
+})
+
+/** Swaps the starting balance for the card's history. Transactions the webhook already added stay single. */
+export const fillHistory = internalMutation({
+  args: { portfolioId: v.string(), entries: v.array(syncedEntry) },
+  handler: async (ctx, { portfolioId, entries }) => {
+    const p = await ctx.db
+      .query('portfolios')
+      .withIndex('by_app_id', (q) => q.eq('id', portfolioId))
+      .unique()
+    // Disconnected while waiting.
+    if (!p || !entries.length) return
+    const opening = await ctx.db
+      .query('entries')
+      .withIndex('by_portfolio_external', (q) => q.eq('portfolioId', portfolioId).eq('externalId', 'opening'))
+      .first()
+    if (opening) await ctx.db.delete(opening._id)
+    for (const e of entries) {
+      const seen = await ctx.db
+        .query('entries')
+        .withIndex('by_portfolio_external', (q) => q.eq('portfolioId', portfolioId).eq('externalId', e.externalId))
+        .first()
+      if (!seen) await ctx.db.insert('entries', { ...e, userId: p.userId, portfolioId })
+    }
   },
 })
 

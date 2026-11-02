@@ -55,7 +55,7 @@ Vocabulary:
 Flow: + card → drawer with a name → floating Deposit (+, primary) / Withdraw (−, secondary) buttons →
 each asks for the entry type in a dropdown → entry drawer (the button decides the sign).
 
-The + card opens a menu: Custom (the flow above), Monobank (`monobank-drawer.tsx`: paste token → pick card)
+The + card opens a menu: Custom (the flow above), Monobank (`monobank-drawer.tsx`: paste token → tick cards)
 or Interactive Brokers (`ibkr-drawer.tsx`: setup guide → paste Flex token + Query ID → pick stocks / Select all).
 
 `src/lib/entries.ts` is the app's data module (live Convex subscription to portfolios + entries,
@@ -85,8 +85,8 @@ and entries carry an app-made UUID in `id` (the app creates rows before the serv
 entries point to their portfolio by that `id`. Tokens live in `monobankTokens` / `ibkrTokens`,
 read only by internal functions.
 
-Monobank (`convex/monobank.ts`): `cards` checks a token and lists cards, `connect` imports a card's
-last 31 days, and an hourly cron (`convex/crons.ts`) syncs the stalest card (each card ≈ daily;
+Monobank (`convex/monobank.ts`): `cards` checks a token and lists cards, `connect` creates a portfolio per
+ticked card from its balance and `loadHistory` then imports their last 31 days one card a minute, and an hourly cron (`convex/crons.ts`) syncs the stalest card (each card ≈ daily;
 Monobank allows 1 request/min).
 
 IBKR (`convex/ibkr.ts`): keeps the Flex Web Service token + Query ID, reads Open Positions from

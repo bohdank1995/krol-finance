@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import {
   Sheet,
@@ -9,7 +10,7 @@ import {
   SheetFooter,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { connectMonobankCard, listMonobankCards, type MonobankCard } from '@/lib/entries'
+import { connectMonobankCards, listMonobankCards, type MonobankCard } from '@/lib/entries'
 import { formatAmount } from '@/lib/format'
 import { useT } from '@/lib/i18n'
 import { cn, masked, noAutofill } from '@/lib/utils'
@@ -20,7 +21,7 @@ type Props = {
   onCreated?: (id: string) => void
 }
 
-/** Right-side drawer to connect a Monobank card: paste the token, then pick a card. */
+/** Right-side drawer to connect Monobank cards: paste the token, then tick one or more. */
 export function MonobankDrawer({ open, onOpenChange, onCreated }: Props) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -48,12 +49,16 @@ const cardLabel = (c: MonobankCard) =>
     .filter(Boolean)
     .join(' ')
 
+/** Cards that can be added come first, already added ones last; Monobank's own order changes between visits. */
+const rank = (c: MonobankCard) => (c.connected ? 2 : c.asset ? 0 : 1)
+const sorted = (cards: MonobankCard[]) =>
+  [...cards].sort((a, b) => rank(a) - rank(b) || cardLabel(a).localeCompare(cardLabel(b)))
+
 function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void; onDone: () => void }) {
   const t = useT()
   const [token, setToken] = useState('')
   const [cards, setCards] = useState<MonobankCard[]>()
-  const [picked, setPicked] = useState<MonobankCard>()
-  const [name, setName] = useState('')
+  const [picked, setPicked] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
   // The server keeps the token after the first time, so ask it for the cards before showing the token step.
@@ -87,19 +92,23 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
     if (busy) return
     if (!cards) {
       if (token.trim()) run(async () => setCards((await listMonobankCards(token.trim())) ?? []))
-    } else if (picked && name.trim()) {
+    } else if (picked.size) {
       run(async () => {
-        const id = await connectMonobankCard(picked.id, name.trim())
-        onCreated?.(id)
+        const chosen = cards.filter((c) => picked.has(c.id))
+        const [first] = await connectMonobankCards(chosen.map((c) => ({ accountId: c.id, name: `Mono ${cardLabel(c)}` })))
+        if (first) onCreated?.(first)
         onDone()
       })
     }
   }
 
-  const pick = (card: MonobankCard) => {
-    setPicked(card)
-    setName(`Mono ${cardLabel(card)}`)
-  }
+  const toggle = (id: string, on: boolean) =>
+    setPicked((s) => {
+      const next = new Set(s)
+      if (on) next.add(id)
+      else next.delete(id)
+      return next
+    })
 
   if (checking)
     return (
@@ -109,12 +118,12 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
       </>
     )
 
-  const valid = cards ? !!picked && !!name.trim() : !!token.trim()
+  const valid = cards ? picked.size > 0 : !!token.trim()
 
   return (
     <form onSubmit={submit} className="contents">
       <SheetTitle className="text-sm font-normal text-muted-foreground">
-        {cards ? t.monobank.pickCard : t.monobank.connect}
+        {cards ? t.monobank.pickCards : t.monobank.connect}
       </SheetTitle>
 
       {!cards ? (
@@ -144,24 +153,21 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
       ) : (
         <div className="grid gap-4">
           {cards.length === 0 && <p className="text-muted-foreground">{t.monobank.noCards}</p>}
-          <div role="radiogroup" aria-label={t.monobank.cards} className="grid gap-2">
-            {cards.map((c) => {
+          <div role="group" aria-label={t.monobank.cards} className="grid gap-2">
+            {sorted(cards).map((c) => {
               const disabled = c.connected || !c.asset
+              const on = picked.has(c.id)
               return (
-                <button
+                <label
                   key={c.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={picked?.id === c.id}
-                  disabled={disabled}
-                  onClick={() => pick(c)}
                   className={cn(
-                    'flex items-center justify-between gap-4 rounded-xl border bg-card px-4 py-3 text-left transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
-                    picked?.id === c.id ? 'border-foreground/30 bg-accent' : 'hover:border-foreground/15',
+                    'flex items-center gap-3 rounded-xl border bg-card px-4 py-3 transition-colors has-focus-visible:ring-3 has-focus-visible:ring-ring/50',
+                    on ? 'border-foreground/30 bg-accent' : 'hover:border-foreground/15',
                     disabled && 'pointer-events-none opacity-50',
                   )}
                 >
-                  <span className="grid gap-0.5">
+                  <Checkbox checked={on} disabled={disabled} onCheckedChange={(v) => toggle(c.id, v)} />
+                  <span className="grid min-w-0 flex-1 gap-0.5">
                     <span>{cardLabel(c)}</span>
                     {disabled && (
                       <span className="text-xs text-faint-foreground">
@@ -173,21 +179,12 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
                     {formatAmount(c.balance)}
                     <span className="ml-1.5 text-xs text-muted-foreground">{c.asset ?? '—'}</span>
                   </span>
-                </button>
+                </label>
               )
             })}
           </div>
 
-          {picked && (
-            <Input
-              autoComplete="off"
-              placeholder={t.name}
-              aria-label={t.name}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="h-12"
-            />
-          )}
+          {picked.size > 1 && <p className="text-xs text-faint-foreground">{t.monobank.historyNote}</p>}
         </div>
       )}
 
@@ -202,6 +199,7 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
         <Button type="submit" disabled={!valid || busy}>
           {busy && <Loader2 className="animate-spin" />}
           {cards ? t.connect : t.continue}
+          {cards && picked.size > 1 && <span className="font-mono tabular-nums">{picked.size}</span>}
         </Button>
       </SheetFooter>
     </form>
