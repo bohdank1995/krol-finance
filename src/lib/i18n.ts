@@ -134,7 +134,7 @@ const en = {
   hiddenNote: 'Hidden from net worth for now — show it again from the card menu.',
 
   monobank: {
-    pickCard: 'Pick a card',
+    pickCards: 'Pick cards',
     connect: 'Connect Monobank',
     /** Text before and after the api.monobank.ua link. */
     intro: [
@@ -144,6 +144,7 @@ const en = {
     tokenLabel: 'Monobank token',
     noCards: 'No cards found on this account.',
     cards: 'Cards',
+    historyNote: 'Balances appear right away. Transactions load one card per minute.',
     currencyNotSupported: 'Currency not supported yet',
     unreachable: 'Could not reach Monobank. Try again.',
   },
@@ -292,7 +293,7 @@ const uk: Dictionary = {
   hiddenNote: 'Зараз не враховується в капіталі — увімкніть знову в меню картки.',
 
   monobank: {
-    pickCard: 'Оберіть картку',
+    pickCards: 'Оберіть картки',
     connect: 'Підключити Monobank',
     intro: [
       'Відкрийте',
@@ -301,6 +302,7 @@ const uk: Dictionary = {
     tokenLabel: 'Токен Monobank',
     noCards: 'На цьому рахунку немає карток.',
     cards: 'Картки',
+    historyNote: 'Баланси з’являться одразу. Транзакції завантажуються по одній картці на хвилину.',
     currencyNotSupported: 'Валюта поки не підтримується',
     unreachable: 'Не вдалося зʼєднатися з Monobank. Спробуйте ще раз.',
   },
