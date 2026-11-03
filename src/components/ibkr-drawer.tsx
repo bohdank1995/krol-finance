@@ -53,6 +53,11 @@ const STEPS: Record<Language, React.ReactNode[]> = {
       fields, and choose <span className={strong}>Summary</span> in its options.
     </>,
     <>
+      Add the <span className={strong}>Trades</span> section too, tick <span className={strong}>Select all</span>{' '}
+      fields, and choose <span className={strong}>Execution</span> in its options. This is where your purchase dates
+      come from.
+    </>,
+    <>
       Set the format to <span className={strong}>XML</span> and the period to{' '}
       <span className={strong}>Last Business Day</span>. Save, then copy the <span className={strong}>Query ID</span>{' '}
       shown next to the query.
@@ -82,6 +87,11 @@ const STEPS: Record<Language, React.ReactNode[]> = {
       для полів і оберіть <span className={strong}>Summary</span> у його налаштуваннях.
     </>,
     <>
+      Додайте також розділ <span className={strong}>Trades</span>, позначте <span className={strong}>Select all</span>{' '}
+      для полів і оберіть <span className={strong}>Execution</span> у його налаштуваннях. Звідси беруться дати
+      ваших покупок.
+    </>,
+    <>
       Встановіть формат <span className={strong}>XML</span> і період{' '}
       <span className={strong}>Last Business Day</span>. Збережіть, потім скопіюйте{' '}
       <span className={strong}>Query ID</span>, показаний поруч із запитом.
@@ -105,6 +115,7 @@ function IbkrFlow({ onCreated, onDone }: { onCreated?: (id: string) => void; onD
   const [token, setToken] = useState('')
   const [queryId, setQueryId] = useState('')
   const [positions, setPositions] = useState<IbkrPosition[]>()
+  const [trades, setTrades] = useState(true)
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [name, setName] = useState('Interactive Brokers')
   const [busy, setBusy] = useState(false)
@@ -112,8 +123,9 @@ function IbkrFlow({ onCreated, onDone }: { onCreated?: (id: string) => void; onD
   // The server keeps the token + Query ID after the first time: ask it for the stocks before showing the guide.
   const [checking, setChecking] = useState(true)
 
-  const show = (list: IbkrPosition[]) => {
+  const show = ({ stocks: list, trades }: { stocks: IbkrPosition[]; trades: boolean }) => {
     setPositions(list)
+    setTrades(trades)
     // Everything that can be connected starts selected; untick what to leave out.
     setPicked(new Set(list.filter((p) => !p.connected && p.value !== null).map((p) => p.asset)))
   }
@@ -154,7 +166,7 @@ function IbkrFlow({ onCreated, onDone }: { onCreated?: (id: string) => void; onD
     if (!positions) {
       if (token.trim() && queryId.trim())
         run(async () => {
-          show((await listIbkrPositions(token.trim(), queryId.trim())) ?? [])
+          show((await listIbkrPositions(token.trim(), queryId.trim())) ?? { stocks: [], trades: true })
         })
     } else if (picked.size && name.trim()) {
       run(async () => {
@@ -238,6 +250,9 @@ function IbkrFlow({ onCreated, onDone }: { onCreated?: (id: string) => void; onD
         </div>
       ) : (
         <div className="grid gap-4">
+          {!trades && positions.length > 0 && (
+            <p className="rounded-xl border px-4 py-3 text-xs text-muted-foreground">{t.ibkr.noTrades}</p>
+          )}
           {positions.length === 0 ? (
             <p className="text-muted-foreground">{t.ibkr.noStocks}</p>
           ) : (

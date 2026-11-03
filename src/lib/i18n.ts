@@ -169,6 +169,9 @@ const en = {
     syncNow: 'Sync now',
     syncing: 'Syncing…',
     updated: 'Updated',
+    loadingHistory: 'Loading purchase history…',
+    noTrades:
+      'Purchase dates will be missing: your Flex Query has no Trades section. Add it in IBKR (tick Select all, choose Execution), then open this again.',
   },
 }
 
@@ -328,6 +331,9 @@ const uk: Dictionary = {
     syncNow: 'Синхронізувати зараз',
     syncing: 'Синхронізація…',
     updated: 'Оновлено',
+    loadingHistory: 'Завантаження історії покупок…',
+    noTrades:
+      'Дати покупок будуть відсутні: у вашому Flex Query немає розділу Trades. Додайте його в IBKR (позначте Select all, оберіть Execution), потім відкрийте це знову.',
   },
 }
 

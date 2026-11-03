@@ -91,7 +91,10 @@ Monobank allows 1 request/min).
 
 IBKR (`convex/ibkr.ts`): keeps the Flex Web Service token + Query ID, reads Open Positions from
 the Flex report (as of the last business day), and an hourly cron syncs the stalest user's IBKR
-cards (≈ daily). It also serves stock quotes and daily history (Yahoo Finance) to signed-in users.
+cards (≈ daily). Purchase dates come from the query's Trades section: the first sync (scheduled right
+after `connect`, card shows "Loading purchase history…" via `loadingHistory`) walks back year by year
+and replaces the opening positions with real "Bought" / "Sold" rows. Without Trades the drawer warns
+and the cards keep their opening positions until it's added. It also serves stock quotes and daily history (Yahoo Finance) to signed-in users.
 
 Tokens are encrypted with the deployment's `TOKEN_KEY` (`convex/secrets.ts`: actions `seal` before saving,
 `open` after reading). The user menu's "Delete account" runs `account.deleteAccount`, which wipes every

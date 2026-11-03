@@ -57,7 +57,7 @@ async function manualPortfolio(ctx: QueryCtx, userId: Id<'users'>, id: string) {
 type PortfolioView = Pick<
   Doc<'portfolios'>,
   'id' | 'name' | 'createdAt' | 'source' | 'position' | 'inNetWorth' | 'cardPercent' | 'netWorthPercent'
-> & { syncedAt?: string; inPassiveIncome: boolean }
+> & { syncedAt?: string; inPassiveIncome: boolean; loadingHistory?: boolean }
 type EntryView = Pick<Doc<'entries'>, 'id' | 'portfolioId' | 'asset' | 'amount' | 'createdAt' | 'note' | 'price'>
 
 const portfolioView = (p: Doc<'portfolios'>): PortfolioView => ({
@@ -71,6 +71,7 @@ const portfolioView = (p: Doc<'portfolios'>): PortfolioView => ({
   cardPercent: p.cardPercent,
   netWorthPercent: p.netWorthPercent,
   inPassiveIncome: p.inPassiveIncome ?? true,
+  loadingHistory: p.loadingHistory,
 })
 
 const entryView = (e: Doc<'entries'>): EntryView => ({
