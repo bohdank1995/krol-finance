@@ -26,7 +26,7 @@ export default function Dashboard({ email, image }: { email: string; image?: str
   const realPayouts = usePayouts()
   const payouts = useMemo(() => (fake ? fakePayouts(realPayouts, fakeSeed) : realPayouts), [realPayouts, fake, fakeSeed])
   const entries = useMemo(() => (fake ? fakeEntries(real, fakeSeed) : real), [real, fake, fakeSeed])
-  const [period, setPeriod] = useState<Period>('last-month')
+  const [period, setPeriod] = useState<Period>('all')
   const range = useMemo(() => rangeOf(period), [period])
   const [picked, setPicked] = useState(NET_WORTH)
   // A deleted portfolio falls back to Net worth.

@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import type { EntryType } from './assets'
-import type { Period } from './period'
+import type { Preset, Unit } from './period'
 import { api } from '../../convex/_generated/api'
 import { convex } from './convex'
 
@@ -47,12 +47,29 @@ const en = {
 
   period: 'Period',
   periods: {
-    all: 'All time',
+    today: 'Today',
+    yesterday: 'Yesterday',
+    'last-hour': 'Last hour',
+    'last-24-hours': 'Last 24 hours',
+    'last-7-days': 'Last 7 days',
+    'last-14-days': 'Last 14 days',
+    'last-30-days': 'Last 30 days',
+    'last-90-days': 'Last 90 days',
+    'last-180-days': 'Last 180 days',
+    'last-week': 'Last week',
     'last-month': 'Last month',
-    'prev-month': 'Previous month',
-    'last-quarter': 'Last quarter',
-    'last-year': 'Last year',
-  } satisfies Record<Period, string>,
+    'this-week': 'This week',
+    'this-month': 'This month',
+    'this-year': 'This year',
+    all: 'All time',
+  } satisfies Record<Preset, string>,
+  inTheLast: 'In the last',
+  /** Unit names for "In the last N …", by count. */
+  units: (unit: Unit, n: number) => (n === 1 ? unit.slice(0, -1) : unit),
+  /** The picker's label for a custom "In the last N …". */
+  lastN: (n: number, units: string) => `Last ${n} ${units}`,
+  fewer: 'Fewer',
+  more: 'More',
 
   entryTypes: { money: 'Money', crypto: 'Crypto', stocks: 'Stocks' } satisfies Record<EntryType, string>,
   soon: 'soon',
@@ -177,6 +194,19 @@ const en = {
 
 export type Dictionary = typeof en
 
+/** Ukrainian plural form of a count: 0 = один день, 1 = два дні, 2 = п'ять днів. */
+function ukPlural(n: number) {
+  const form = new Intl.PluralRules('uk').select(n)
+  return form === 'one' ? 0 : form === 'few' ? 1 : 2
+}
+
+const UK_UNITS: Record<Unit, [string, string, string]> = {
+  days: ['день', 'дні', 'днів'],
+  weeks: ['тиждень', 'тижні', 'тижнів'],
+  months: ['місяць', 'місяці', 'місяців'],
+  years: ['рік', 'роки', 'років'],
+}
+
 const uk: Dictionary = {
   cancel: 'Скасувати',
   save: 'Зберегти',
@@ -207,12 +237,27 @@ const uk: Dictionary = {
 
   period: 'Період',
   periods: {
+    today: 'Сьогодні',
+    yesterday: 'Вчора',
+    'last-hour': 'Остання година',
+    'last-24-hours': 'Останні 24 години',
+    'last-7-days': 'Останні 7 днів',
+    'last-14-days': 'Останні 14 днів',
+    'last-30-days': 'Останні 30 днів',
+    'last-90-days': 'Останні 90 днів',
+    'last-180-days': 'Останні 180 днів',
+    'last-week': 'Минулий тиждень',
+    'last-month': 'Минулий місяць',
+    'this-week': 'Цей тиждень',
+    'this-month': 'Цей місяць',
+    'this-year': 'Цей рік',
     all: 'Весь час',
-    'last-month': 'Останній місяць',
-    'prev-month': 'Попередній місяць',
-    'last-quarter': 'Останній квартал',
-    'last-year': 'Останній рік',
   },
+  inTheLast: 'За останні',
+  units: (unit: Unit, n: number) => UK_UNITS[unit][ukPlural(n)],
+  lastN: (n: number, units: string) => `${ukPlural(n) === 0 ? 'Останній' : 'Останні'} ${n} ${units}`,
+  fewer: 'Менше',
+  more: 'Більше',
 
   entryTypes: { money: 'Гроші', crypto: 'Крипта', stocks: 'Акції' },
   soon: 'скоро',
