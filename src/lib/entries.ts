@@ -32,6 +32,8 @@ export type Portfolio = {
   netWorthPercent: number
   /** False when left out of the Net worth passive income. */
   inPassiveIncome: boolean
+  /** IBKR: the first sync after connecting is still loading the purchase history. */
+  loadingHistory?: boolean
 }
 
 export type Entry = {
@@ -292,9 +294,12 @@ export type IbkrPosition = {
 }
 
 /** Runs the Flex Query and lists the stocks in the account. Pass the token + Query ID the first time;
-    after that leave them out and the server uses the kept ones (null means none are kept yet). */
+    after that leave them out and the server uses the kept ones (null means none are kept yet).
+    `trades` is false when the query lacks the Trades section, which holds the purchase dates. */
 export async function listIbkrPositions(token?: string, queryId?: string) {
-  return (await call(api.ibkr.positions, { token, queryId }, dict().ibkr.unreachable)) as IbkrPosition[] | null
+  return (await call(api.ibkr.positions, { token, queryId }, dict().ibkr.unreachable)) as
+    | { stocks: IbkrPosition[]; trades: boolean }
+    | null
 }
 
 /** Creates a portfolio with the picked stocks (`all`: every stock, also ones bought later). Returns its id. */

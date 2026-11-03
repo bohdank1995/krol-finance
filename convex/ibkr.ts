@@ -21,7 +21,7 @@ const YAHOO = 'https://query1.finance.yahoo.com/v8/finance/chart/'
 const HEADERS = { 'User-Agent': 'Mozilla/5.0 (krol-finance)' }
 const DAY = 86_400
 /** Bump to re-import every portfolio's trade history on its next sync. */
-const TRADES_VERSION = 6
+const TRADES_VERSION = 7
 
 /** One stock from the Flex Query, summed across accounts. `price` is USD per share, null if it can't be priced. */
 type Position = { asset: string; symbol: string; name: string; quantity: string; price: number | null }
@@ -210,6 +210,9 @@ function flexTime(text: string | undefined) {
   return m && `${m[1]}-${m[2]}-${m[3]}T${m[4] ?? '00'}:${m[5] ?? '00'}:${m[6] ?? '00'}.000Z`
 }
 
+/** Whether the Flex Query has the Trades section (IBKR writes an empty `<Trades />` on days without trades). */
+const hasTrades = (xml: string) => /<Trades[\s>/]/.test(xml)
+
 /** Stock trades with real dates, and the day the report starts. `null` if the query has no Trades section. */
 function parseTrades(xml: string, known: Map<string, string>) {
   if (!/<Trade\s/.test(xml)) return null // no section, or an empty one (e.g. a one-day period)
@@ -363,7 +366,8 @@ const stockAssets = (assets: string[]) => assets.filter((a) => a.startsWith('sto
 export const positions = action({
   // Without a token the kept one is used; null comes back when none is kept yet.
   args: { token: v.optional(v.string()), queryId: v.optional(v.string()) },
-  handler: async (ctx, args): Promise<Listed[] | null> => {
+  // `trades` is false when the query lacks the Trades section, so purchase dates would be missing.
+  handler: async (ctx, args): Promise<{ stocks: Listed[]; trades: boolean } | null> => {
     const userId = await userOf(ctx)
     const given = args.token !== undefined || args.queryId !== undefined
     const stored: { token: string; queryId: string; positions: Position[] } | null = await ctx.runQuery(
@@ -379,8 +383,11 @@ export const positions = action({
     if (!/^\d+$/.test(queryId)) throw fail('The Query ID is a number. Copy it from the Flex Queries list.')
 
     let priced: Position[]
+    let trades = true
     try {
-      const list = parsePositions(await report(token, queryId))
+      const xml = await report(token, queryId)
+      trades = hasTrades(xml)
+      const list = parsePositions(xml)
       priced = await Promise.all(list.map(async (p) => ({ ...p, price: (await usdPrice(tickerOf(p.asset))) ?? null })))
     } catch (e) {
       // IBKR is busy, limiting or refusing requests for now: show the last known list instead of an error.
@@ -394,7 +401,7 @@ export const positions = action({
       queryId,
       positions: priced,
     })
-    return priced.map((p) => ({
+    const stocks = priced.map((p) => ({
       asset: p.asset,
       symbol: p.symbol,
       name: p.name,
@@ -402,6 +409,7 @@ export const positions = action({
       value: p.price === null ? null : p.price * Number(p.quantity),
       connected: taken === 'all' || taken.includes(p.asset),
     }))
+    return { stocks, trades }
   },
 })
 
@@ -421,6 +429,8 @@ export const connect = action({
       all: args.all,
       ids: Array.from({ length: 100 }, () => crypto.randomUUID()),
     })
+    // Load the real purchase history now instead of at the next daily sync.
+    await ctx.scheduler.runAfter(0, internal.ibkr.syncFor, { userId })
     return id
   },
 })
@@ -524,6 +534,7 @@ async function syncUser(ctx: ActionCtx, userId: Id<'users'>): Promise<object> {
     let costs: ReturnType<typeof parseCosts>
     let known: Map<string, string>
     let statementFrom = ''
+    let tradesSection = false
     try {
       if (!state.token) throw new Error('No IBKR token')
       const xml = await report(state.token.token, state.token.queryId)
@@ -534,6 +545,7 @@ async function syncUser(ctx: ActionCtx, userId: Id<'users'>): Promise<object> {
       statementFrom = /<FlexStatement\s[^>]*fromDate="(\d{8})"/.exec(xml)?.[1] ?? ''
       payments = parsePayments(xml, bySymbol)
       history = parseTrades(xml, bySymbol)
+      tradesSection = hasTrades(xml)
       costs = parseCosts(xml, bySymbol)
     } catch (e) {
       // An expired token or a changed query: move on to other users, try again tomorrow.
@@ -541,8 +553,9 @@ async function syncUser(ctx: ActionCtx, userId: Id<'users'>): Promise<object> {
       throw e
     }
 
-    // The first time (or after a version bump) also read the years before this report.
-    if (state.token && statementFrom && state.portfolios.some((p) => !p.history)) {
+    // The first time (or after a version bump) also read the years before this report. Without the Trades section
+    // there's nothing to find, and the portfolios wait until it's added instead of getting a made-up history.
+    if (state.token && statementFrom && tradesSection && state.portfolios.some((p) => !p.history)) {
       const older = await olderReports(state.token.token, state.token.queryId, known, statementFrom)
       payments = [...payments, ...older.payments]
       history = older.complete
@@ -744,6 +757,8 @@ export const create = internalMutation({
       // "Select all" also follows stocks bought later, unless another card already holds some.
       trackedAssets: all && taken.length === 0 ? null : picked.map((p) => p.asset),
       syncedAt: at,
+      // Until the sync scheduled by `connect` has run.
+      loadingHistory: true,
       inNetWorth: true,
       cardPercent: 100,
       netWorthPercent: 100,
@@ -910,12 +925,13 @@ export const record = internalMutation({
       .query('portfolios')
       .withIndex('by_user_source', (q) => q.eq('userId', userId).eq('source', 'ibkr'))
       .collect()
-    for (const p of portfolios) await ctx.db.patch(p._id, { syncedAt, ...(history?.includes(p.id) ? { tradesVersion: TRADES_VERSION } : {}) })
+    for (const p of portfolios)
+      await ctx.db.patch(p._id, { syncedAt, loadingHistory: undefined, ...(history?.includes(p.id) ? { tradesVersion: TRADES_VERSION } : {}) })
   },
 })
 
 
-/** Debug only (temporary): run one user's sync from the CLI. */
+/** One user's sync: right after a new IBKR card is connected (also handy from the CLI). */
 export const syncFor = internalAction({
   args: { userId: v.id('users') },
   handler: async (ctx, { userId }): Promise<object> => syncUser(ctx, userId),

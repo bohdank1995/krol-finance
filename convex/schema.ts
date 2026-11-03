@@ -54,6 +54,8 @@ export default defineSchema({
     history: v.optional(v.boolean()),
     /** IBKR: which version of the trade import this portfolio has (see TRADES_VERSION in ibkr.ts). */
     tradesVersion: v.optional(v.number()),
+    /** IBKR: true while the first sync after connecting loads the purchase history. */
+    loadingHistory: v.optional(v.boolean()),
   })
     .index('by_app_id', ['id'])
     .index('by_user', ['userId'])

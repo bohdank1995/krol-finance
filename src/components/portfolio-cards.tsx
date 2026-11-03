@@ -50,6 +50,10 @@ export const NET_WORTH = 'all'
 // Below `sm` the row is a one-card-per-screen carousel: swiping selects the card.
 const MOBILE = '(width < 40rem)'
 
+/** A new IBKR card's first sync is loading its purchase history. Given up after 15 minutes, in case that sync never finished. */
+const loadingHistory = (p: Portfolio) =>
+  !!p.loadingHistory && Date.now() - Date.parse(p.createdAt) < 15 * 60_000
+
 // The slide whose centre is closest to the row's centre.
 function centredSlide(row: HTMLElement) {
   const centre = row.scrollLeft + row.clientWidth / 2
@@ -238,9 +242,9 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, entries
                   hidden={!h.inNetWorth}
                   share={h.cardPercent / 100}
                   netWorthShare={h.inNetWorth ? h.netWorthPercent : undefined}
-                  syncing={syncing.includes(h.id)}
+                  syncing={syncing.includes(h.id) || loadingHistory(h)}
                   message={syncStatus[h.id]}
-                  hint={syncStatus[h.id] ?? (h.syncedAt && t.synced(formatAgo(h.syncedAt)))}
+                  hint={syncStatus[h.id] ?? (loadingHistory(h) ? t.ibkr.loadingHistory : h.syncedAt && t.synced(formatAgo(h.syncedAt)))}
                   entries={scaled.get(h.id) ?? []}
                   {...valuation}
                   active={selected === h.id}
