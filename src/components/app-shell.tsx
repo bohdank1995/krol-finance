@@ -70,7 +70,7 @@ export function DashboardSkeleton({ toolbar, sinceOpen }: { toolbar?: ReactNode;
 /** The whole loading screen. `sinceOpen` is 0 in the HTML written at build time. */
 export function AppShell({ sinceOpen }: { sinceOpen?: number }) {
   return (
-    <div className="min-h-svh px-6 pb-28 sm:pb-14">
+    <div className="min-h-svh px-6 pb-40 sm:pb-24">
       <Bar account={<div className="size-12 shrink-0 rounded-full border bg-input/30" />} />
       <main className="mt-4 sm:mt-6">
         <DashboardSkeleton sinceOpen={sinceOpen} />

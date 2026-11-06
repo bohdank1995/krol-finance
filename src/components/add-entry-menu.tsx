@@ -53,8 +53,9 @@ export function AddEntryMenu({ portfolios, portfolioId, direction, trigger }: Pr
   )
 }
 
-/** Where the floating buttons sit: full width on phones (4 from the edges), bottom-right on desktop. */
-export const FAB_BAR = 'fixed inset-x-4 bottom-4 z-40 flex gap-3 sm:inset-x-auto sm:right-6 sm:bottom-6'
+/** Where the floating buttons sit: full width on phones (4 from the edges), bottom-right on desktop; both above the rates strip (`ticker.tsx`). */
+export const FAB_BAR =
+  'fixed inset-x-4 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-40 flex gap-3 sm:inset-x-auto sm:right-6 sm:bottom-[calc(3.75rem+env(safe-area-inset-bottom))]'
 /** A floating button: half the screen each when paired (full width alone) on phones. */
 export const FAB = 'shadow-lg max-sm:flex-1'
 

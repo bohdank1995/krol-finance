@@ -4,6 +4,7 @@ import { BalanceChart, BalanceChartSkeleton, PassiveIncome } from '@/components/
 import { EntriesTable } from '@/components/entries-table'
 import { Header, PeriodFilter } from '@/components/header'
 import { NET_WORTH, PortfolioCards } from '@/components/portfolio-cards'
+import { Ticker } from '@/components/ticker'
 import { earnsPassiveIncome, netWorthEntries, netWorthPortfolios, savePeriod, scaleEntries, scalePayouts, setInPassiveIncome, useEntries, useLoaded, usePayouts, usePortfolios } from '@/lib/entries'
 import { fakeEntries, fakePayouts } from '@/lib/fake'
 import { useDailyPrices } from '@/lib/history'
@@ -50,7 +51,7 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
   // The display currency is priced too, to convert USD values into it. Every currency is kept
   // priced, so switching needs no download.
   const assets = useMemo(() => [...entries.map((e) => e.asset), currency], [entries, currency])
-  const live = useMemo(() => [...entries.map((e) => e.asset), ...CURRENCIES], [entries])
+  const live = useMemo(() => [...entries.map((e) => e.asset), ...CURRENCIES, 'PLN' as const], [entries])
   const { prices, status } = useLivePrices(live)
   const { prices: daily, ready: historyReady } = useDailyPrices(assets, firstDay(entries), CURRENCIES)
   const points = useMemo(
@@ -107,7 +108,7 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
   const toolbar = useMemo(() => <PeriodFilter period={period} onChange={pick} />, [period, pick])
 
   return (
-    <div className="min-h-svh px-6 pb-28 sm:pb-14">
+    <div className="min-h-svh px-6 pb-40 sm:pb-24">
       <Header email={email} image={image} />
       <main ref={mainRef} className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-10 sm:mt-6">
         {!ready ? (
@@ -165,6 +166,7 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
           </>
         )}
       </main>
+      {ready && <Ticker prices={prices} assets={live} currency={currency} />}
     </div>
   )
 }
