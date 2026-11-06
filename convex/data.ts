@@ -110,7 +110,7 @@ export const addPortfolio = mutation({
     const userId = await signedIn(ctx)
     await freshId(ctx, 'portfolios', id)
     short(name, 100, 'name')
-    short(createdAt, 40, 'date')
+    checkDate(createdAt)
     await ctx.db.insert('portfolios', {
       id,
       userId,
@@ -184,11 +184,20 @@ export async function deleteEntriesOf(ctx: MutationCtx, portfolioId: string) {
   for (const r of payouts) await ctx.db.delete(r._id)
 }
 
-/** Entry texts: asset like "BTC" or "stock:VWCE.DE", amount a decimal string, date ISO. */
+/** Throws unless the text is an ISO date ("2026-11-06T12:00:00.000Z"), the way the app sends it. */
+function checkDate(value: string) {
+  short(value, 40, 'date')
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(value) || Number.isNaN(Date.parse(value)))
+    throw new ConvexError('The date is not valid.')
+}
+
+/** Entry texts: asset like "BTC" or "stock:VWCE.DE", amount a non-zero decimal ("-12.5"), date ISO. */
 function checkEntry(e: { asset: string; amount: string; createdAt: string; note?: string }) {
   short(e.asset, 40, 'asset')
   short(e.amount, 40, 'amount')
-  short(e.createdAt, 40, 'date')
+  if (!/^-?\d+(\.\d+)?$/.test(e.amount) || Number(e.amount) === 0)
+    throw new ConvexError('The amount must be a number other than 0.')
+  checkDate(e.createdAt)
   short(e.note, 500, 'note')
 }
 
