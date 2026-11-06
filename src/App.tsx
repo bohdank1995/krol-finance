@@ -5,6 +5,7 @@ import { SignIn } from '@/components/sign-in'
 import { trackSignedIn } from '@/lib/analytics'
 import { mayBeSignedIn } from '@/lib/auth'
 import { reloadOnce } from '@/lib/chunks'
+import { periodOf } from '@/lib/period'
 import { api } from '../convex/_generated/api'
 
 const loadDashboard = () => import('./Dashboard').catch(reloadOnce)
@@ -22,9 +23,11 @@ function App() {
   // Visitors keep seeing the home page while this loads; returning users see the loading screen.
   if (isLoading) return mayBeSignedIn() ? <AppShell /> : <SignIn />
   if (!isAuthenticated) return <SignIn />
+  // The account (with the saved period) comes first, so the dashboard opens on the right period.
+  if (me === undefined) return <AppShell />
   return (
     <Suspense fallback={<AppShell />}>
-      <Dashboard email={me?.email ?? ''} image={me?.image} />
+      <Dashboard email={me?.email ?? ''} image={me?.image} saved={periodOf(me?.period)} />
     </Suspense>
   )
 }

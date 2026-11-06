@@ -29,6 +29,16 @@ export type Unit = (typeof UNITS)[number]
 /** A preset, or a custom "In the last N units". */
 export type Period = Preset | { last: number; unit: Unit }
 
+/** The period saved on the account; All time when there is none or it's no longer offered. */
+export function periodOf(saved: unknown): Period {
+  if (typeof saved === 'string') return (PRESETS as readonly string[]).includes(saved) ? (saved as Preset) : 'all'
+  if (saved && typeof saved === 'object' && 'last' in saved && 'unit' in saved) {
+    const { last, unit } = saved
+    if (typeof last === 'number' && last >= 1 && (UNITS as readonly unknown[]).includes(unit)) return { last, unit: unit as Unit }
+  }
+  return 'all'
+}
+
 /**
  * First and last day of the period; `from` is unset for All time.
  * `since` is the exact start for the hour-sized periods, so the table can leave out older entries of the same day.

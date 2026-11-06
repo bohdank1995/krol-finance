@@ -37,10 +37,11 @@ Vocabulary:
 - **Monobank portfolio** — a portfolio with `source = 'monobank'`, mirroring one Monobank card. Its
   entries are the card's transactions (plus "Opening balance" / "Balance adjustment" rows) and are
   read-only in the app and on the server. Balance = available to spend (includes any credit limit).
+  Bank cards have no passive income (`earnsPassiveIncome` in `src/lib/entries.ts`): left out of Net worth's.
 - **IBKR portfolio** — `source = 'ibkr'`, stocks held at Interactive Brokers. Entries are share counts:
   one "Opening position" per stock, then "Position change" rows from the daily sync. Read-only like
   Monobank. `trackedAssets` lists the picked stocks; null ("Select all") also follows new purchases.
-- **Period** — the tracked time span picked above the cards, on the left (All time by default, not saved). It limits
+- **Period** — the tracked time span picked above the cards, on the left (All time by default; the last pick is saved on the account, `period` on the Convex user). It limits
   the graph and table; cards show the balance at the period's end plus the change during it.
 - **Display currency** — USD / EUR / UAH switch in the user popover; values convert via the currency's own
   Binance price. Saved per browser in `src/lib/preferences.ts`.

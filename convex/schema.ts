@@ -11,7 +11,8 @@ export const source = v.union(v.literal('manual'), v.literal('monobank'), v.lite
 
 export default defineSchema({
   ...authTables,
-  // Convex Auth's users table, plus the app language (`uk` / `en`).
+  // Convex Auth's users table, plus the app language (`uk` / `en`) and the last picked period
+  // (a preset like "this-month", or a custom "in the last N units").
   users: defineTable({
     name: v.optional(v.string()),
     image: v.optional(v.string()),
@@ -21,6 +22,7 @@ export default defineSchema({
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
     language: v.optional(v.string()),
+    period: v.optional(v.union(v.string(), v.object({ last: v.number(), unit: v.string() }))),
   })
     .index('email', ['email'])
     .index('phone', ['phone']),
