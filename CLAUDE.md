@@ -10,6 +10,11 @@ React 19 + TypeScript + Tailwind 4 on Vite. `npm run dev`, `npm run build`, `npm
 
 Branching, commits, shipping and the SEO rules for public pages follow `DEVELOPMENT.md`.
 
+The plans list lives outside the repo, in `/Users/bogdankarplak/Documents/My Brain/Koshel/Plans and Ideas.md`
+(product names in `Vocabulary.md` next to it). **Whenever a commit finishes something from that list, move it to
+"Done"** (a short description of what changed, newest first); if it's only partly done, add a "Partly done" note
+under the item instead. New work that wasn't on the list goes to "Done" too.
+
 ## UI
 
 shadcn/ui (style `base-nova`, Base UI primitives, neutral base color, lucide icons),
