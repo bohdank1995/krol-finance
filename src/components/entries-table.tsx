@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { assetLabel, currencySign, isStock, type AssetSymbol, type StockSymbol } from '@/lib/assets'
+import { ASSETS, assetLabel, currencySign, isStock, type AssetSymbol, type StockSymbol } from '@/lib/assets'
 import { deleteEntry, isReadOnly, removeStock, type Entry, type Portfolio } from '@/lib/entries'
 import { formatAmount, formatDate, formatSigned, formatMoney } from '@/lib/format'
 import { useT } from '@/lib/i18n'
@@ -31,6 +31,7 @@ import type { Currency } from '@/lib/preferences'
 import { cn } from '@/lib/utils'
 import { EntryActions } from './add-entry-menu'
 import { EntryDrawer } from './entry-drawer'
+import { Marquee } from './marquee'
 
 type Props = {
   entries: Entry[]
@@ -46,6 +47,10 @@ type Props = {
   /** Changes when another source or period is picked: the list goes back to its first page. */
   view: string
 }
+
+/** "Bitcoin" for BTC, in the app's language where it has its own name; stocks show their ticker. */
+const assetName = (a: AssetSymbol, names: Record<string, string>) =>
+  names[a] ?? ASSETS.find((x) => x.symbol === a)?.name ?? assetLabel(a)
 
 const head = 'h-10 text-xs font-normal text-faint-foreground'
 /** Fades in after the cards and the graph on page load. */
@@ -94,11 +99,11 @@ export const EntriesTable = memo(function EntriesTable({ entries, portfolios, pr
 
       {rows.length > 0 && (
         <Table className="animate-enter" style={enter}>
-          <TableHeader>
+          <TableHeader className="max-sm:hidden">
             <TableRow className="hover:bg-transparent">
               <TableHead className={cn(head, 'hidden pl-0 sm:table-cell')}>{t.date}</TableHead>
               {!portfolioId && <TableHead className={cn(head, 'hidden sm:table-cell')}>{t.portfolio}</TableHead>}
-              <TableHead className={cn(head, 'max-sm:pl-0 sm:text-right')}>{t.amount}</TableHead>
+              <TableHead className={cn(head, 'text-right')}>{t.amount}</TableHead>
               <TableHead className={cn(head, 'hidden pl-6 sm:table-cell')}>{t.note}</TableHead>
               {showPaid && <TableHead className={cn(head, 'hidden text-right sm:table-cell')}>{t.paid}</TableHead>}
               <TableHead className={cn(head, 'hidden text-right sm:table-cell')}>{currencySign(currency)}</TableHead>
@@ -112,6 +117,22 @@ export const EntriesTable = memo(function EntriesTable({ entries, portfolios, pr
               const price = asset === undefined || rate === undefined ? undefined : asset / rate
               return (
                 <TableRow key={e.id} className="group">
+                  {/* Phones: one cell like a bank app, the label (fading and sliding when long) and date on the
+                      left, the amount on the right. The amount and the ⋯ always stay in full view. */}
+                  <TableCell className="w-full max-w-0 py-3 pl-0 sm:hidden">
+                    <span className="flex items-center gap-3">
+                      <span className="min-w-0 flex-1">
+                        <Marquee>{e.note || (!portfolioId && byId.get(e.portfolioId)?.name) || assetName(e.asset, t.assetNames)}</Marquee>
+                        <span className="mt-0.5 block font-mono text-xs whitespace-pre text-muted-foreground tabular-nums">
+                          {formatDate(e.createdAt)}
+                        </span>
+                      </span>
+                      <span className={cn('shrink-0 font-mono tabular-nums', Number(e.amount) < 0 && 'text-muted-foreground')}>
+                        {formatSigned(e.amount)}
+                        <span className="ml-1.5 text-muted-foreground">{assetLabel(e.asset)}</span>
+                      </span>
+                    </span>
+                  </TableCell>
                   <TableCell className="hidden py-3.5 pl-0 font-mono whitespace-pre text-muted-foreground tabular-nums sm:table-cell">
                     {formatDate(e.createdAt)}
                   </TableCell>
@@ -122,16 +143,12 @@ export const EntriesTable = memo(function EntriesTable({ entries, portfolios, pr
                   )}
                   <TableCell
                     className={cn(
-                      'py-3.5 font-mono tabular-nums max-sm:pl-0 sm:text-right',
+                      'hidden py-3.5 text-right font-mono tabular-nums sm:table-cell',
                       Number(e.amount) < 0 && 'text-muted-foreground',
                     )}
                   >
                     {formatSigned(e.amount)}
                     <span className="ml-2 inline-block min-w-[4ch] text-left text-muted-foreground">{assetLabel(e.asset)}</span>
-                    {/* Phones have no Date column: the date sits under the amount. */}
-                    <span className="mt-1 block whitespace-pre-wrap text-muted-foreground sm:hidden">
-                      {formatDate(e.createdAt)}
-                    </span>
                   </TableCell>
                   <TableCell
                     title={e.note}

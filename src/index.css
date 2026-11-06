@@ -140,6 +140,29 @@
     animation: none;
   }
 }
+/* Long labels (`marquee.tsx`): rest, slide left to the end, rest, slide back. The right edge fades. */
+@keyframes marquee {
+  0%,
+  20% {
+    translate: 0 0;
+  }
+  50%,
+  70% {
+    translate: var(--marquee-shift) 0;
+  }
+  100% {
+    translate: 0 0;
+  }
+}
+@utility animate-marquee {
+  animation: marquee var(--marquee-time) ease-in-out infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+@utility fade-right {
+  mask-image: linear-gradient(to right, black calc(100% - 1.5rem), transparent);
+}
 /* Loading placeholders: hidden while loading is quick, then a fade. Each sets its animation-delay from
    when the page opened (`slowFade` in app-shell.tsx). */
 @keyframes slow-in {
