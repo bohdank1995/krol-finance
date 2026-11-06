@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { ASSETS, assetLabel, currencySign, isStock, type AssetSymbol, type StockSymbol } from '@/lib/assets'
+import { ASSETS, assetLabel, currencySign, isStock, typeOf, type AssetSymbol, type StockSymbol } from '@/lib/assets'
 import { deleteEntry, isReadOnly, removeStock, type Entry, type Portfolio } from '@/lib/entries'
 import { changeTone, formatAmount, formatDate, formatSigned, formatMoney } from '@/lib/format'
 import { useT } from '@/lib/i18n'
@@ -51,6 +51,15 @@ type Props = {
 /** "Bitcoin" for BTC, in the app's language where it has its own name; stocks show their ticker. */
 const assetName = (a: AssetSymbol, names: Record<string, string>) =>
   names[a] ?? ASSETS.find((x) => x.symbol === a)?.name ?? assetLabel(a)
+
+/** A crypto row's worth in the display currency, in a small grey line under its amount. */
+function Worth({ value, currency, className }: { value?: number; currency: Currency; className?: string }) {
+  return (
+    <span className={cn('mt-0.5 block text-xs text-muted-foreground', className)}>
+      {value === undefined ? '···' : `${formatMoney(value)} ${currencySign(currency)}`}
+    </span>
+  )
+}
 
 const head = 'h-10 text-xs font-normal text-faint-foreground'
 /** Fades in after the cards and the graph on page load. */
@@ -115,6 +124,8 @@ export const EntriesTable = memo(function EntriesTable({ entries, portfolios, pr
               const asset = prices[e.asset]
               const rate = prices[currency]
               const price = asset === undefined || rate === undefined ? undefined : asset / rate
+              const value = price === undefined ? undefined : Number(e.amount) * price
+              const crypto = !isStock(e.asset) && typeOf(e.asset) === 'crypto'
               return (
                 <TableRow key={e.id} className="group">
                   {/* Phones: one cell like a bank app, the label (fading and sliding when long) and date on the
@@ -127,9 +138,13 @@ export const EntriesTable = memo(function EntriesTable({ entries, portfolios, pr
                           {formatDate(e.createdAt)}
                         </span>
                       </span>
-                      <span className={cn('shrink-0 font-mono tabular-nums', changeTone(Number(e.amount)))}>
-                        {formatSigned(e.amount)}
-                        <span className="ml-1.5 text-muted-foreground">{assetLabel(e.asset)}</span>
+                      {/* Over a fade on its left, so a long date or label slides under it instead of overlapping. */}
+                      <span className="relative z-10 flex shrink-0 flex-col items-end bg-background font-mono tabular-nums before:absolute before:inset-y-0 before:right-full before:w-6 before:bg-linear-to-r before:from-transparent before:to-background">
+                        <span className={changeTone(Number(e.amount))}>
+                          {formatSigned(e.amount)}
+                          <span className="ml-1.5 text-muted-foreground">{assetLabel(e.asset)}</span>
+                        </span>
+                        {crypto && <Worth value={value} currency={currency} />}
                       </span>
                     </span>
                   </TableCell>
@@ -149,6 +164,7 @@ export const EntriesTable = memo(function EntriesTable({ entries, portfolios, pr
                   >
                     {formatSigned(e.amount)}
                     <span className="ml-2 inline-block min-w-[4ch] text-left text-muted-foreground">{assetLabel(e.asset)}</span>
+                    {crypto && <Worth value={value} currency={currency} className="mr-[calc(4ch+0.5rem)]" />}
                   </TableCell>
                   <TableCell
                     title={e.note}
@@ -162,7 +178,7 @@ export const EntriesTable = memo(function EntriesTable({ entries, portfolios, pr
                     </TableCell>
                   )}
                   <TableCell className="hidden py-3.5 text-right font-mono text-muted-foreground tabular-nums sm:table-cell">
-                    {price === undefined ? '···' : formatMoney(Number(e.amount) * price)}
+                    {value === undefined ? '···' : formatMoney(value)}
                   </TableCell>
                   <TableCell className="py-3.5 pr-0 text-right">
                     {!readOnly && (!isReadOnly(byId.get(e.portfolioId)) || (byId.get(e.portfolioId)?.source === 'ibkr' && isStock(e.asset))) && (

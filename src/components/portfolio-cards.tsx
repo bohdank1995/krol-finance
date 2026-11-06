@@ -164,7 +164,8 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
       clearTimeout(timer)
       row.removeEventListener('scroll', onScroll)
     }
-  }, [])
+    // The row is drawn anew after the edit mode closes.
+  }, [editing])
 
   // Selecting another way (dot, new or deleted portfolio) brings that card into view: centred on
   // phones; on wider screens only when it's (partly) out of view, just far enough to show it whole.
@@ -333,7 +334,6 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
       {/* Same edges as the cards and everything below them. */}
       <div className="mb-3 flex items-center gap-2">
         <span className="mr-auto">{toolbar}</span>
-        <span className="sm:hidden">{addMenu}</span>
         {onEdit && (
           <Button
             variant="outline"
@@ -345,6 +345,7 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
             <Settings2 />
           </Button>
         )}
+        <span className="sm:hidden">{addMenu}</span>
       </div>
       <Reorder items={items} onMove={saveLayout} preview={preview}>
         <div className="relative">
@@ -548,8 +549,9 @@ function Card({ id, order, label, stack, note, folded, draggable = false, hidden
       style={{ animationDelay: `${order * 60}ms` }}
       className={cn(
         'animate-enter relative w-[calc(100vw-3rem)] shrink-0 snap-center snap-always touch-manipulation transition-[width,opacity,margin] duration-300 ease-out sm:w-62',
-        // Folded: no width and the row's gap taken back, so it slides out from behind its group.
-        folded && 'pointer-events-none -ml-2 w-0 overflow-hidden opacity-0 sm:-ml-3 sm:w-0',
+        // Folded: no width and the row's gap taken back, so it slides out from behind its group. Not a
+        // stop for the swipe either, or a swipe could settle between the group and the next card.
+        folded && 'pointer-events-none -ml-2 w-0 snap-align-none overflow-hidden opacity-0 sm:-ml-3 sm:w-0',
         // The card being dragged stays in place, faded, while its copy follows the pointer.
         dragged && 'opacity-40',
         // Room for the stacked cards on the right, inside the group's outline.

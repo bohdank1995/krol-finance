@@ -1,5 +1,5 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react'
-import { CalendarIcon } from 'lucide-react'
+import { ArrowLeftRight, CalendarIcon } from 'lucide-react'
 import { enUS, uk } from 'react-day-picker/locale'
 import { Field } from '@/components/field'
 import { Button } from '@/components/ui/button'
@@ -27,6 +27,10 @@ type Props = {
   asset: AssetSymbol
   onAssetChange: (v: AssetSymbol) => void
   autoFocus?: boolean
+  /** Crypto: the unit the amount is typed in, on a button at the end of the field that switches it. */
+  unit?: { label: string; other: string; onSwitch: () => void; disabled?: boolean }
+  /** A small grey line under the field, e.g. what the amount is worth in the other unit. */
+  hint?: string
 }
 
 const isDigit = (c: string) => (c >= '0' && c <= '9') || c === '.'
@@ -84,7 +88,7 @@ function useGroupedAmount(amount: string, onAmountChange: (v: string) => void) {
 }
 
 /** The signed amount + asset picker used in the entry drawer. */
-export function AmountFields({ amount, onAmountChange, type, asset, onAssetChange, autoFocus }: Props) {
+export function AmountFields({ amount, onAmountChange, type, asset, onAssetChange, autoFocus, unit, hint }: Props) {
   const t = useT()
   const field = useGroupedAmount(amount, onAmountChange)
   // A calculation shows its result faintly on the right; Tab, "=" or a tap on it puts it in the field.
@@ -93,7 +97,7 @@ export function AmountFields({ amount, onAmountChange, type, asset, onAssetChang
   const apply = () => answer && onAmountChange(answer)
   return (
     // Wraps on narrow screens or large text: the asset picker drops below, full width.
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-start gap-2">
       <Field label={t.amount} className="flex-[999_1_8rem]">
         <div className="relative">
           <Input
@@ -109,24 +113,49 @@ export function AmountFields({ amount, onAmountChange, type, asset, onAssetChang
                 apply()
               }
             }}
-            // Room on the right for the result, so long calculations don't run under it.
-            style={answer ? { paddingRight: `calc(${groupAmount(answer).length + 2}ch + 1.5rem)` } : undefined}
+            // Room on the right for the result and the unit button, so long numbers don't run under them.
+            style={
+              answer || unit
+                ? { paddingRight: `calc(${answer ? groupAmount(answer).length + 2 : 0}ch + ${unit ? '5.5rem' : '1.5rem'})` }
+                : undefined
+            }
             className="h-12 font-mono text-xl tabular-nums md:text-xl"
           />
-          {answer && (
-            <button
-              key={answer}
-              id="amount-result"
-              type="button"
-              tabIndex={-1}
-              title={t.useResult}
-              onClick={apply}
-              className="absolute inset-y-0 right-0 flex animate-in items-center px-3 font-mono text-xl text-faint-foreground tabular-nums duration-300 fade-in hover:text-muted-foreground"
-            >
-              = {groupAmount(answer)}
-            </button>
-          )}
+          <span className="absolute inset-y-0 right-0 flex items-center gap-1 pr-1.5">
+            {answer && (
+              <button
+                key={answer}
+                id="amount-result"
+                type="button"
+                tabIndex={-1}
+                title={t.useResult}
+                onClick={apply}
+                className={cn(
+                  'flex h-full animate-in items-center font-mono text-xl text-faint-foreground tabular-nums duration-300 fade-in hover:text-muted-foreground',
+                  !unit && 'px-1.5',
+                )}
+              >
+                = {groupAmount(answer)}
+              </button>
+            )}
+            {unit && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={unit.disabled}
+                aria-label={t.enterIn(unit.other)}
+                title={t.enterIn(unit.other)}
+                onClick={unit.onSwitch}
+                className="min-w-18 gap-1 font-mono text-muted-foreground hover:text-foreground"
+              >
+                {unit.label}
+                <ArrowLeftRight className="size-3.5" />
+              </Button>
+            )}
+          </span>
         </div>
+        {hint && <span className="mt-1.5 block font-mono text-xs text-muted-foreground tabular-nums">{hint}</span>}
       </Field>
       <Field label={t.asset} className="w-28 grow">
         <Select value={asset} onValueChange={(v) => v && onAssetChange(v as AssetSymbol)}>

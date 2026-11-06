@@ -103,6 +103,7 @@ const en = {
   showInPassive: (name: string) => `Count ${name} in passive income`,
   hide: 'Hide',
   useResult: 'Use the result (Tab)',
+  enterIn: (unit: string) => `Enter the amount in ${unit}`,
   show: 'Show',
   removeStock: 'Remove stock',
   /** Text before and after the stock in the remove confirmation. */
@@ -307,6 +308,7 @@ const uk: Dictionary = {
   showInPassive: (name) => `Враховувати ${name} в пасивному доході`,
   hide: 'Сховати',
   useResult: 'Підставити результат (Tab)',
+  enterIn: (unit) => `Вводити суму в ${unit}`,
   show: 'Показати',
   removeStock: 'Прибрати акцію',
   confirmRemoveStock: ['Прибрати', 'і всі її операції з цього джерела? Синхронізація не додасть її знову.'],
