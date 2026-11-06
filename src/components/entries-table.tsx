@@ -15,7 +15,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -44,17 +43,24 @@ type Props = {
   readOnly: boolean
   /** A period other than All time is picked (changes the empty-state text). */
   filtered: boolean
+  /** Changes when another source or period is picked: the list goes back to its first page. */
+  view: string
 }
 
 const head = 'h-10 text-xs font-normal text-faint-foreground'
 /** Fades in after the cards and the graph on page load. */
 const enter = { animationDelay: '380ms' }
 
-export const EntriesTable = memo(function EntriesTable({ entries, portfolios, prices, portfolioId, currency, readOnly, filtered }: Props) {
+/** Rows drawn at first, and added by each "Show more": long histories (years of card payments) stay quick. */
+const PAGE = 50
+
+export const EntriesTable = memo(function EntriesTable({ entries, portfolios, prices, portfolioId, currency, readOnly, filtered, view }: Props) {
   const t = useT()
   const [editing, setEditing] = useState<Entry>()
   const [deleting, setDeleting] = useState<Entry>()
   const [removing, setRemoving] = useState<{ portfolioId: string; asset: StockSymbol }>()
+  const [limit, setLimit] = useState({ view, rows: PAGE })
+  if (limit.view !== view) setLimit({ view, rows: PAGE })
   const byId = new Map(portfolios.map((h) => [h.id, h]))
   // Synced (Monobank) portfolios are read-only: no Deposit/Withdraw into them, no row edits.
   const editable = readOnly ? [] : portfolios.filter((p) => !isReadOnly(p))
@@ -63,6 +69,8 @@ export const EntriesTable = memo(function EntriesTable({ entries, portfolios, pr
   // Every view with stocks has a Paid column; rows whose price IBKR didn't give show a dash.
   const showPaid = entries.some((e) => isStock(e.asset))
   const rows = [...entries].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  const shown = rows.slice(0, limit.rows)
+  const left = rows.length - shown.length
 
   return (
     <section className="grid gap-2">
@@ -98,7 +106,7 @@ export const EntriesTable = memo(function EntriesTable({ entries, portfolios, pr
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((e) => {
+            {shown.map((e) => {
               const asset = prices[e.asset]
               const rate = prices[currency]
               const price = asset === undefined || rate === undefined ? undefined : asset / rate
@@ -187,6 +195,17 @@ export const EntriesTable = memo(function EntriesTable({ entries, portfolios, pr
         </Table>
       )}
 
+      {left > 0 && (
+        <Button
+          variant="secondary"
+          className="mt-2 h-12 w-full sm:mx-auto sm:w-fit sm:px-6"
+          onClick={() => setLimit({ view, rows: limit.rows + PAGE })}
+        >
+          {t.showMore(Math.min(PAGE, left))}
+          <span className="font-mono text-muted-foreground tabular-nums">{t.left(left)}</span>
+        </Button>
+      )}
+
       <EntryDrawer
         open={!!editing}
         onOpenChange={(open) => !open && setEditing(undefined)}
@@ -244,42 +263,3 @@ export const EntriesTable = memo(function EntriesTable({ entries, portfolios, pr
   )
 })
 
-/** Placeholder rows while entries load, laid out like the real table. */
-export function EntriesTableSkeleton() {
-  const t = useT()
-  return (
-    <Table aria-busy="true" aria-label={t.loadingEntries}>
-      <TableHeader>
-        <TableRow className="hover:bg-transparent">
-          <TableHead className={cn(head, 'hidden pl-0 sm:table-cell')}>{t.date}</TableHead>
-          <TableHead className={cn(head, 'max-sm:pl-0 sm:text-right')}>{t.amount}</TableHead>
-          <TableHead className={cn(head, 'hidden pl-6 sm:table-cell')}>{t.note}</TableHead>
-          <TableHead className={cn(head, 'hidden text-right sm:table-cell')}>$</TableHead>
-          <TableHead className={cn(head, 'w-10 pr-0')} />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {[0, 1, 2, 3, 4].map((i) => (
-          <TableRow key={i} className="hover:bg-transparent">
-            <TableCell className="hidden py-3.5 pl-0 sm:table-cell">
-              <Skeleton className="h-4 w-24" />
-            </TableCell>
-            <TableCell className="py-3.5 max-sm:pl-0">
-              <Skeleton className="h-4 w-28 sm:ml-auto" />
-              <Skeleton className="mt-2 h-4 w-36 sm:hidden" />
-            </TableCell>
-            <TableCell className="hidden py-3.5 pl-6 sm:table-cell">
-              <Skeleton className={cn('h-4', i % 2 ? 'w-16' : 'w-32')} />
-            </TableCell>
-            <TableCell className="hidden py-3.5 sm:table-cell">
-              <Skeleton className="ml-auto h-4 w-20" />
-            </TableCell>
-            <TableCell className="py-3.5 pr-0">
-              <div className="size-7" />
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  )
-}

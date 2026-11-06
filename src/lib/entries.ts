@@ -4,6 +4,7 @@ import type { FunctionArgs, FunctionReference, FunctionReturnType } from 'convex
 import { ConvexError } from 'convex/values'
 import { api } from '../../convex/_generated/api'
 import type { AssetSymbol, StockSymbol } from './assets'
+import type { Period } from './period'
 import { convex } from './convex'
 import { dict } from './i18n'
 
@@ -146,6 +147,23 @@ export function renamePortfolio(id: string, name: string) {
 /** Shows or hides a portfolio in the Net worth total. */
 export function setInNetWorth(id: string, inNetWorth: boolean) {
   save(api.data.updatePortfolio, { id, inNetWorth }, patchPortfolio(id, { inNetWorth }))
+}
+
+/** Whether a portfolio can have passive income. Monobank portfolios are bank cards: money on them only
+    "earns" from exchange rates moving, which isn't income. (A Monobank deposit, once it can be
+    connected, earns interest and should count.) */
+export const earnsPassiveIncome = (p: Portfolio) => p.source !== 'monobank'
+
+/** Saves the picked period on the account, so the dashboard opens on it next time. */
+export function savePeriod(period: Period) {
+  convex
+    .mutation(api.users.setPeriod, { period }, {
+      optimisticUpdate: (store) => {
+        const user = store.getQuery(api.users.me, {})
+        if (user) store.setQuery(api.users.me, {}, { ...user, period })
+      },
+    })
+    .catch((e) => console.error('Could not save period', e))
 }
 
 /** Counts a portfolio in the Net worth passive income, or leaves it out. */

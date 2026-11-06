@@ -59,7 +59,7 @@ export function Landing({ onGoogle, busy, error }: { onGoogle?: () => void; busy
             width={2880}
             height={1236}
             fetchPriority="high"
-            alt="The Koshel dashboard: portfolio cards, a net worth graph and passive income"
+            alt="The Koshel dashboard: your sources, a net worth graph and passive income"
             className="h-auto w-full"
           />
         </div>

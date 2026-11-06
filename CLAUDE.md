@@ -3,10 +3,17 @@
 Personal finance tracker: manual entries plus imported Interactive Brokers (IBKR)
 statements.
 
-React 19 + TypeScript + Tailwind 4 on Vite. `npm run dev` (port 5173),
-`npm run build`, `npm run lint` (oxlint).
+React 19 + TypeScript + Tailwind 4 on Vite. `npm run dev`, `npm run build`, `npm run lint` (oxlint).
+
+**Always run the local server on port 5174** (`preview_start` with `dev-5174` from
+`.claude/launch.json`), never 5173 — sign-in only works on 5174.
 
 Branching, commits, shipping and the SEO rules for public pages follow `DEVELOPMENT.md`.
+
+The plans list lives outside the repo, in `/Users/bogdankarplak/Documents/My Brain/Koshel/Plans and Ideas.md`
+(product names in `Vocabulary.md` next to it). **Whenever a commit finishes something from that list, move it to
+"Done"** (a short description of what changed, newest first); if it's only partly done, add a "Partly done" note
+under the item instead. New work that wasn't on the list goes to "Done" too.
 
 ## UI
 
@@ -23,8 +30,11 @@ The user is a designer, not an engineer. Explain changes in plain language.
 
 Vocabulary:
 - **Portfolio** — a named card in the top "Portfolios" row (e.g. "Binance"): a name plus its entries,
-  no type of its own. The first card, **Net worth**, sums every portfolio.
+  no type of its own. The first card, **Net worth**, sums every portfolio. The app calls it a
+  **source** / **джерело** (a manual one is "Manual source" / "Ручне джерело"); "portfolio" is only the
+  code's name. Don't call it a "card" in texts: cards are Monobank's bank cards.
 - **Entry** — a signed change (+/−) of one asset inside a portfolio. One portfolio can mix entry types.
+  The app calls it a **transaction** ("операція" in Ukrainian); "entry" is only the code's name.
 - **Entry type** — money / crypto / stocks; decides which assets an entry can use. It is
   derived from the asset (`typeOf` in `src/lib/assets.ts`), not stored. Manual stock entries are "soon".
 - **Asset** — anything owned (USD, BTC, stocks). A stock is stored as `stock:<Yahoo ticker>`
@@ -32,10 +42,11 @@ Vocabulary:
 - **Monobank portfolio** — a portfolio with `source = 'monobank'`, mirroring one Monobank card. Its
   entries are the card's transactions (plus "Opening balance" / "Balance adjustment" rows) and are
   read-only in the app and on the server. Balance = available to spend (includes any credit limit).
+  Bank cards have no passive income (`earnsPassiveIncome` in `src/lib/entries.ts`): left out of Net worth's.
 - **IBKR portfolio** — `source = 'ibkr'`, stocks held at Interactive Brokers. Entries are share counts:
   one "Opening position" per stock, then "Position change" rows from the daily sync. Read-only like
   Monobank. `trackedAssets` lists the picked stocks; null ("Select all") also follows new purchases.
-- **Period** — the tracked time span picked above the cards, on the left (All time by default, not saved). It limits
+- **Period** — the tracked time span picked above the cards, on the left (All time by default; the last pick is saved on the account, `period` on the Convex user). It limits
   the graph and table; cards show the balance at the period's end plus the change during it.
 - **Display currency** — USD / EUR / UAH switch in the user popover; values convert via the currency's own
   Binance price. Saved per browser in `src/lib/preferences.ts`.
@@ -45,7 +56,7 @@ Vocabulary:
   factor (`src/lib/fake.ts`) and the app becomes read-only, so screenshots are safe to share.
 - **Hidden from net worth** — a portfolio's ⋯ menu can leave it out of Net worth (card, graph and table);
   saved in `portfolios.inNetWorth`, its own card is unchanged.
-- **Percentages** — per portfolio (⋯ → Set percentages): `cardPercent` (what the card + its graph show,
+- **Percentages** — shown in the app as **Your share** ("Ваша частка"); per portfolio (⋯ → Set your share): `cardPercent` (what the card + its graph show,
   with a "50% of …" line) and `netWorthPercent` (what Net worth counts). Totals and graphs use
   `scaleEntries`; the table and stored entries keep real amounts.
 - **Card order** — portfolio cards are dragged into order (@dnd-kit), saved in `portfolios.position`.
@@ -109,7 +120,8 @@ names, emails, amounts, assets or portfolio names. Set `POSTHOG_KEY` / `POSTHOG_
 Public pages: home, `/faq`, `/privacy`, `/terms`, and `/blog` once an article is published. They're listed in
 `src/lib/site.ts` (title, description, breadcrumbs, structured data) and shown by `src/components/site.tsx`.
 `npm run build` writes each as real HTML, plus `sitemap.xml` and `404.html` (`scripts/prerender.mjs`), so a
-new public page only needs adding to that list. Articles live in `src/content/articles.tsx`, FAQ in `src/content/faq.ts`.
+new public page only needs adding to that list. The build also writes the loading screen
+(`src/components/app-shell.tsx`) into `index.html`, so returning users see it before any JavaScript arrives. Articles live in `src/content/articles.tsx`, FAQ in `src/content/faq.ts`.
 Public pages can't use Convex directly: they render at build time, without a backend.
 
 <!-- convex-ai-start -->

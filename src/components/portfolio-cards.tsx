@@ -165,12 +165,24 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, entries
     }
   }, [])
 
-  // Selecting another way (dot, new or deleted portfolio) brings that card into view.
+  // Selecting another way (dot, new or deleted portfolio) brings that card into view: centred on
+  // phones; on wider screens only when it's (partly) out of view, just far enough to show it whole.
   useEffect(() => {
     const row = rowRef.current
-    if (!row || !matchMedia(MOBILE).matches || centredSlide(row) === selected) return
-    const el = row.querySelector<HTMLElement>(`[data-slide="${CSS.escape(selected)}"]`)
-    if (el) row.scrollTo({ left: el.offsetLeft - (row.clientWidth - el.offsetWidth) / 2, behavior: 'smooth' })
+    const el = row?.querySelector<HTMLElement>(`[data-slide="${CSS.escape(selected)}"]`)
+    if (!row || !el) return
+    if (matchMedia(MOBILE).matches) {
+      if (centredSlide(row) !== selected)
+        row.scrollTo({ left: el.offsetLeft - (row.clientWidth - el.offsetWidth) / 2, behavior: 'smooth' })
+      return
+    }
+    // The row's padding keeps cards clear of the screen edge and of the "+" pinned on the right.
+    const { paddingLeft, paddingRight } = getComputedStyle(row)
+    const start = row.scrollLeft + parseFloat(paddingLeft)
+    const end = row.scrollLeft + row.clientWidth - parseFloat(paddingRight)
+    if (el.offsetLeft < start) row.scrollTo({ left: el.offsetLeft - parseFloat(paddingLeft), behavior: 'smooth' })
+    else if (el.offsetLeft + el.offsetWidth > end)
+      row.scrollTo({ left: el.offsetLeft + el.offsetWidth - row.clientWidth + parseFloat(paddingRight), behavior: 'smooth' })
   }, [selected, portfolios.length])
 
   /** "+" menu: in the toolbar next to the period on phones, pinned to the right of the cards on wider screens. */
@@ -380,24 +392,6 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, entries
     </div>
   )
 })
-
-/** Placeholder row while portfolios load: Net worth plus two cards, same size as the real ones. */
-export function PortfolioCardsSkeleton() {
-  const t = useT()
-  return (
-    <div aria-busy="true" aria-label={t.loadingPortfolios} className="-mx-6 flex gap-2 overflow-hidden px-6 pb-2 sm:gap-3">
-      {[0, 1, 2].map((i) => (
-        <div
-          key={i}
-          className="flex min-h-30 w-[calc(100vw-3rem)] shrink-0 flex-col justify-between rounded-xl border bg-card p-5 sm:min-h-26 sm:w-62"
-        >
-          <Skeleton className="h-3.5 w-20" />
-          <Skeleton className="mt-4 h-6 w-28 sm:h-5" />
-        </div>
-      ))}
-    </div>
-  )
-}
 
 type CardProps = Valuation & {
   id: string

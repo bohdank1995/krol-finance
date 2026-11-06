@@ -29,7 +29,7 @@ const en = {
   date: 'Date',
   amount: 'Amount',
   asset: 'Asset',
-  portfolio: 'Portfolio',
+  portfolio: 'Source',
   token: 'Token',
   somethingWrong: 'Something went wrong. Try again.',
   alreadyConnected: 'Already connected',
@@ -78,11 +78,10 @@ const en = {
 
   netWorth: 'Net worth',
   passiveIncome: 'Passive income',
-  portfolios: 'Portfolios',
-  loadingPortfolios: 'Loading portfolios',
+  portfolios: 'Sources',
   portfolioActions: (name: string) => `${name} actions`,
   rename: 'Rename',
-  setPercentages: 'Set percentages',
+  setPercentages: 'Set your share',
   hideFromNetWorth: 'Hide from net worth',
   showInNetWorth: 'Show in net worth',
   hiddenFromNetWorth: 'Hidden from net worth',
@@ -93,11 +92,11 @@ const en = {
   show: 'Show',
   removeStock: 'Remove stock',
   /** Text before and after the stock in the remove confirmation. */
-  confirmRemoveStock: ['Remove', 'and all its rows from this portfolio? Syncs won’t add it back.'],
+  confirmRemoveStock: ['Remove', 'and all its transactions from this source? Syncs won’t add it back.'],
   countsInNetWorth: (percent: number) => `${percent}% counts in net worth`,
   disconnect: 'Disconnect',
-  addPortfolio: 'Add portfolio',
-  custom: 'Custom',
+  addPortfolio: 'Add source',
+  custom: 'Manual source',
   showCard: (name: string) => `Show ${name}`,
   synced: (ago: string) => `Synced ${ago}`,
   shareOf: (percent: number, total: string) => `${percent}% of ${total}`,
@@ -105,7 +104,7 @@ const en = {
   reconnecting: 'Reconnecting',
   /** Text before and after the portfolio's name in the delete confirmation. */
   confirmDeletePortfolio: (synced: boolean) =>
-    synced ? ['Disconnect', 'and remove its synced entries?'] : ['Delete', 'and all its entries?'],
+    synced ? ['Disconnect', 'and remove its synced transactions?'] : ['Delete', 'and all its transactions?'],
   confirmDeleteEntry: ['Delete', '?'],
 
   ago: {
@@ -117,14 +116,15 @@ const en = {
   months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
 
   rowActions: 'Row actions',
+  showMore: (n: number) => `Show ${n} more`,
+  left: (n: number) => `${n} left`,
   edit: 'Edit',
-  loadingEntries: 'Loading entries',
   empty: {
-    noPortfolios: 'Create your first portfolio with the + card above.',
+    noPortfolios: 'Create your first source with the + button above.',
     period: 'Nothing in this period.',
-    noStocks: 'No stocks in this portfolio.',
+    noStocks: 'No stocks in this source.',
     noTransactions: 'No transactions in the last 31 days.',
-    noEntries: 'No entries yet. Make a deposit to see a balance.',
+    noEntries: 'No transactions yet. Make a deposit to see a balance.',
   },
 
   value: 'Value',
@@ -139,16 +139,16 @@ const en = {
     return `${direction === 'out' ? 'Withdraw' : 'Deposit'} ${label}`
   },
 
-  renamePortfolio: 'Rename portfolio',
-  newPortfolio: 'New portfolio',
+  renamePortfolio: 'Rename source',
+  newPortfolio: 'New source',
 
-  percentages: 'Percentages',
-  cardShows: 'Card shows',
+  percentages: 'Your share',
+  cardShows: 'Source shows',
   countsInNetWorthLabel: 'Counts in net worth',
   cardPercentError: 'Above 0, up to 100',
   netWorthPercentError: 'Between 0 and 100',
   partOf: (part: string, total: string) => `${part} of ${total}`,
-  hiddenNote: 'Hidden from net worth for now — show it again from the card menu.',
+  hiddenNote: 'Hidden from net worth for now — show it again from the ⋯ menu.',
 
   monobank: {
     pickCards: 'Pick cards',
@@ -219,7 +219,7 @@ const uk: Dictionary = {
   date: 'Дата',
   amount: 'Сума',
   asset: 'Актив',
-  portfolio: 'Портфель',
+  portfolio: 'Джерело',
   token: 'Токен',
   somethingWrong: 'Щось пішло не так. Спробуйте ще раз.',
   alreadyConnected: 'Уже підключено',
@@ -270,11 +270,10 @@ const uk: Dictionary = {
 
   netWorth: 'Капітал',
   passiveIncome: 'Пасивний дохід',
-  portfolios: 'Портфелі',
-  loadingPortfolios: 'Завантаження портфелів',
+  portfolios: 'Джерела',
   portfolioActions: (name) => `Дії: ${name}`,
   rename: 'Перейменувати',
-  setPercentages: 'Налаштувати відсотки',
+  setPercentages: 'Налаштувати вашу частку',
   hideFromNetWorth: 'Не враховувати в капіталі',
   showInNetWorth: 'Враховувати в капіталі',
   hiddenFromNetWorth: 'Не враховується в капіталі',
@@ -284,18 +283,18 @@ const uk: Dictionary = {
   useResult: 'Підставити результат (Tab)',
   show: 'Показати',
   removeStock: 'Прибрати акцію',
-  confirmRemoveStock: ['Прибрати', 'і всі її записи з цього портфеля? Синхронізація не додасть її знову.'],
+  confirmRemoveStock: ['Прибрати', 'і всі її операції з цього джерела? Синхронізація не додасть її знову.'],
   countsInNetWorth: (percent) => `${percent}% враховується в капіталі`,
   disconnect: 'Відключити',
-  addPortfolio: 'Додати портфель',
-  custom: 'Власний',
+  addPortfolio: 'Додати джерело',
+  custom: 'Ручне джерело',
   showCard: (name) => `Показати ${name}`,
   synced: (ago) => `Синхронізовано ${ago}`,
   shareOf: (percent, total) => `${percent}% від ${total}`,
   live: 'Наживо',
   reconnecting: 'Перепідключення',
   confirmDeletePortfolio: (synced) =>
-    synced ? ['Відключити', 'і видалити його синхронізовані записи?'] : ['Видалити', 'і всі його записи?'],
+    synced ? ['Відключити', 'і видалити його синхронізовані операції?'] : ['Видалити', 'і всі його операції?'],
   confirmDeleteEntry: ['Видалити', '?'],
 
   ago: {
@@ -307,14 +306,15 @@ const uk: Dictionary = {
   months: ['січ', 'лют', 'бер', 'кві', 'тра', 'чер', 'лип', 'сер', 'вер', 'жов', 'лис', 'гру'],
 
   rowActions: 'Дії з рядком',
+  showMore: (n) => `Показати ще ${n}`,
+  left: (n) => `залишилось ${n}`,
   edit: 'Редагувати',
-  loadingEntries: 'Завантаження записів',
   empty: {
-    noPortfolios: 'Створіть перший портфель кнопкою + над картками.',
+    noPortfolios: 'Створіть перше джерело кнопкою + вгорі.',
     period: 'За цей період нічого немає.',
-    noStocks: 'У цьому портфелі немає акцій.',
-    noTransactions: 'Немає транзакцій за останні 31 день.',
-    noEntries: 'Записів ще немає. Поповніть портфель, щоб побачити баланс.',
+    noStocks: 'У цьому джерелі немає акцій.',
+    noTransactions: 'Немає операцій за останні 31 день.',
+    noEntries: 'Операцій ще немає. Натисніть «Поповнити», щоб побачити баланс.',
   },
 
   value: 'Вартість',
@@ -329,16 +329,16 @@ const uk: Dictionary = {
     return editing ? `Редагувати ${action.toLowerCase()} · ${label}` : `${action} · ${label}`
   },
 
-  renamePortfolio: 'Перейменувати портфель',
-  newPortfolio: 'Новий портфель',
+  renamePortfolio: 'Перейменувати джерело',
+  newPortfolio: 'Нове джерело',
 
-  percentages: 'Відсотки',
-  cardShows: 'Картка показує',
+  percentages: 'Ваша частка',
+  cardShows: 'Джерело показує',
   countsInNetWorthLabel: 'Враховується в капіталі',
   cardPercentError: 'Більше 0, до 100',
   netWorthPercentError: 'Від 0 до 100',
   partOf: (part, total) => `${part} з ${total}`,
-  hiddenNote: 'Зараз не враховується в капіталі — увімкніть знову в меню картки.',
+  hiddenNote: 'Зараз не враховується в капіталі — увімкніть знову в меню ⋯.',
 
   monobank: {
     pickCards: 'Оберіть картки',

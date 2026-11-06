@@ -1,6 +1,6 @@
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { canonicalOf, PAGES, render, renderNotFound, SITE_URL, structuredData } from '../dist-ssr/entry-server.js'
+import { canonicalOf, PAGES, render, renderLoading, renderNotFound, SITE_URL, structuredData } from '../dist-ssr/entry-server.js'
 
 /* Runs after `vite build`: writes each public page as real HTML (so Google reads it without running
    JavaScript), plus 404.html and the sitemap. The browser then starts the app on top as usual. */
@@ -26,7 +26,10 @@ for (const page of PAGES) {
     .join('')
   const file = page.path === '/' ? 'dist/index.html' : join('dist', `${page.path}.html`)
   mkdirSync(dirname(file), { recursive: true })
-  writeFileSync(file, html(render(page.path), { ...page, head: `<link rel="canonical" href="${canonicalOf(page)}" />${data}` }))
+  let out = html(render(page.path), { ...page, head: `<link rel="canonical" href="${canonicalOf(page)}" />${data}` })
+  // Returning users see the loading screen at once instead of the home page (see index.html).
+  if (page.path === '/') out = out.replace('<template id="loading"></template>', () => `<template id="loading">${renderLoading()}</template>`)
+  writeFileSync(file, out)
 }
 
 writeFileSync(
