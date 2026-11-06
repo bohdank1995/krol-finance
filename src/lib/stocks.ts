@@ -50,7 +50,37 @@ export function useStockPrices(watchKey: string) {
   return { prices, status }
 }
 
+type Days = Record<string, number>
+
+/** Stocks asked for in the same moment, per start day: they go to the server together, 10 per call. */
+const waiting = new Map<string, Map<StockSymbol, ((days: Days) => void)[]>>()
+
+async function send(sinceDay: string) {
+  const batch = waiting.get(sinceDay)
+  waiting.delete(sinceDay)
+  if (!batch) return
+  const assets = [...batch.keys()]
+  const chunks = Array.from({ length: Math.ceil(assets.length / 10) }, (_, i) => assets.slice(i * 10, i * 10 + 10))
+  await Promise.all(
+    chunks.map(async (chunk) => {
+      const found = await call(api.ibkr.history, { assets: chunk, since: sinceDay }, 'Could not load stock history.').catch(
+        () => [],
+      )
+      const daysOf = new Map(found.map((r) => [r.asset, Object.fromEntries(r.days)]))
+      for (const asset of chunk) for (const done of batch.get(asset) ?? []) done(daysOf.get(asset) ?? {})
+    }),
+  )
+}
+
 /** Daily closes in USD, "YYYY-MM-DD" → price, from `sinceDay` on. Empty if the request fails. */
 export function fetchStockDaily(asset: StockSymbol, sinceDay: string) {
-  return call(api.ibkr.history, { asset, since: sinceDay }, 'Could not load stock history.').then(Object.fromEntries)
+  return new Promise<Days>((done) => {
+    let batch = waiting.get(sinceDay)
+    if (!batch) {
+      batch = new Map()
+      waiting.set(sinceDay, batch)
+      setTimeout(() => send(sinceDay))
+    }
+    batch.set(asset, [...(batch.get(asset) ?? []), done])
+  })
 }

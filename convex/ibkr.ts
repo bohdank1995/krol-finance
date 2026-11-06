@@ -450,13 +450,21 @@ export const quotes = action({
   },
 })
 
+/** Daily closes of up to 10 stocks in one call. One call per stock made the calls race for the same
+    rate-limit counter when the app opened, and some failed. A stock whose lookup fails comes back empty. */
 export const history = action({
-  args: { asset: v.string(), since: v.string() },
-  handler: async (ctx, { asset, since }) => {
-    await hit(ctx, await userOf(ctx), 'history')
-    if (!asset.startsWith('stock:') || !/^\d{4}-\d{2}-\d{2}$/.test(since)) throw fail('Unknown stock or day.')
+  args: { assets: v.array(v.string()), since: v.string() },
+  handler: async (ctx, { assets, since }) => {
+    const stocks = stockAssets(assets).slice(0, 10)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(since)) throw fail('Unknown day.')
+    await hit(ctx, await userOf(ctx), 'history', stocks.length)
     // [day, price] pairs: a Convex object can't hold more than 1024 days (about four years).
-    return Object.entries(await dailyUsd(tickerOf(asset), since))
+    return Promise.all(
+      stocks.map(async (asset) => ({
+        asset,
+        days: Object.entries(await dailyUsd(tickerOf(asset), since).catch(() => ({}))),
+      })),
+    )
   },
 })
 
