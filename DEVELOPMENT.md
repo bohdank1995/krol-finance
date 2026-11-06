@@ -53,6 +53,7 @@ feat: bigger buttons and menus
 - [ ] The change was tried in the browser, including at phone width if the layout changed.
 - [ ] New texts exist in both Ukrainian and English (`src/lib/i18n.ts`).
 - [ ] Colors use theme tokens, numbers use `font-mono tabular-nums`.
+- [ ] Number colours: gains green, losses grey, totals white (`changeTone` in `src/lib/format.ts`).
 - [ ] Public pages follow the SEO rules below.
 - [ ] `CLAUDE.md` is updated if a concept, flow or data rule changed.
 

@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/table'
 import { ASSETS, assetLabel, currencySign, isStock, type AssetSymbol, type StockSymbol } from '@/lib/assets'
 import { deleteEntry, isReadOnly, removeStock, type Entry, type Portfolio } from '@/lib/entries'
-import { formatAmount, formatDate, formatSigned, formatMoney } from '@/lib/format'
+import { changeTone, formatAmount, formatDate, formatSigned, formatMoney } from '@/lib/format'
 import { useT } from '@/lib/i18n'
 import type { Currency } from '@/lib/preferences'
 import { cn } from '@/lib/utils'
@@ -127,7 +127,7 @@ export const EntriesTable = memo(function EntriesTable({ entries, portfolios, pr
                           {formatDate(e.createdAt)}
                         </span>
                       </span>
-                      <span className={cn('shrink-0 font-mono tabular-nums', Number(e.amount) < 0 && 'text-muted-foreground')}>
+                      <span className={cn('shrink-0 font-mono tabular-nums', changeTone(Number(e.amount)))}>
                         {formatSigned(e.amount)}
                         <span className="ml-1.5 text-muted-foreground">{assetLabel(e.asset)}</span>
                       </span>
@@ -144,7 +144,7 @@ export const EntriesTable = memo(function EntriesTable({ entries, portfolios, pr
                   <TableCell
                     className={cn(
                       'hidden py-3.5 text-right font-mono tabular-nums sm:table-cell',
-                      Number(e.amount) < 0 && 'text-muted-foreground',
+                      changeTone(Number(e.amount)),
                     )}
                   >
                     {formatSigned(e.amount)}

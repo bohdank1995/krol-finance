@@ -86,8 +86,10 @@ graph come from `src/lib/history.ts`; balance and graph maths are in `src/lib/po
 ## Design
 
 Dark only, cold (neutrals carry a faint blue hue), Supabase-like: deep green CTA with a
-bright green edge, green reserved for actions and the live dot. Numbers always use the
-mono font (`font-mono tabular-nums`). Every form input has a small label above it (`field.tsx`) instead of a placeholder repeating it.
+bright green edge, green reserved for actions, the live dot and gains. Numbers always use the
+mono font (`font-mono tabular-nums`). Number colours follow one rule (`changeTone` in `src/lib/format.ts`): a gain or
+positive change is green (`text-brand`), a loss or negative change grey (`text-muted-foreground`), and totals /
+balances / summaries white (`text-foreground`), whatever their sign. Every form input has a small label above it (`field.tsx`) instead of a placeholder repeating it.
 Theme tokens are in `src/index.css`; `--brand` is the bright green, `--faint-foreground`
 the dimmest text.
 

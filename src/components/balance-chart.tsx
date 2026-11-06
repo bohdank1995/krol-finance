@@ -9,7 +9,7 @@ import { memo, useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { currencySign } from '@/lib/assets'
-import { formatDay, formatMoney } from '@/lib/format'
+import { changeTone, formatDay, formatMoney } from '@/lib/format'
 import { useT } from '@/lib/i18n'
 import type { Currency } from '@/lib/preferences'
 import { cn } from '@/lib/utils'
@@ -101,7 +101,7 @@ export const PassiveIncome = memo(function PassiveIncome({ total, parts, currenc
       })
     }, 300)
   }
-  const largest = Math.max(...(parts ?? []).map((p) => Math.abs(p.value)), 0.01)
+  const largest = Math.max(...(parts ?? []).map((p) => p.value), 0.01)
   return (
     <div className="flex flex-col gap-1 lg:min-h-64 lg:justify-between lg:gap-4">
       <span className="text-sm text-muted-foreground">{t.passiveIncome}</span>
@@ -119,14 +119,13 @@ export const PassiveIncome = memo(function PassiveIncome({ total, parts, currenc
               const counted = pending[p.id] ?? p.counted
               const row = (
                 <>
-                  {/* A quiet bar behind the row: its length is this source's share of the biggest one, so the
-                      sizes compare at a glance. Losses get a faint red one. */}
+                  {/* A quiet bar behind the row: its length is this source's share of the biggest gain, so the
+                      sizes compare at a glance. Losses have none. */}
                   <span
                     aria-hidden
-                    style={{ width: `${(Math.abs(p.value) / largest) * 100}%` }}
+                    style={{ width: `${(Math.max(p.value, 0) / largest) * 100}%` }}
                     className={cn(
-                      'absolute inset-y-0 left-0 rounded-lg transition-[width,opacity] duration-500 ease-out',
-                      p.value < 0 ? 'bg-destructive/10' : 'bg-foreground/6',
+                      'absolute inset-y-0 left-0 rounded-lg bg-foreground/6 transition-[width,opacity] duration-500 ease-out',
                       !counted && 'opacity-40',
                     )}
                   />
@@ -138,7 +137,7 @@ export const PassiveIncome = memo(function PassiveIncome({ total, parts, currenc
                         {counted ? t.hide : t.show}
                       </span>
                     )}
-                    <span className="relative font-mono tabular-nums">
+                    <span className={cn('relative font-mono tabular-nums', counted && changeTone(p.value))}>
                       {p.value < 0 ? '−' : '+'}
                       {formatMoney(Math.abs(p.value))}
                       {/* Strike-through that draws in from the left. */}

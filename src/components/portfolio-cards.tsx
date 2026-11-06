@@ -32,7 +32,7 @@ import {
   type Portfolio,
   type RowItem,
 } from '@/lib/entries'
-import { formatAgo, formatMoney } from '@/lib/format'
+import { changeTone, formatAgo, formatMoney } from '@/lib/format'
 import type { DailyPrices } from '@/lib/history'
 import { useT } from '@/lib/i18n'
 import type { Range } from '@/lib/period'
@@ -379,6 +379,7 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
                     draggable={!readOnly}
                     order={++order}
                     label={item.group.name}
+                    stack={!isOpen(item)}
                     note={t.sourcesCount(item.members.length)}
                     entries={item.members.flatMap((m) => scaled.get(m.id) ?? [])}
                     {...valuation}
@@ -492,6 +493,8 @@ type CardProps = Valuation & {
   /** Place in the row: the cards fade in one after another, left to right. */
   order: number
   label: string
+  /** A group's card: true draws two cards peeking out on its right (closed), false tucks them away (open). */
+  stack?: boolean
   /** A short grey line under the label, e.g. "3 sources" on a group. */
   note?: string
   /** A source of a closed group: folded away to no width (it unfolds when the group opens). */
@@ -519,7 +522,7 @@ type CardProps = Valuation & {
 
 const dayBefore = (day: string) => new Date(Date.parse(`${day}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
 
-function Card({ id, order, label, note, folded, draggable = false, hidden, share = 1, netWorthShare, hint, syncing, message, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
+function Card({ id, order, label, stack, note, folded, draggable = false, hidden, share = 1, netWorthShare, hint, syncing, message, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
   const t = useT()
   const points = useMemo(() => series(entries, daily, prices, currency), [entries, daily, prices, currency])
   const today = new Date().toISOString().slice(0, 10)
@@ -549,9 +552,24 @@ function Card({ id, order, label, note, folded, draggable = false, hidden, share
         folded && 'pointer-events-none -ml-2 w-0 overflow-hidden opacity-0 sm:-ml-3 sm:w-0',
         // The card being dragged stays in place, faded, while its copy follows the pointer.
         dragged && 'opacity-40',
+        // Room for the stacked cards on the right, inside the group's outline.
+        stack && 'mr-3',
       )}
     >
       <DropLine side={side} />
+      {/* A closed group: two cards behind it, each a little shorter and further right, with a soft shadow. */}
+      {stack !== undefined &&
+        [12, 6].map((offset) => (
+          <span
+            key={offset}
+            aria-hidden
+            style={{ insetBlock: offset / 2 + 2, translate: stack ? `${offset}px 0` : '0 0' }}
+            className={cn(
+              'pointer-events-none absolute right-0 left-4 rounded-xl border bg-card shadow-[4px_0_8px_-2px_rgb(0_0_0/0.5)] transition-[translate,opacity] duration-300 ease-out',
+              !stack && 'opacity-0',
+            )}
+          />
+        ))}
       <button
         type="button"
         role="tab"
@@ -559,7 +577,7 @@ function Card({ id, order, label, note, folded, draggable = false, hidden, share
         onClick={onSelect}
         title={hint}
         className={cn(
-          'flex h-full min-h-30 w-full flex-col justify-between rounded-xl border bg-card p-5 text-left transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:min-h-26',
+          'relative flex h-full min-h-30 w-full flex-col justify-between rounded-xl border bg-card p-5 text-left transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:min-h-26',
           // Keeps its full width while folded (the outer box shrinks), so the text never rewraps and stretches the row.
           'min-w-[calc(100vw-3rem)] sm:min-w-62',
           active ? 'border-foreground/30 bg-accent' : 'hover:border-foreground/15',
@@ -601,7 +619,7 @@ function Card({ id, order, label, note, folded, draggable = false, hidden, share
           )}
           {/* Change during the period: gains in green with an arrow up, losses stay muted with an arrow down. */}
           {change !== undefined && (
-            <span className={cn('flex items-center gap-0.5 text-xs', change < 0 ? 'text-muted-foreground' : 'text-brand')}>
+            <span className={cn('flex items-center gap-0.5 text-xs', changeTone(change))}>
               {change < 0 ? <ArrowDown className="size-3" /> : <ArrowUp className="size-3" />}
               <Decode text={formatMoney(Math.abs(change))} />
             </span>
