@@ -169,7 +169,7 @@ export function DateField({ value, onChange, className }: { value: string; onCha
               type="button"
               variant="outline"
               aria-labelledby={id}
-              className="h-12 w-full justify-between px-3 font-mono font-normal tabular-nums"
+              className="h-12 w-full justify-between rounded-lg px-3 font-mono font-normal tabular-nums"
             />
           }
         >

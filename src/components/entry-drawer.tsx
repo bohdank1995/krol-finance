@@ -10,10 +10,10 @@ import {
 } from '@/components/ui/select'
 import {
   Sheet,
+  SheetBar,
   SheetClose,
   SheetContent,
   SheetFooter,
-  SheetTitle,
 } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
 import { assetsFor, typeOf, type AssetSymbol, type EntryType } from '@/lib/assets'
@@ -83,16 +83,22 @@ function EntryForm({
     onDone()
   }
 
+  // In the phones' top bar (small) and the wider screens' footer.
+  const action = (size?: 'sm') => (
+    <Button type="submit" size={size} disabled={!valid}>
+      {entry ? t.save : direction === 'out' ? t.withdraw : t.deposit}
+    </Button>
+  )
+
   return (
     <form onSubmit={submit} className="contents">
-      <SheetTitle className="text-sm font-normal text-muted-foreground">
-        {t.entryTitle(direction, type, !!entry)}
-      </SheetTitle>
+      <SheetBar title={t.entryTitle(direction, type, !!entry)} action={action('sm')} cancel={t.cancel} />
 
       <AmountFields amount={amount} onAmountChange={setAmount} type={type} asset={asset} onAssetChange={setAsset} autoFocus />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <DateField value={day} onChange={setDay} />
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-6">
+        {/* Fills its row: the whole width inside a source (no source picker) or when the picker wraps below it. */}
+        <DateField value={day} onChange={setDay} className="w-auto min-w-40 flex-1" />
         {!portfolioId && (
           <Field label={t.portfolio} className="min-w-40 flex-1">
             <Select
@@ -127,9 +133,7 @@ function EntryForm({
 
       <SheetFooter>
         <SheetClose render={<Button type="button" variant="secondary" />}>{t.cancel}</SheetClose>
-        <Button type="submit" disabled={!valid}>
-          {entry ? t.save : direction === 'out' ? t.withdraw : t.deposit}
-        </Button>
+        {action()}
       </SheetFooter>
     </form>
   )

@@ -6,10 +6,10 @@ import { Field } from '@/components/field'
 import { Input } from '@/components/ui/input'
 import {
   Sheet,
+  SheetBar,
   SheetClose,
   SheetContent,
   SheetFooter,
-  SheetTitle,
 } from '@/components/ui/sheet'
 import { connectMonobankCards, listMonobankCards, type MonobankCard } from '@/lib/entries'
 import { formatAmount } from '@/lib/format'
@@ -114,18 +114,23 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
   if (checking)
     return (
       <>
-        <SheetTitle className="text-sm font-normal text-muted-foreground">{t.monobank.connect}</SheetTitle>
+        <SheetBar title={t.monobank.connect} cancel={t.cancel} />
         <Loader2 className="animate-spin text-muted-foreground" />
       </>
     )
 
   const valid = cards ? picked.size > 0 : !!token.trim()
+  const action = (size?: 'sm') => (
+    <Button type="submit" size={size} disabled={!valid || busy}>
+      {busy && <Loader2 className="animate-spin" />}
+      {cards ? t.connect : t.continue}
+      {cards && picked.size > 1 && <span className="font-mono tabular-nums">{picked.size}</span>}
+    </Button>
+  )
 
   return (
     <form onSubmit={submit} className="contents">
-      <SheetTitle className="text-sm font-normal text-muted-foreground">
-        {cards ? t.monobank.pickCards : t.monobank.connect}
-      </SheetTitle>
+      <SheetBar title={cards ? t.monobank.pickCards : t.monobank.connect} action={action('sm')} cancel={t.cancel} />
 
       {!cards ? (
         <div className="grid gap-3">
@@ -198,11 +203,7 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
 
       <SheetFooter>
         <SheetClose render={<Button type="button" variant="secondary" />}>{t.cancel}</SheetClose>
-        <Button type="submit" disabled={!valid || busy}>
-          {busy && <Loader2 className="animate-spin" />}
-          {cards ? t.connect : t.continue}
-          {cards && picked.size > 1 && <span className="font-mono tabular-nums">{picked.size}</span>}
-        </Button>
+        {action()}
       </SheetFooter>
     </form>
   )

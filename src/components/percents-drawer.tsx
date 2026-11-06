@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Sheet, SheetClose, SheetContent, SheetFooter, SheetTitle } from '@/components/ui/sheet'
+import { Sheet, SheetBar, SheetClose, SheetContent, SheetFooter } from '@/components/ui/sheet'
 import { currencySign } from '@/lib/assets'
 import { setPercents, type Portfolio } from '@/lib/entries'
 import { formatMoney } from '@/lib/format'
@@ -52,11 +52,23 @@ function PercentsForm({
     onDone()
   }
 
+  const action = (size?: 'sm') => (
+    <Button type="submit" size={size} disabled={!cardValid || !netWorthValid}>
+      {t.save}
+    </Button>
+  )
+
   return (
     <form onSubmit={submit} className="contents">
-      <SheetTitle className="text-sm font-normal text-muted-foreground">
-        {t.percentages} · <span className="text-foreground">{portfolio.name}</span>
-      </SheetTitle>
+      <SheetBar
+        title={
+          <>
+            {t.percentages} · <span className="text-foreground">{portfolio.name}</span>
+          </>
+        }
+        action={action('sm')}
+        cancel={t.cancel}
+      />
 
       <div className="flex flex-col gap-6">
         <Field
@@ -85,9 +97,7 @@ function PercentsForm({
 
       <SheetFooter>
         <SheetClose render={<Button type="button" variant="secondary" />}>{t.cancel}</SheetClose>
-        <Button type="submit" disabled={!cardValid || !netWorthValid}>
-          {t.save}
-        </Button>
+        {action()}
       </SheetFooter>
     </form>
   )

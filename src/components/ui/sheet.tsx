@@ -110,13 +110,37 @@ function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sheet-footer"
-      // Pinned to the drawer's bottom edge (right above the keyboard on phones); buttons split the width.
+      // Pinned to the drawer's bottom edge; buttons split the width. Phones use the top bar (`SheetBar`) instead.
       className={cn(
-        "sticky bottom-0 -mx-6 mt-auto grid auto-cols-fr grid-flow-col gap-2 bg-popover px-6 pt-2 pb-[max(1.5rem,env(safe-area-inset-bottom))]",
+        "sticky bottom-0 -mx-6 mt-auto grid auto-cols-fr grid-flow-col gap-2 bg-popover px-6 pt-2 pb-[max(1.5rem,env(safe-area-inset-bottom))] max-sm:hidden",
         className
       )}
       {...props}
     />
+  )
+}
+
+/**
+ * The drawer's title. On phones it becomes a bar pinned to the top, like iOS sheets: Cancel on the
+ * left, the title in the middle and `action` (the drawer's submit button) on the right, so the
+ * keyboard never covers them. Wider screens show the title alone and keep the buttons in `SheetFooter`.
+ */
+function SheetBar({ title, action, cancel }: { title: React.ReactNode; action?: React.ReactNode; cancel: string }) {
+  return (
+    <div className="max-sm:sticky max-sm:top-0 max-sm:z-10 max-sm:-mx-6 max-sm:-mt-6 max-sm:grid max-sm:grid-cols-[1fr_auto_1fr] max-sm:items-center max-sm:gap-2 max-sm:border-b max-sm:bg-popover max-sm:px-3 max-sm:pt-[max(0.5rem,env(safe-area-inset-top))] max-sm:pb-2">
+      <SheetPrimitive.Close
+        render={<Button type="button" variant="ghost" size="sm" className="justify-self-start text-muted-foreground sm:hidden" />}
+      >
+        {cancel}
+      </SheetPrimitive.Close>
+      <SheetPrimitive.Title
+        data-slot="sheet-title"
+        className="min-w-0 truncate text-sm font-normal text-muted-foreground max-sm:text-center max-sm:font-medium max-sm:text-foreground"
+      >
+        {title}
+      </SheetPrimitive.Title>
+      <div className="justify-self-end sm:hidden">{action}</div>
+    </div>
   )
 }
 
@@ -145,6 +169,7 @@ function SheetDescription({
 
 export {
   Sheet,
+  SheetBar,
   SheetClose,
   SheetContent,
   SheetDescription,

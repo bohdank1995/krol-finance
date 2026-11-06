@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   Sheet,
+  SheetBar,
   SheetClose,
   SheetContent,
   SheetFooter,
-  SheetTitle,
 } from '@/components/ui/sheet'
 import { addPortfolio, renamePortfolio, type Portfolio } from '@/lib/entries'
 import { useT } from '@/lib/i18n'
@@ -49,11 +49,15 @@ function PortfolioForm({
     onDone()
   }
 
+  const action = (size?: 'sm') => (
+    <Button type="submit" size={size} disabled={!valid}>
+      {portfolio ? t.save : t.create}
+    </Button>
+  )
+
   return (
     <form onSubmit={submit} className="contents">
-      <SheetTitle className="text-sm font-normal text-muted-foreground">
-        {portfolio ? t.renamePortfolio : t.newPortfolio}
-      </SheetTitle>
+      <SheetBar title={portfolio ? t.renamePortfolio : t.newPortfolio} action={action('sm')} cancel={t.cancel} />
 
       <Field label={t.name}>
         <Input
@@ -67,9 +71,7 @@ function PortfolioForm({
 
       <SheetFooter>
         <SheetClose render={<Button type="button" variant="secondary" />}>{t.cancel}</SheetClose>
-        <Button type="submit" disabled={!valid}>
-          {portfolio ? t.save : t.create}
-        </Button>
+        {action()}
       </SheetFooter>
     </form>
   )
