@@ -58,6 +58,8 @@ export default defineSchema({
     tradesVersion: v.optional(v.number()),
     /** IBKR: true while the first sync after connecting loads the purchase history. */
     loadingHistory: v.optional(v.boolean()),
+    /** The app id of the group this source is stacked in (see `groups`). */
+    groupId: v.optional(v.string()),
   })
     .index('by_app_id', ['id'])
     .index('by_user', ['userId'])
@@ -123,6 +125,17 @@ export default defineSchema({
   }).index('by_user', ['userId']),
 
   // Per-user call counts for the stock price lookups (see limits.ts).
+  // Named stacks of sources, made in the cards' edit mode. A group sits in the row where its first
+  // source is (by position), so it has no position of its own. Members point to it with `groupId`.
+  groups: defineTable({
+    /** App-made UUID, like portfolios. */
+    id: v.string(),
+    userId: v.id('users'),
+    name: v.string(),
+  })
+    .index('by_app_id', ['id'])
+    .index('by_user', ['userId']),
+
   rateLimits: defineTable({
     userId: v.id('users'),
     kind: v.string(),

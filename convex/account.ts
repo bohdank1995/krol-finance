@@ -3,7 +3,7 @@ import { ConvexError, v } from 'convex/values'
 import { internal } from './_generated/api'
 import { action, internalMutation } from './_generated/server'
 
-/* "Delete account": removes the signed-in user and everything they own — portfolios, entries,
+/* "Delete account": removes the signed-in user and everything they own — portfolios, groups, entries,
    payouts, Monobank / IBKR tokens, rate-limit counters and their sign-in records. Big accounts
    (years of Monobank transactions) are deleted in batches, one transaction each. */
 
@@ -26,7 +26,7 @@ export const wipe = internalMutation({
   args: { userId: v.id('users') },
   handler: async (ctx, { userId }) => {
     let left = BATCH
-    for (const table of ['entries', 'payouts', 'portfolios', 'monobankTokens', 'ibkrTokens'] as const) {
+    for (const table of ['entries', 'payouts', 'portfolios', 'groups', 'monobankTokens', 'ibkrTokens'] as const) {
       const rows = await ctx.db
         .query(table)
         .withIndex('by_user', (q) => q.eq('userId', userId))

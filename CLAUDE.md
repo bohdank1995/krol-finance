@@ -54,12 +54,20 @@ Vocabulary:
   (`useT()`); the choice is saved on the account (`language` on the Convex user). The sign-in page stays English.
 - **Fake numbers** — toggle in the user menu: every portfolio's entries are scaled by a random
   factor (`src/lib/fake.ts`) and the app becomes read-only, so screenshots are safe to share.
-- **Hidden from net worth** — a portfolio's ⋯ menu can leave it out of Net worth (card, graph and table);
+- **Not included in Net Worth** ("Do not include in Net Worth" in the menu) — a portfolio's ⋯ menu can leave it out of Net worth (card, graph and table);
   saved in `portfolios.inNetWorth`, its own card is unchanged.
-- **Percentages** — shown in the app as **Your share** ("Ваша частка"); per portfolio (⋯ → Set your share): `cardPercent` (what the card + its graph show,
-  with a "50% of …" line) and `netWorthPercent` (what Net worth counts). Totals and graphs use
+- **Percentages** — shown in the app as **Your share** ("Ваша частка"); per portfolio (⋯ → Set your share, one field
+  that sets both): `cardPercent` (what the card + its graph show, with a "50% of …" line) and `netWorthPercent` (what Net worth counts). Totals and graphs use
   `scaleEntries`; the table and stored entries keep real amounts.
-- **Card order** — portfolio cards are dragged into order (@dnd-kit), saved in `portfolios.position`.
+- **Edit mode** — the pencil left of the period opens it (`edit-cards.tsx`): every card shows at once and wiggles,
+  cards are dragged into order or in and out of groups, ticked to Delete or Group, or removed
+  with their minus badge. Nothing is saved until Save (`saveLayout` in `convex/data.ts`); Cancel drops it all.
+  Graph, table and floating buttons step aside meanwhile.
+- **Card order** — cards are dragged (@dnd-kit, `reorder.tsx`) in the dashboard row and in edit mode: a green
+  line shows where a card lands; the move rules are in `src/lib/layout.ts`. Saved in `portfolios.position`.
+- **Group** — a named stack of 2+ sources (`groups` table, `portfolios.groupId`), sitting where its first source
+  is. Its card shows the sources' total; picking it shows them together in the graph and table, and slides its
+  sources out to its right. A group left with fewer than 2 sources is undone.
 - **Drawer** — the right-side panel (`ui/sheet.tsx`) used for every form. Only short "Delete?"
   confirmations stay as small centered pop-ups.
 
@@ -78,8 +86,10 @@ graph come from `src/lib/history.ts`; balance and graph maths are in `src/lib/po
 ## Design
 
 Dark only, cold (neutrals carry a faint blue hue), Supabase-like: deep green CTA with a
-bright green edge, green reserved for actions and the live dot. Numbers always use the
-mono font (`font-mono tabular-nums`). Every form input has a small label above it (`field.tsx`) instead of a placeholder repeating it.
+bright green edge, green reserved for actions, the live dot and gains. Numbers always use the
+mono font (`font-mono tabular-nums`). Number colours follow one rule (`changeTone` in `src/lib/format.ts`): a gain or
+positive change is green (`text-brand`), a loss or negative change grey (`text-muted-foreground`), and totals /
+balances / summaries white (`text-foreground`), whatever their sign. Every form input has a small label above it (`field.tsx`) instead of a placeholder repeating it.
 Theme tokens are in `src/index.css`; `--brand` is the bright green, `--faint-foreground`
 the dimmest text.
 

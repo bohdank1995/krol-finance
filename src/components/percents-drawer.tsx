@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Sheet, SheetClose, SheetContent, SheetFooter, SheetTitle } from '@/components/ui/sheet'
+import { Sheet, SheetBar, SheetClose, SheetContent, SheetFooter } from '@/components/ui/sheet'
 import { currencySign } from '@/lib/assets'
 import { setPercents, type Portfolio } from '@/lib/entries'
 import { formatMoney } from '@/lib/format'
@@ -17,7 +17,7 @@ type Props = {
   currency: Currency
 }
 
-/** Right-side drawer: how much of a portfolio its card shows and Net worth counts. */
+/** Right-side drawer: your share of a portfolio, used by its card and by Net worth. */
 export function PercentsDrawer({ portfolio, onOpenChange, ...rest }: Props) {
   return (
     <Sheet open={!!portfolio} onOpenChange={onOpenChange}>
@@ -38,25 +38,35 @@ function PercentsForm({
   onDone,
 }: Omit<Props, 'portfolio' | 'onOpenChange'> & { portfolio: Portfolio; onDone: () => void }) {
   const t = useT()
+  // One share for both the source's own card and Net worth.
   const [card, setCard] = useState(String(portfolio.cardPercent))
-  const [netWorth, setNetWorth] = useState(String(portfolio.netWorthPercent))
   const cardValue = parse(card)
-  const netWorthValue = parse(netWorth)
   const cardValid = cardValue > 0 && cardValue <= 100
-  const netWorthValid = netWorthValue >= 0 && netWorthValue <= 100
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!cardValid || !netWorthValid) return
-    setPercents(portfolio.id, cardValue, netWorthValue)
+    if (!cardValid) return
+    setPercents(portfolio.id, cardValue, cardValue)
     onDone()
   }
 
+  const action = (size?: 'sm') => (
+    <Button type="submit" size={size} disabled={!cardValid}>
+      {t.save}
+    </Button>
+  )
+
   return (
     <form onSubmit={submit} className="contents">
-      <SheetTitle className="text-sm font-normal text-muted-foreground">
-        {t.percentages} · <span className="text-foreground">{portfolio.name}</span>
-      </SheetTitle>
+      <SheetBar
+        title={
+          <>
+            {t.percentages} · <span className="text-foreground">{portfolio.name}</span>
+          </>
+        }
+        action={action('sm')}
+        cancel={t.cancel}
+      />
 
       <div className="flex flex-col gap-6">
         <Field
@@ -68,26 +78,14 @@ function PercentsForm({
           result={cardValid ? (total * cardValue) / 100 : undefined}
           total={total}
           currency={currency}
-          autoFocus
-        />
-        <Field
-          label={t.countsInNetWorthLabel}
-          value={netWorth}
-          onChange={setNetWorth}
-          valid={netWorthValid}
-          error={t.netWorthPercentError}
-          result={netWorthValid ? (total * netWorthValue) / 100 : undefined}
-          total={total}
-          currency={currency}
           note={!portfolio.inNetWorth ? t.hiddenNote : undefined}
+          autoFocus
         />
       </div>
 
       <SheetFooter>
         <SheetClose render={<Button type="button" variant="secondary" />}>{t.cancel}</SheetClose>
-        <Button type="submit" disabled={!cardValid || !netWorthValid}>
-          {t.save}
-        </Button>
+        {action()}
       </SheetFooter>
     </form>
   )

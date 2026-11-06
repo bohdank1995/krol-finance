@@ -1,5 +1,6 @@
 import logo from '@/assets/koshel-logo.svg'
 import type { ReactNode } from 'react'
+import { Scrambling } from '@/components/scramble'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SLOW } from '@/lib/reveal'
 
@@ -47,7 +48,7 @@ export function DashboardSkeleton({ toolbar, sinceOpen }: { toolbar?: ReactNode;
               className="flex min-h-30 w-[calc(100vw-3rem)] shrink-0 flex-col justify-between rounded-xl border bg-card p-5 sm:min-h-26 sm:w-62"
             >
               <Skeleton className="h-3.5 w-20" />
-              <Skeleton className="mt-4 h-6 w-28 sm:h-5" />
+              <Scrambling length={8} className="mt-4 block font-mono text-2xl text-faint-foreground tabular-nums sm:text-xl" />
             </div>
           ))}
         </div>
@@ -70,7 +71,7 @@ export function DashboardSkeleton({ toolbar, sinceOpen }: { toolbar?: ReactNode;
 /** The whole loading screen. `sinceOpen` is 0 in the HTML written at build time. */
 export function AppShell({ sinceOpen }: { sinceOpen?: number }) {
   return (
-    <div className="min-h-svh px-6 pb-28 sm:pb-14">
+    <div className="min-h-svh px-6 pb-40 sm:pb-24">
       <Bar account={<div className="size-12 shrink-0 rounded-full border bg-input/30" />} />
       <main className="mt-4 sm:mt-6">
         <DashboardSkeleton sinceOpen={sinceOpen} />

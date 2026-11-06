@@ -110,8 +110,7 @@
   [role="switch"],
   [role="combobox"],
   select,
-  summary,
-  input[type="date"]::-webkit-calendar-picker-indicator {
+  summary {
     cursor: pointer;
     }
 }
@@ -140,6 +139,46 @@
   @media (prefers-reduced-motion: reduce) {
     animation: none;
   }
+}
+/* Edit mode (`edit-cards.tsx`): cards wiggle like iPhone apps being rearranged. `rotate` rather than
+   `transform`, so dragging keeps its own transform. */
+@keyframes wiggle {
+  0%,
+  100% {
+    rotate: -0.8deg;
+  }
+  50% {
+    rotate: 0.8deg;
+  }
+}
+@utility animate-wiggle {
+  animation: wiggle 0.3s ease-in-out infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+/* Long labels (`marquee.tsx`): rest, slide left to the end, rest, slide back. The right edge fades. */
+@keyframes marquee {
+  0%,
+  20% {
+    translate: 0 0;
+  }
+  50%,
+  70% {
+    translate: var(--marquee-shift) 0;
+  }
+  100% {
+    translate: 0 0;
+  }
+}
+@utility animate-marquee {
+  animation: marquee var(--marquee-time) ease-in-out infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+@utility fade-right {
+  mask-image: linear-gradient(to right, black calc(100% - 1.5rem), transparent);
 }
 /* Loading placeholders: hidden while loading is quick, then a fade. Each sets its animation-delay from
    when the page opened (`slowFade` in app-shell.tsx). */

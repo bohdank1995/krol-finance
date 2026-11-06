@@ -5,6 +5,8 @@ const qty = new Intl.NumberFormat('en-US', { maximumFractionDigits: 8 })
 const pad = (n: number) => String(n).padStart(2, '0')
 
 export const formatMoney = (n: number) => money.format(n)
+/** The app's colour rule for numbers: a gain is green, a loss (or nothing) grey. Totals and balances stay white. */
+export const changeTone = (n: number) => (n > 0 ? 'text-brand' : 'text-muted-foreground')
 export const formatAmount = (s: string) => qty.format(Number(s))
 /** "+0.2" / "−0.05": entries are changes, so the sign is always shown. */
 export function formatSigned(s: string) {

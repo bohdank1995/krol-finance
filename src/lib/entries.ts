@@ -35,7 +35,15 @@ export type Portfolio = {
   inPassiveIncome: boolean
   /** IBKR: the first sync after connecting is still loading the purchase history. */
   loadingHistory?: boolean
+  /** The group this source is stacked in. */
+  groupId?: string
 }
+
+/** A named stack of sources, made in the cards' edit mode. Its card shows their total. */
+export type Group = { id: string; name: string }
+
+/** One place in the cards row: a single source, or a group with its sources (2 or more). */
+export type RowItem = { kind: 'source'; portfolio: Portfolio } | { kind: 'group'; group: Group; members: Portfolio[] }
 
 export type Entry = {
   id: string
@@ -60,13 +68,15 @@ const listeners = new Set<() => void>()
 let portfoliosCache: Portfolio[] = []
 let entriesCache: Entry[] = []
 let payoutsCache: Payout[] = []
+let groupsCache: Group[] = []
 /** False until the signed-in user's data has come back from the server (shows skeletons). */
 let loadedCache = false
 
-function set(portfolios: Portfolio[], entries: Entry[], loaded = true, payouts: Payout[] = []) {
+function set(portfolios: Portfolio[], entries: Entry[], loaded = true, payouts: Payout[] = [], groups: Group[] = []) {
   portfoliosCache = portfolios
   entriesCache = entries
   payoutsCache = payouts
+  groupsCache = groups
   loadedCache = loaded
   listeners.forEach((l) => l())
 }
@@ -94,6 +104,7 @@ function refresh() {
     ([...data.entries] as Entry[]).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
     true,
     data.payouts,
+    data.groups,
   )
 }
 watch.onUpdate(refresh)
@@ -110,6 +121,32 @@ export const usePortfolios = () => useSyncExternalStore(subscribe, () => portfol
 export const useEntries = () => useSyncExternalStore(subscribe, () => entriesCache)
 export const usePayouts = () => useSyncExternalStore(subscribe, () => payoutsCache)
 export const useLoaded = () => useSyncExternalStore(subscribe, () => loadedCache)
+export const useGroups = () => useSyncExternalStore(subscribe, () => groupsCache)
+
+/** The cards row in order: a group sits where its first source is, with all its sources (a group with
+    fewer than 2 left shows them as single sources). `portfolios` must already be in row order. */
+export function rowItems(portfolios: Portfolio[], groups: Group[]): RowItem[] {
+  const byId = new Map(groups.map((g) => [g.id, g]))
+  const members = new Map<string, Portfolio[]>()
+  for (const p of portfolios) if (p.groupId && byId.has(p.groupId)) members.set(p.groupId, [...(members.get(p.groupId) ?? []), p])
+  const items: RowItem[] = []
+  const placed = new Set<string>()
+  for (const p of portfolios) {
+    const list = p.groupId ? members.get(p.groupId) : undefined
+    if (!p.groupId || !list || list.length < 2) items.push({ kind: 'source', portfolio: p })
+    else if (!placed.has(p.groupId)) {
+      placed.add(p.groupId)
+      items.push({ kind: 'group', group: byId.get(p.groupId)!, members: list })
+    }
+  }
+  return items
+}
+
+/** The sources a selected card stands for: one source, a group's sources, or none (Net worth). */
+export function membersOf(id: string, portfolios: Portfolio[]) {
+  const own = portfolios.filter((p) => p.groupId === id)
+  return own.length >= 2 ? own : portfolios.filter((p) => p.id === id)
+}
 
 /** Saves a change: `preview` shows it right away, and Convex undoes it if the save fails. */
 function save<M extends FunctionReference<'mutation'>>(mutation: M, args: FunctionArgs<M>, preview: (d: Data) => Data) {
@@ -217,9 +254,35 @@ export function reorderPortfolios(ids: string[]) {
   }))
 }
 
+/** Saves the edit mode's result: the new order, and the groups (new, renamed, emptied). */
+export function saveLayout(items: RowItem[]) {
+  const order = items.flatMap((i) => (i.kind === 'source' ? [i.portfolio.id] : i.members.map((m) => m.id)))
+  const groups = items.flatMap((i) => (i.kind === 'group' ? [{ id: i.group.id, name: i.group.name, portfolioIds: i.members.map((m) => m.id) }] : []))
+  const memberOf = new Map(groups.flatMap((g) => g.portfolioIds.map((id) => [id, g.id] as const)))
+  save(api.data.saveLayout, { order, groups }, (d) => ({
+    ...d,
+    groups: groups.map(({ id, name }) => ({ id, name })),
+    portfolios: d.portfolios.map((p) =>
+      order.includes(p.id) ? { ...p, position: order.indexOf(p.id), groupId: memberOf.get(p.id) } : p,
+    ),
+  }))
+}
+
+/** Stacks these sources into a new group. Returns the group's id. */
+export function createGroup(name: string, portfolioIds: string[]) {
+  const id = crypto.randomUUID()
+  save(api.data.createGroup, { id, name, portfolioIds }, (d) => ({
+    ...d,
+    groups: [...d.groups, { id, name }],
+    portfolios: d.portfolios.map((p) => (portfolioIds.includes(p.id) ? { ...p, groupId: id } : p)),
+  }))
+  return id
+}
+
 /** Deleting a portfolio also deletes its entries. */
 export function deletePortfolio(id: string) {
   save(api.data.deletePortfolio, { id }, (d) => ({
+    ...d,
     portfolios: d.portfolios.filter((p) => p.id !== id),
     entries: d.entries.filter((e) => e.portfolioId !== id),
     payouts: d.payouts.filter((r) => r.portfolioId !== id),

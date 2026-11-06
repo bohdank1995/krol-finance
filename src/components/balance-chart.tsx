@@ -9,7 +9,7 @@ import { memo, useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { currencySign } from '@/lib/assets'
-import { formatDay, formatMoney } from '@/lib/format'
+import { changeTone, formatDay, formatMoney } from '@/lib/format'
 import { useT } from '@/lib/i18n'
 import type { Currency } from '@/lib/preferences'
 import { cn } from '@/lib/utils'
@@ -56,7 +56,8 @@ export const BalanceChart = memo(function BalanceChart({ points, currency }: { p
           tickFormatter={(v: number) => compact.format(v)}
         />
         <ChartTooltip
-          cursor={false}
+          // A thin vertical line through the hovered day, down to the axis.
+          cursor={{ stroke: 'var(--faint-foreground)', strokeWidth: 1 }}
           content={
             <ChartTooltipContent
               hideIndicator
@@ -100,6 +101,7 @@ export const PassiveIncome = memo(function PassiveIncome({ total, parts, currenc
       })
     }, 300)
   }
+  const largest = Math.max(...(parts ?? []).map((p) => p.value), 0.01)
   return (
     <div className="flex flex-col gap-1 lg:min-h-64 lg:justify-between lg:gap-4">
       <span className="text-sm text-muted-foreground">{t.passiveIncome}</span>
@@ -112,20 +114,30 @@ export const PassiveIncome = memo(function PassiveIncome({ total, parts, currenc
           <span className="text-xs text-muted-foreground">{currencySign(currency)}</span>
         </span>
         {parts && parts.length > 0 && (
-          <ul className="-mx-2 flex flex-col font-sans text-sm text-muted-foreground">
+          <ul className="-mx-2 flex flex-col gap-1 font-sans text-sm text-muted-foreground">
             {parts.map((p) => {
               const counted = pending[p.id] ?? p.counted
               const row = (
                 <>
-                  <span className="truncate">{p.name}</span>
-                  <span className="flex items-center gap-2">
+                  {/* A quiet bar behind the row: its length is this source's share of the biggest gain, so the
+                      sizes compare at a glance. Losses have none. */}
+                  <span
+                    aria-hidden
+                    style={{ width: `${(Math.max(p.value, 0) / largest) * 100}%` }}
+                    className={cn(
+                      'absolute inset-y-0 left-0 rounded-lg bg-foreground/6 transition-[width,opacity] duration-500 ease-out',
+                      !counted && 'opacity-40',
+                    )}
+                  />
+                  <span className="relative truncate">{p.name}</span>
+                  <span className="relative flex items-center gap-2">
                     {onToggle && (
                       <span className="flex items-center gap-1 text-xs text-muted-foreground opacity-0 transition-opacity duration-200 group-hover/row:opacity-100 group-focus-visible/row:opacity-100">
                         {counted ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
                         {counted ? t.hide : t.show}
                       </span>
                     )}
-                    <span className="relative font-mono tabular-nums">
+                    <span className={cn('relative font-mono tabular-nums', counted && changeTone(p.value))}>
                       {p.value < 0 ? '−' : '+'}
                       {formatMoney(Math.abs(p.value))}
                       {/* Strike-through that draws in from the left. */}
@@ -141,7 +153,7 @@ export const PassiveIncome = memo(function PassiveIncome({ total, parts, currenc
                 </>
               )
               const look = cn(
-                'flex w-full items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left transition-colors duration-300',
+                'relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-lg px-2 py-1.5 text-left transition-colors duration-300',
                 !counted && 'text-faint-foreground',
               )
               return (

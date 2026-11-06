@@ -6,10 +6,10 @@ import { Field } from '@/components/field'
 import { Input } from '@/components/ui/input'
 import {
   Sheet,
+  SheetBar,
   SheetClose,
   SheetContent,
   SheetFooter,
-  SheetTitle,
 } from '@/components/ui/sheet'
 import { connectIbkr, listIbkrPositions, type IbkrPosition } from '@/lib/entries'
 import { formatAmount, formatMoney } from '@/lib/format'
@@ -189,7 +189,7 @@ function IbkrFlow({ onCreated, onDone }: { onCreated?: (id: string) => void; onD
   if (checking)
     return (
       <>
-        <SheetTitle className="text-sm font-normal text-muted-foreground">{t.ibkr.connect}</SheetTitle>
+        <SheetBar title={t.ibkr.connect} cancel={t.cancel} />
         <p className="flex items-center gap-2 text-xs text-faint-foreground">
           <Loader2 className="animate-spin" />
           {t.ibkr.preparing}
@@ -198,12 +198,16 @@ function IbkrFlow({ onCreated, onDone }: { onCreated?: (id: string) => void; onD
     )
 
   const valid = positions ? picked.size > 0 && !!name.trim() : !!token.trim() && !!queryId.trim()
+  const action = (size?: 'sm') => (
+    <Button type="submit" size={size} disabled={!valid || busy}>
+      {busy && <Loader2 className="animate-spin" />}
+      {positions ? t.connect : t.continue}
+    </Button>
+  )
 
   return (
     <form onSubmit={submit} className="contents">
-      <SheetTitle className="text-sm font-normal text-muted-foreground">
-        {positions ? t.ibkr.pickStocks : t.ibkr.connect}
-      </SheetTitle>
+      <SheetBar title={positions ? t.ibkr.pickStocks : t.ibkr.connect} action={action('sm')} cancel={t.cancel} />
 
       {!positions ? (
         <div className="grid gap-5">
@@ -329,10 +333,7 @@ function IbkrFlow({ onCreated, onDone }: { onCreated?: (id: string) => void; onD
 
       <SheetFooter>
         <SheetClose render={<Button type="button" variant="secondary" />}>{t.cancel}</SheetClose>
-        <Button type="submit" disabled={!valid || busy}>
-          {busy && <Loader2 className="animate-spin" />}
-          {positions ? t.connect : t.continue}
-        </Button>
+        {action()}
       </SheetFooter>
     </form>
   )
