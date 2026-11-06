@@ -1,6 +1,11 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useId, useLayoutEffect, useRef, useState } from 'react'
+import { CalendarIcon } from 'lucide-react'
+import { enUS, uk } from 'react-day-picker/locale'
 import { Field } from '@/components/field'
+import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
 import { Input } from '@/components/ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Select,
   SelectContent,
@@ -11,7 +16,8 @@ import {
 import { assetsFor, type AssetSymbol, type EntryType } from '@/lib/assets'
 import { evaluate, isExpression } from '@/lib/calc'
 import { cleanAmount, groupAmount } from '@/lib/format'
-import { useT } from '@/lib/i18n'
+import { useLanguage, useT } from '@/lib/i18n'
+import { cn } from '@/lib/utils'
 
 type Props = {
   amount: string
@@ -142,17 +148,52 @@ export function AmountFields({ amount, onAmountChange, type, asset, onAssetChang
   )
 }
 
-export function DateField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+/** A local day ("2026-11-06") as a Date at local midnight, and back. */
+const toDate = (day: string) => new Date(`${day}T00:00:00`)
+const toDay = (d: Date) => d.toLocaleDateString('en-CA')
+
+/** Day picker: a button showing the date, opening a calendar with month and year dropdowns. No future days. */
+export function DateField({ value, onChange, className }: { value: string; onChange: (v: string) => void; className?: string }) {
   const t = useT()
+  const language = useLanguage()
+  const [open, setOpen] = useState(false)
+  const today = new Date()
+  const picked = value ? toDate(value) : undefined
+  const id = useId()
   return (
-    <Field label={t.date} className="w-44">
-      <Input
-        type="date"
-        value={value}
-        max={new Date().toLocaleDateString('en-CA')}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-12 font-mono tabular-nums scheme-dark"
-      />
+    <Field label={t.date} group={id} className={cn('w-44', className)}>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          render={
+            <Button
+              type="button"
+              variant="outline"
+              aria-labelledby={id}
+              className="h-12 w-full justify-between px-3 font-mono font-normal tabular-nums"
+            />
+          }
+        >
+          {picked ? `${picked.getDate()} ${t.months[picked.getMonth()]} ${picked.getFullYear()}` : '—'}
+          <CalendarIcon className="text-muted-foreground" />
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-auto p-0">
+          <Calendar
+            mode="single"
+            captionLayout="dropdown"
+            locale={language === 'uk' ? uk : enUS}
+            selected={picked}
+            defaultMonth={picked}
+            startMonth={new Date(2000, 0)}
+            endMonth={today}
+            disabled={{ after: today }}
+            onSelect={(d) => {
+              if (!d) return
+              onChange(toDay(d))
+              setOpen(false)
+            }}
+          />
+        </PopoverContent>
+      </Popover>
     </Field>
   )
 }

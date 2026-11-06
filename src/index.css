@@ -110,8 +110,7 @@
   [role="switch"],
   [role="combobox"],
   select,
-  summary,
-  input[type="date"]::-webkit-calendar-picker-indicator {
+  summary {
     cursor: pointer;
     }
 }
