@@ -16,11 +16,13 @@ import {
   SheetFooter,
 } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
-import { assetsFor, typeOf, type AssetSymbol, type EntryType } from '@/lib/assets'
+import { assetsFor, currencySign, typeOf, type AssetSymbol, type EntryType } from '@/lib/assets'
 import { addEntry, updateEntry, type Entry, type Portfolio } from '@/lib/entries'
-import { dayToIso, parseAmount } from '@/lib/format'
+import { dayToIso, formatAmount, formatMoney, parseAmount } from '@/lib/format'
 import { resolveAmount } from '@/lib/calc'
 import { useT } from '@/lib/i18n'
+import { usePreferences } from '@/lib/preferences'
+import { useLivePrices } from '@/lib/prices'
 import { AmountFields, DateField } from './amount-fields'
 
 export type Direction = 'in' | 'out'
@@ -38,6 +40,9 @@ type Props = {
   /** When set, the drawer edits this entry instead of adding a new one. */
   entry?: Entry
 }
+
+/** "0.00123", without trailing zeros. */
+const roundTo = (n: number, digits: number) => n.toFixed(digits).replace(/\.?0+$/, '')
 
 /** Right-side drawer to add or edit an entry. */
 export function EntryDrawer({ open, onOpenChange, ...rest }: Props) {
@@ -68,8 +73,20 @@ function EntryForm({
   const [asset, setAsset] = useState<AssetSymbol>(() => entry?.asset ?? assetsFor(type)[0].symbol)
   const [day, setDay] = useState(() => new Date(entry?.createdAt ?? Date.now()).toLocaleDateString('en-CA'))
   const [target, setTarget] = useState(entry?.portfolioId ?? portfolioId ?? portfolios[0]?.id)
+  // Crypto can be typed in the display currency instead ("100 $" of BTC): it's saved as the coin, at the live price.
+  const crypto = type === 'crypto'
+  const { currency } = usePreferences()
+  const { prices } = useLivePrices(crypto ? [asset, currency] : [])
+  const coin = prices[asset]
+  const money = prices[currency]
+  /** One coin in the display currency. */
+  const rate = crypto && coin && money ? coin / money : undefined
+  const [inMoney, setInMoney] = useState(false)
+  // Switching back without touching the converted amount restores what was typed, not a rounded copy of it.
+  const [switched, setSwitched] = useState<{ from: string; to: string }>()
   // A calculation ("15+190") counts as its result.
-  const size = parseAmount(resolveAmount(amount))?.replace(/^[+-]/, '')
+  const typed = parseAmount(resolveAmount(amount))?.replace(/^[+-]/, '')
+  const size = !inMoney ? typed : typed && rate ? roundTo(Number(typed) / rate, 8) : undefined
   const parsed = size && (direction === 'out' ? `-${size}` : size)
   const valid = !!parsed && !!target && !!day
 
@@ -94,7 +111,40 @@ function EntryForm({
     <form onSubmit={submit} className="contents">
       <SheetBar title={t.entryTitle(direction, type, !!entry)} action={action('sm')} cancel={t.cancel} />
 
-      <AmountFields amount={amount} onAmountChange={setAmount} type={type} asset={asset} onAssetChange={setAsset} autoFocus />
+      <AmountFields
+        amount={amount}
+        onAmountChange={setAmount}
+        type={type}
+        asset={asset}
+        onAssetChange={setAsset}
+        autoFocus
+        unit={
+          crypto
+            ? {
+                label: inMoney ? currencySign(currency) : asset,
+                other: inMoney ? asset : currency,
+                disabled: !rate,
+                // The amount converts with it, so the value stays the same.
+                onSwitch: () => {
+                  if (typed && rate) {
+                    const next =
+                      switched?.to === amount ? switched.from : inMoney ? roundTo(Number(typed) / rate, 8) : roundTo(Number(typed) * rate, 2)
+                    setSwitched({ from: amount, to: next })
+                    setAmount(next)
+                  }
+                  setInMoney(!inMoney)
+                },
+              }
+            : undefined
+        }
+        hint={
+          crypto && typed && rate
+            ? inMoney
+              ? `≈ ${size ? formatAmount(size) : 0} ${asset}`
+              : `≈ ${formatMoney(Number(typed) * rate)} ${currencySign(currency)}`
+            : undefined
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-x-2 gap-y-6">
         {/* Fills its row: the whole width inside a source (no source picker) or when the picker wraps below it. */}
