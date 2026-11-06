@@ -3,8 +3,10 @@
 Personal finance tracker: manual entries plus imported Interactive Brokers (IBKR)
 statements.
 
-React 19 + TypeScript + Tailwind 4 on Vite. `npm run dev` (port 5173),
-`npm run build`, `npm run lint` (oxlint).
+React 19 + TypeScript + Tailwind 4 on Vite. `npm run dev`, `npm run build`, `npm run lint` (oxlint).
+
+**Always run the local server on port 5174** (`preview_start` with `dev-5174` from
+`.claude/launch.json`), never 5173 — sign-in only works on 5174.
 
 Branching, commits, shipping and the SEO rules for public pages follow `DEVELOPMENT.md`.
 
