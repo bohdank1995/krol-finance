@@ -65,12 +65,13 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
     () => series(valued, daily, prices, currency).filter((p) => (!range.from || p.date >= range.from) && p.date <= range.to),
     [valued, daily, prices, currency, range],
   )
-  // Net worth's passive income leaves out the portfolios switched off in its list, and bank cards; a group leaves out its bank cards.
+  // Net worth's passive income leaves out the portfolios switched off in its list, and those holding only money (bank
+  // cards included); a group leaves out its money-only ones.
   const passive = useMemo(() => {
     const off = new Set(
       selected === NET_WORTH
-        ? portfolios.filter((p) => !p.inPassiveIncome || !earnsPassiveIncome(p)).map((p) => p.id)
-        : scope.filter((p) => !earnsPassiveIncome(p)).map((p) => p.id),
+        ? portfolios.filter((p) => !p.inPassiveIncome || !earnsPassiveIncome(p, entries)).map((p) => p.id)
+        : scope.filter((p) => !earnsPassiveIncome(p, entries)).map((p) => p.id),
     )
     const ids = new Set(scope.map((p) => p.id))
     return passiveIn(
@@ -83,13 +84,13 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
       ),
       range,
     )
-  }, [valued, daily, prices, currency, range, portfolios, payouts, selected, scope])
+  }, [valued, daily, prices, currency, range, portfolios, entries, payouts, selected, scope])
   // Net worth: where the passive income comes from, per portfolio (zeros left out unless switched off, losses kept).
   // Sorted by value only, so hiding one doesn't make the rows jump around.
   const parts = useMemo(() => {
     if (selected !== NET_WORTH) return undefined
     return netWorthPortfolios(portfolios)
-      .filter(earnsPassiveIncome)
+      .filter((h) => earnsPassiveIncome(h, entries))
       .map((h) => {
         const own = scaleEntries([h], entries.filter((e) => e.portfolioId === h.id), 'netWorth')
         const mine = scalePayouts([h], payouts.filter((r) => r.portfolioId === h.id), 'netWorth')
@@ -100,7 +101,7 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
       .sort((a, b) => b.value - a.value)
   }, [selected, portfolios, entries, payouts, daily, prices, currency, range])
   const rows = useMemo(() => shown.filter((e) => inRange(e.createdAt, range)), [shown, range])
-  const withPassive = selected === NET_WORTH || scope.some(earnsPassiveIncome)
+  const withPassive = selected === NET_WORTH || scope.some((p) => earnsPassiveIncome(p, entries))
 
   // Reveal the page once its numbers are real: data in, every asset priced, graph history in.
   const priced = loaded && !balance(entries, prices, currency).pricing

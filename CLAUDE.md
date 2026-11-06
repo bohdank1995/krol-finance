@@ -43,6 +43,7 @@ Vocabulary:
   entries are the card's transactions (plus "Opening balance" / "Balance adjustment" rows) and are
   read-only in the app and on the server. Balance = available to spend (includes any credit limit).
   Bank cards have no passive income (`earnsPassiveIncome` in `src/lib/entries.ts`): left out of Net worth's.
+  Neither has any source holding only money (no crypto, stocks or, later, metals): its view shows no passive income.
 - **IBKR portfolio** — `source = 'ibkr'`, stocks held at Interactive Brokers. Entries are share counts:
   one "Opening position" per stock, then "Position change" rows from the daily sync. Read-only like
   Monobank. `trackedAssets` lists the picked stocks; null ("Select all") also follows new purchases.
