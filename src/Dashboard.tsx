@@ -160,6 +160,7 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
               currency={currency}
               readOnly={fake}
               filtered={period !== 'all'}
+              view={`${selected}:${JSON.stringify(period)}`}
             />
           </>
         )}

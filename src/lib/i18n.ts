@@ -116,6 +116,8 @@ const en = {
   months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
 
   rowActions: 'Row actions',
+  showMore: (n: number) => `Show ${n} more`,
+  left: (n: number) => `${n} left`,
   edit: 'Edit',
   empty: {
     noPortfolios: 'Create your first source with the + button above.',
@@ -304,6 +306,8 @@ const uk: Dictionary = {
   months: ['січ', 'лют', 'бер', 'кві', 'тра', 'чер', 'лип', 'сер', 'вер', 'жов', 'лис', 'гру'],
 
   rowActions: 'Дії з рядком',
+  showMore: (n) => `Показати ще ${n}`,
+  left: (n) => `залишилось ${n}`,
   edit: 'Редагувати',
   empty: {
     noPortfolios: 'Створіть перше джерело кнопкою + вгорі.',

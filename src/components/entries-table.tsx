@@ -43,17 +43,24 @@ type Props = {
   readOnly: boolean
   /** A period other than All time is picked (changes the empty-state text). */
   filtered: boolean
+  /** Changes when another source or period is picked: the list goes back to its first page. */
+  view: string
 }
 
 const head = 'h-10 text-xs font-normal text-faint-foreground'
 /** Fades in after the cards and the graph on page load. */
 const enter = { animationDelay: '380ms' }
 
-export const EntriesTable = memo(function EntriesTable({ entries, portfolios, prices, portfolioId, currency, readOnly, filtered }: Props) {
+/** Rows drawn at first, and added by each "Show more": long histories (years of card payments) stay quick. */
+const PAGE = 50
+
+export const EntriesTable = memo(function EntriesTable({ entries, portfolios, prices, portfolioId, currency, readOnly, filtered, view }: Props) {
   const t = useT()
   const [editing, setEditing] = useState<Entry>()
   const [deleting, setDeleting] = useState<Entry>()
   const [removing, setRemoving] = useState<{ portfolioId: string; asset: StockSymbol }>()
+  const [limit, setLimit] = useState({ view, rows: PAGE })
+  if (limit.view !== view) setLimit({ view, rows: PAGE })
   const byId = new Map(portfolios.map((h) => [h.id, h]))
   // Synced (Monobank) portfolios are read-only: no Deposit/Withdraw into them, no row edits.
   const editable = readOnly ? [] : portfolios.filter((p) => !isReadOnly(p))
@@ -62,6 +69,8 @@ export const EntriesTable = memo(function EntriesTable({ entries, portfolios, pr
   // Every view with stocks has a Paid column; rows whose price IBKR didn't give show a dash.
   const showPaid = entries.some((e) => isStock(e.asset))
   const rows = [...entries].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  const shown = rows.slice(0, limit.rows)
+  const left = rows.length - shown.length
 
   return (
     <section className="grid gap-2">
@@ -97,7 +106,7 @@ export const EntriesTable = memo(function EntriesTable({ entries, portfolios, pr
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((e) => {
+            {shown.map((e) => {
               const asset = prices[e.asset]
               const rate = prices[currency]
               const price = asset === undefined || rate === undefined ? undefined : asset / rate
@@ -184,6 +193,17 @@ export const EntriesTable = memo(function EntriesTable({ entries, portfolios, pr
             })}
           </TableBody>
         </Table>
+      )}
+
+      {left > 0 && (
+        <Button
+          variant="secondary"
+          className="mt-2 h-12 w-full sm:mx-auto sm:w-fit sm:px-6"
+          onClick={() => setLimit({ view, rows: limit.rows + PAGE })}
+        >
+          {t.showMore(Math.min(PAGE, left))}
+          <span className="font-mono text-muted-foreground tabular-nums">{t.left(left)}</span>
+        </Button>
       )}
 
       <EntryDrawer
