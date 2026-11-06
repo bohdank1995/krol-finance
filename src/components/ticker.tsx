@@ -38,14 +38,25 @@ export const Ticker = memo(function Ticker({ prices, assets, currency }: Props) 
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-md">
-      <div className="flex h-9 items-center gap-6 overflow-x-auto px-6 text-xs whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {items.map((i) => (
-          <span key={i.label} className="flex items-baseline gap-1.5">
-            <span className="text-faint-foreground">{i.label}</span>
-            <span className="font-mono text-muted-foreground tabular-nums">{i.value}</span>
-            <span className="text-faint-foreground">{i.sign}</span>
-          </span>
-        ))}
+      {/* Moves slowly to the left like a stock ticker, the list twice in a row so it loops without a jump.
+          Hover pauses it; with reduced motion it stands still. */}
+      <div className="flex h-9 items-center overflow-hidden text-xs whitespace-nowrap">
+        <div
+          className="flex w-max animate-ticker hover:[animation-play-state:paused]"
+          style={{ '--ticker-time': `${items.length * 6}s` } as React.CSSProperties}
+        >
+          {[0, 1].map((copy) => (
+            <span key={copy} aria-hidden={copy === 1} className="flex min-w-screen justify-around gap-6 px-6">
+              {items.map((i) => (
+                <span key={i.label} className="flex items-baseline gap-1.5">
+                  <span className="text-faint-foreground">{i.label}</span>
+                  <span className="font-mono text-muted-foreground tabular-nums">{i.value}</span>
+                  <span className="text-faint-foreground">{i.sign}</span>
+                </span>
+              ))}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   )

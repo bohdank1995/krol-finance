@@ -1,12 +1,10 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import { Pencil } from 'lucide-react'
 import { DashboardSkeleton } from '@/components/app-shell'
 import { BalanceChart, BalanceChartSkeleton, PassiveIncome } from '@/components/balance-chart'
 import { EntriesTable } from '@/components/entries-table'
 import { Header, PeriodFilter } from '@/components/header'
 import { NET_WORTH, PortfolioCards } from '@/components/portfolio-cards'
 import { Ticker } from '@/components/ticker'
-import { Button } from '@/components/ui/button'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { earnsPassiveIncome, membersOf, netWorthEntries, netWorthPortfolios, savePeriod, scaleEntries, scalePayouts, setInPassiveIncome, useEntries, useGroups, useLoaded, usePayouts, usePortfolios } from '@/lib/entries'
 import { fakeEntries, fakePayouts } from '@/lib/fake'
@@ -15,7 +13,6 @@ import { inRange, rangeOf, type Period } from '@/lib/period'
 import { balance, firstDay, growth, passiveIn, series, withPayouts } from '@/lib/portfolio'
 import { CURRENCIES, usePreferences } from '@/lib/preferences'
 import { useLivePrices } from '@/lib/prices'
-import { useT } from '@/lib/i18n'
 import { useReveal } from '@/lib/reveal'
 import { cn } from '@/lib/utils'
 
@@ -118,27 +115,8 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
     mainRef.current?.animate({ opacity: [0.5, 1] }, { duration: 220, easing: 'ease-out' })
   }, [currency])
-  const t = useT()
-  const toolbar = useMemo(
-    () => (
-      <div className="flex items-center gap-2">
-        {/* Edit mode: reorder, group and delete sources. Not in Fake numbers (read-only). */}
-        {!fake && portfolios.length > 0 && (
-          <Button
-            variant="outline"
-            size="icon-lg"
-            aria-label={t.editSources}
-            onClick={() => setEditing(true)}
-            className="animate-in text-muted-foreground fade-in hover:text-foreground"
-          >
-            <Pencil />
-          </Button>
-        )}
-        <PeriodFilter period={period} onChange={pick} />
-      </div>
-    ),
-    [period, pick, fake, portfolios.length, t],
-  )
+  const toolbar = useMemo(() => <PeriodFilter period={period} onChange={pick} />, [period, pick])
+  const startEditing = useCallback(() => setEditing(true), [])
 
   return (
     <TooltipProvider delay={150}>
@@ -153,6 +131,8 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
                 <PortfolioCards
                   toolbar={toolbar}
                   editing={editing}
+                  // Edit mode: reorder, group and delete sources. Not in Fake numbers (read-only).
+                  onEdit={!fake && portfolios.length > 0 ? startEditing : undefined}
                   onEditingDone={() => setEditing(false)}
                   portfolios={portfolios}
                   groups={groups}

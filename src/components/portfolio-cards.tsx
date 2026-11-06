@@ -1,5 +1,5 @@
 import { Fragment, memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { ArrowDown, ArrowUp, ChartPie, CircleMinus, CirclePlus, MoreHorizontal, Pencil, Percent, Plus, RefreshCw, Trash2, Unlink, WalletCards } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChartPie, CircleMinus, CirclePlus, MoreHorizontal, Pencil, Percent, Plus, RefreshCw, Settings2, Trash2, Unlink, WalletCards } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -89,10 +89,12 @@ type Props = Valuation & {
   toolbar?: ReactNode
   /** The edit mode (`edit-cards.tsx`) shows instead of the row. */
   editing?: boolean
+  /** Opens the edit mode; unset hides its button. */
+  onEdit?: () => void
   onEditingDone?: () => void
 }
 
-export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups, entries, status, selected, onSelect, readOnly, toolbar, editing, onEditingDone, ...valuation }: Props) {
+export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups, entries, status, selected, onSelect, readOnly, toolbar, editing, onEdit, onEditingDone, ...valuation }: Props) {
   const t = useT()
   const [creating, setCreating] = useState(false)
   const [syncing, setSyncing] = useState<string[]>([])
@@ -181,6 +183,22 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
       row.scrollTo({ left: el.offsetLeft + el.offsetWidth - row.clientWidth + parseFloat(paddingRight), behavior: 'smooth' })
   }, [selected, portfolios.length])
 
+  // An opened group's sources unfold to its right: once they have (300 ms), scroll just far enough to show
+  // them all. Wider screens only: on phones a scroll picks the card it settles on.
+  useEffect(() => {
+    const row = rowRef.current
+    if (!row || !openGroup || matchMedia(MOBILE).matches) return
+    const timer = window.setTimeout(() => {
+      const ids = portfolios.filter((p) => p.groupId === openGroup).map((p) => p.id)
+      const last = row.querySelector<HTMLElement>(`[data-slide="${CSS.escape(ids[ids.length - 1] ?? '')}"]`)
+      if (!last) return
+      const end = row.scrollLeft + row.clientWidth - parseFloat(getComputedStyle(row).paddingRight)
+      if (last.offsetLeft + last.offsetWidth > end)
+        row.scrollTo({ left: last.offsetLeft + last.offsetWidth - row.clientWidth + parseFloat(getComputedStyle(row).paddingRight), behavior: 'smooth' })
+    }, 320)
+    return () => window.clearTimeout(timer)
+  }, [openGroup, portfolios])
+
   // Cards fade in one after another, left to right.
   let order = 0
   const items = rowItems(portfolios, groups)
@@ -196,10 +214,12 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
         : [{ id: i.group.id, label: i.group.name }, ...(isOpen(i) ? i.members.map((m) => ({ id: m.id, label: m.name })) : [])],
     ),
   ]
-  const sourceCard = (h: Portfolio) => (
+  /** A source's card; `folded` ones belong to a closed group: no width, slid in behind it. */
+  const sourceCard = (h: Portfolio, folded = false) => (
     <Card
       key={h.id}
       id={h.id}
+      folded={folded}
       order={++order}
       label={h.name}
       hidden={!h.inNetWorth}
@@ -299,9 +319,20 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
   return (
     <div className="animate-in duration-300 fade-in">
       {/* Same edges as the cards and everything below them. */}
-      <div className="mb-3 flex items-center justify-between gap-3">
-        {toolbar}
+      <div className="mb-3 flex items-center gap-2">
+        <span className="mr-auto">{toolbar}</span>
         <span className="sm:hidden">{addMenu}</span>
+        {onEdit && (
+          <Button
+            variant="outline"
+            size="icon-lg"
+            aria-label={t.editSources}
+            onClick={onEdit}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Settings2 />
+          </Button>
+        )}
       </div>
       <div className="relative">
         <div
@@ -329,7 +360,7 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
                   id={item.group.id}
                   order={++order}
                   label={item.group.name}
-                  stack
+                  stack={!isOpen(item)}
                   note={t.sourcesCount(item.members.length)}
                   entries={item.members.flatMap((m) => scaled.get(m.id) ?? [])}
                   {...valuation}
@@ -341,7 +372,7 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
                     onSelect(item.group.id)
                   }}
                 />
-                {isOpen(item) && item.members.map((m) => sourceCard(m))}
+                {item.members.map((m) => sourceCard(m, !isOpen(item)))}
               </Fragment>
             ),
           )}
@@ -446,6 +477,8 @@ type CardProps = Valuation & {
   stack?: boolean
   /** A short grey line under the label, e.g. "3 sources" on a group. */
   note?: string
+  /** A source of a closed group: folded away to no width (it unfolds when the group opens). */
+  folded?: boolean
   /** Left out of the Net worth total. */
   hidden?: boolean
   /** Part of the real balance the card shows (0–1); the entries passed in are already scaled. */
@@ -467,7 +500,7 @@ type CardProps = Valuation & {
 
 const dayBefore = (day: string) => new Date(Date.parse(`${day}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
 
-function Card({ id, order, label, stack, note, hidden, share = 1, netWorthShare, hint, syncing, message, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
+function Card({ id, order, label, stack, note, folded, hidden, share = 1, netWorthShare, hint, syncing, message, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
   const t = useT()
   const points = useMemo(() => series(entries, daily, prices, currency), [entries, daily, prices, currency])
   const today = new Date().toISOString().slice(0, 10)
@@ -479,9 +512,14 @@ function Card({ id, order, label, stack, note, hidden, share = 1, netWorthShare,
 
   return (
     <div
-      data-slide={id}
+      data-slide={folded ? undefined : id}
+      inert={folded}
       style={{ animationDelay: `${order * 60}ms` }}
-      className="animate-enter relative w-[calc(100vw-3rem)] shrink-0 snap-center snap-always touch-manipulation sm:w-62"
+      className={cn(
+        'animate-enter relative w-[calc(100vw-3rem)] shrink-0 snap-center snap-always touch-manipulation transition-[width,opacity,margin] duration-300 ease-out sm:w-62',
+        // Folded: no width and the row's gap taken back, so it slides out from behind its group.
+        folded && 'pointer-events-none -ml-2 w-0 overflow-hidden opacity-0 sm:-ml-3 sm:w-0',
+      )}
     >
       <button
         type="button"
@@ -491,9 +529,12 @@ function Card({ id, order, label, stack, note, hidden, share = 1, netWorthShare,
         title={hint}
         className={cn(
           'flex h-full min-h-30 w-full flex-col justify-between rounded-xl border bg-card p-5 text-left transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:min-h-26',
+          // Keeps its full width while folded (the outer box shrinks), so the text never rewraps and stretches the row.
+          'min-w-[calc(100vw-3rem)] sm:min-w-62',
           active ? 'border-foreground/30 bg-accent' : 'hover:border-foreground/15',
-          // Two card edges peeking out below: a stack of sources.
-          stack && 'shadow-[0_4px_0_-1px_var(--color-card),0_4px_0_0_var(--color-border),0_8px_0_-1px_var(--color-card),0_8px_0_0_var(--color-border)]',
+          // Two card edges peeking out on the right: a stack of sources. They tuck away as the group opens.
+          'transition-[box-shadow,background-color,border-color]',
+          stack && 'shadow-[4px_0_0_-1px_var(--color-card),4px_0_0_0_var(--color-border),8px_0_0_-1px_var(--color-card),8px_0_0_0_var(--color-border)]',
         )}
       >
         <span className="flex items-center gap-2 pr-10 text-sm text-muted-foreground">

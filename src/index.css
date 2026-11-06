@@ -140,6 +140,18 @@
     animation: none;
   }
 }
+/* The rates strip (`ticker.tsx`): two copies of the list slide left by one copy, then start over. */
+@keyframes ticker {
+  to {
+    translate: -50% 0;
+  }
+}
+@utility animate-ticker {
+  animation: ticker var(--ticker-time) linear infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
 /* Edit mode (`edit-cards.tsx`): cards wiggle like iPhone apps being rearranged. `rotate` rather than
    `transform`, so dragging keeps its own transform. */
 @keyframes wiggle {

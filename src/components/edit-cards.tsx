@@ -122,6 +122,14 @@ export function EditCards({ portfolios, groups, entries, prices, currency, onDon
     setChecked(new Set())
   }
 
+  /** The group's sources become single sources again, where the group was. */
+  const ungroup = (id: string) =>
+    setItems((all) =>
+      all.flatMap((i): RowItem[] =>
+        i.kind === 'group' && i.group.id === id ? i.members.map((portfolio) => ({ kind: 'source', portfolio })) : [i],
+      ),
+    )
+
   const rename = (id: string, name: string) =>
     setItems((all) => all.map((i) => (i.kind === 'group' && i.group.id === id ? { ...i, group: { ...i.group, name } } : i)))
 
@@ -170,7 +178,8 @@ export function EditCards({ portfolios, groups, entries, prices, currency, onDon
 
   return (
     <div className="animate-in duration-300 fade-in">
-      <div className="mb-3 flex items-center gap-2">
+      {/* Phones: Cancel on the left, Save on the right. */}
+      <div className="mb-3 flex items-center gap-2 max-sm:justify-between">
         <Button variant="secondary" onClick={onDone}>
           {t.cancel}
         </Button>
@@ -200,6 +209,9 @@ export function EditCards({ portfolios, groups, entries, prices, currency, onDon
                           className="h-9 w-auto max-w-64 min-w-24 border-transparent bg-transparent px-1.5 font-medium field-sizing-content hover:border-input dark:bg-transparent"
                         />
                         <span className="text-xs text-faint-foreground">{t.sourcesCount(i.members.length)}</span>
+                        <Button variant="secondary" size="sm" className="ml-auto" onClick={() => ungroup(i.group.id)}>
+                          {t.ungroup}
+                        </Button>
                       </div>
                       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onMemberDragEnd(i.group.id)}>
                         <SortableContext items={i.members.map((m) => m.id)} strategy={rectSortingStrategy}>
@@ -308,10 +320,11 @@ function EditCard({
       ref={drag.setNodeRef}
       {...drag.attributes}
       {...drag.listeners}
-      style={{ transform: DndCSS.Translate.toString(drag.transform), transition: drag.transition }}
+      style={{ transform: DndCSS.Translate.toString(drag.transform), transition: drag.transition, animationDelay: delay }}
       className={cn(
         'relative w-[calc(50%-0.25rem)] touch-manipulation sm:w-62',
-        drag.isDragging ? 'z-10 cursor-grabbing' : 'cursor-grab',
+        // The whole card wiggles, minus badge included.
+        drag.isDragging ? 'z-10 cursor-grabbing' : 'animate-wiggle cursor-grab',
       )}
     >
       <div
@@ -325,11 +338,10 @@ function EditCard({
             onToggle()
           }
         }}
-        style={{ animationDelay: delay }}
         className={cn(
           'flex min-h-24 flex-col justify-between rounded-xl border bg-card p-4 outline-none select-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:min-h-26 sm:p-5',
           checked ? 'border-foreground/30 bg-accent' : 'hover:border-foreground/15',
-          drag.isDragging ? 'shadow-lg' : 'animate-wiggle',
+          drag.isDragging && 'shadow-lg',
         )}
       >
         <span className="truncate pr-6 text-sm text-muted-foreground">{portfolio.name}</span>

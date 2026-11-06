@@ -268,6 +268,17 @@ export function saveLayout(items: RowItem[]) {
   }))
 }
 
+/** Stacks these sources into a new group. Returns the group's id. */
+export function createGroup(name: string, portfolioIds: string[]) {
+  const id = crypto.randomUUID()
+  save(api.data.createGroup, { id, name, portfolioIds }, (d) => ({
+    ...d,
+    groups: [...d.groups, { id, name }],
+    portfolios: d.portfolios.map((p) => (portfolioIds.includes(p.id) ? { ...p, groupId: id } : p)),
+  }))
+  return id
+}
+
 /** Deleting a portfolio also deletes its entries. */
 export function deletePortfolio(id: string) {
   save(api.data.deletePortfolio, { id }, (d) => ({

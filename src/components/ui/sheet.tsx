@@ -127,7 +127,7 @@ function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
  */
 function SheetBar({ title, action, cancel }: { title: React.ReactNode; action?: React.ReactNode; cancel: string }) {
   return (
-    <div className="max-sm:sticky max-sm:top-0 max-sm:z-10 max-sm:-mx-6 max-sm:-mt-6 max-sm:grid max-sm:grid-cols-[1fr_auto_1fr] max-sm:items-center max-sm:mb-2 max-sm:gap-2 max-sm:bg-popover max-sm:px-3 max-sm:pt-[max(0.75rem,env(safe-area-inset-top))] max-sm:pb-2">
+    <div className="max-sm:sticky max-sm:top-0 max-sm:z-10 max-sm:-mx-6 max-sm:-mt-6 max-sm:grid max-sm:grid-cols-[1fr_auto_1fr] max-sm:items-center max-sm:mb-2 max-sm:gap-2 max-sm:bg-popover max-sm:px-6 max-sm:pt-[max(1rem,env(safe-area-inset-top))] max-sm:pb-4">
       <SheetPrimitive.Close
         render={<Button type="button" variant="secondary" size="icon" aria-label={cancel} className="justify-self-start sm:hidden" />}
       >

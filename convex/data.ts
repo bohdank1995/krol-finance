@@ -213,6 +213,20 @@ export const saveLayout = mutation({
   },
 })
 
+/** Stacks these sources into a new group (connecting several Monobank cards at once). */
+export const createGroup = mutation({
+  args: { id: v.string(), name: v.string(), portfolioIds: v.array(v.string()) },
+  handler: async (ctx, { id, name, portfolioIds }) => {
+    const userId = await signedIn(ctx)
+    if (portfolioIds.length < 2 || portfolioIds.length > 500) throw new ConvexError('A group needs 2 or more sources.')
+    short(name, 100, 'name')
+    await freshId(ctx, 'groups', id)
+    const members = await Promise.all(portfolioIds.map((p) => ownPortfolio(ctx, userId, p)))
+    await ctx.db.insert('groups', { id, userId, name })
+    for (const p of members) await ctx.db.patch(p._id, { groupId: id })
+  },
+})
+
 /** After a source is deleted: a group with fewer than 2 sources left is undone. */
 async function dropSmallGroups(ctx: MutationCtx, userId: Id<'users'>) {
   const groups = await ctx.db
