@@ -17,10 +17,12 @@ type Props = {
   onOpenChange: (open: boolean) => void
   /** When set, the drawer only renames this portfolio. */
   portfolio?: Portfolio
+  /** When set, the drawer only renames this group, saving the name with `onRename`. */
+  group?: { name: string; onRename: (name: string) => void }
   onCreated?: (id: string) => void
 }
 
-/** Right-side drawer to create a portfolio (just a name) or rename one. */
+/** Right-side drawer to create a portfolio (just a name), or rename one or a group. */
 export function PortfolioDrawer({ open, onOpenChange, ...rest }: Props) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -34,32 +36,34 @@ export function PortfolioDrawer({ open, onOpenChange, ...rest }: Props) {
 
 function PortfolioForm({
   portfolio,
+  group,
   onCreated,
   onDone,
 }: Omit<Props, 'open' | 'onOpenChange'> & { onDone: () => void }) {
   const t = useT()
-  const [name, setName] = useState(portfolio?.name ?? '')
+  const [name, setName] = useState(group?.name ?? portfolio?.name ?? '')
   const valid = !!name.trim()
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!valid) return
-    if (portfolio) renamePortfolio(portfolio.id, name.trim())
+    if (group) group.onRename(name.trim())
+    else if (portfolio) renamePortfolio(portfolio.id, name.trim())
     else onCreated?.(addPortfolio(name.trim()))
     onDone()
   }
 
   const action = (size?: 'sm') => (
     <Button type="submit" size={size} disabled={!valid}>
-      {portfolio ? t.save : t.create}
+      {portfolio || group ? t.save : t.create}
     </Button>
   )
 
   return (
     <form onSubmit={submit} className="contents">
-      <SheetBar title={portfolio ? t.renamePortfolio : t.newPortfolio} action={action('sm')} cancel={t.cancel} />
+      <SheetBar title={group ? t.renameGroup : portfolio ? t.renamePortfolio : t.newPortfolio} action={action('sm')} cancel={t.cancel} />
 
-      <Field label={t.name}>
+      <Field label={group ? t.groupName : t.name}>
         <Input
           autoFocus
           autoComplete="off"

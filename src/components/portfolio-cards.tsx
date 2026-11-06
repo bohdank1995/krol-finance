@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
-import { ArrowDown, ArrowUp, ChartPie, CircleMinus, CirclePlus, MoreHorizontal, Pencil, Percent, Plus, RefreshCw, Settings2, Trash2, Unlink, WalletCards } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChartPie, CircleMinus, CirclePlus, MoreHorizontal, Pencil, Percent, Plus, RefreshCw, Settings2, Trash2, Ungroup, Unlink, WalletCards } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -106,6 +106,7 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
   const [renaming, setRenaming] = useState<Portfolio>()
   const [deleting, setDeleting] = useState<Portfolio>()
   const [adjusting, setAdjusting] = useState<Portfolio>()
+  const [renamingGroup, setRenamingGroup] = useState<Group>()
   const [openGroup, setOpenGroup] = useState<string>()
   const rowRef = useRef<HTMLDivElement>(null)
   const latest = useRef({ selected, onSelect })
@@ -206,6 +207,17 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
   // Cards fade in one after another, left to right.
   let order = 0
   const items = rowItems(portfolios, groups)
+  /** Renames a group, or turns its sources back into single sources where it was (like edit mode does). */
+  const renameGroup = (id: string, name: string) =>
+    saveLayout(items.map((i) => (i.kind === 'group' && i.group.id === id ? { ...i, group: { ...i.group, name } } : i)))
+  const ungroup = (id: string) => {
+    if (selected === id) onSelect(NET_WORTH)
+    saveLayout(
+      items.flatMap((i): RowItem[] =>
+        i.kind === 'group' && i.group.id === id ? i.members.map((portfolio) => ({ kind: 'source', portfolio })) : [i],
+      ),
+    )
+  }
   /** A group is open while it, or one of its sources, is picked. */
   const isOpen = (item: Extract<RowItem, { kind: 'group' }>) =>
     openGroup === item.group.id || item.members.some((m) => m.id === selected)
@@ -391,6 +403,34 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
                       else setOpenGroup(item.group.id)
                       onSelect(item.group.id)
                     }}
+                    menu={
+                      !readOnly && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button
+                                variant="secondary"
+                                size="icon"
+                                aria-label={t.groupActions(item.group.name)}
+                                className="absolute top-3 right-3 text-muted-foreground hover:text-foreground aria-expanded:text-foreground"
+                              />
+                            }
+                          >
+                            <MoreHorizontal />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-56">
+                            <DropdownMenuItem onClick={() => setRenamingGroup(item.group)}>
+                              <Pencil className="text-muted-foreground" />
+                              {t.rename}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => ungroup(item.group.id)}>
+                              <Ungroup className="text-muted-foreground" />
+                              {t.ungroup}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )
+                    }
                   />
                   {item.members.map((m) => sourceCard(m, !isOpen(item)))}
                 </div>
@@ -447,6 +487,11 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
         open={connecting === 'ibkr'}
         onOpenChange={(open) => !open && setConnecting(undefined)}
         onCreated={onSelect}
+      />
+      <PortfolioDrawer
+        open={!!renamingGroup}
+        onOpenChange={(open) => !open && setRenamingGroup(undefined)}
+        group={renamingGroup && { name: renamingGroup.name, onRename: (name) => renameGroup(renamingGroup.id, name) }}
       />
       <PortfolioDrawer
         open={!!renaming}

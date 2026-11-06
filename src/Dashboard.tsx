@@ -166,7 +166,7 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
                     <div
                       className={cn(
                         'grid grid-cols-[minmax(0,1fr)] gap-6',
-                        withPassive && 'lg:grid-cols-[minmax(0,1fr)_1px_16rem] lg:gap-8',
+                        withPassive && 'lg:grid-cols-[minmax(0,1fr)_1px_24rem] lg:gap-8',
                       )}
                     >
                       <div className="animate-enter min-w-0" style={{ animationDelay: '200ms' }}>

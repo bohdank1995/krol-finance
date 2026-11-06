@@ -159,6 +159,8 @@ const en = {
   },
 
   renamePortfolio: 'Rename source',
+  renameGroup: 'Rename group',
+  groupActions: (name: string) => `Actions for ${name}`,
   newPortfolio: 'New source',
 
   percentages: 'Your share',
@@ -366,6 +368,8 @@ const uk: Dictionary = {
   },
 
   renamePortfolio: 'Перейменувати джерело',
+  renameGroup: 'Перейменувати групу',
+  groupActions: (name) => `Дії з ${name}`,
   newPortfolio: 'Нове джерело',
 
   percentages: 'Ваша частка',
