@@ -1,7 +1,7 @@
 # claude-design-experiment
 
 Personal finance tracker: manual entries plus imported Interactive Brokers (IBKR)
-statements.
+statements. Product goal, milestones and metrics: `VISION.md` (a copy lives in the vault as `Koshel/Vision.md`).
 
 React 19 + TypeScript + Tailwind 4 on Vite. `npm run dev`, `npm run build`, `npm run lint` (oxlint).
 
