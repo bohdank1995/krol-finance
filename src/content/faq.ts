@@ -9,7 +9,7 @@ export const FAQ: { question: string; answer: string }[] = [
   {
     question: 'What can I track?',
     answer:
-      'Money in USD, EUR, UAH and PLN, crypto, Monobank cards, and stocks held at Interactive Brokers. A portfolio can mix different types of assets.',
+      'Money in USD, EUR, UAH and PLN, crypto, Monobank cards, and stocks held at Interactive Brokers. A source can mix different types of assets.',
   },
   {
     question: 'How does Koshel calculate passive income?',

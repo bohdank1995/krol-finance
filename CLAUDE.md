@@ -25,8 +25,11 @@ The user is a designer, not an engineer. Explain changes in plain language.
 
 Vocabulary:
 - **Portfolio** — a named card in the top "Portfolios" row (e.g. "Binance"): a name plus its entries,
-  no type of its own. The first card, **Net worth**, sums every portfolio.
+  no type of its own. The first card, **Net worth**, sums every portfolio. The app calls it a
+  **source** / **джерело** (a manual one is "Manual source" / "Ручне джерело"); "portfolio" is only the
+  code's name. Don't call it a "card" in texts: cards are Monobank's bank cards.
 - **Entry** — a signed change (+/−) of one asset inside a portfolio. One portfolio can mix entry types.
+  The app calls it a **transaction** ("операція" in Ukrainian); "entry" is only the code's name.
 - **Entry type** — money / crypto / stocks; decides which assets an entry can use. It is
   derived from the asset (`typeOf` in `src/lib/assets.ts`), not stored. Manual stock entries are "soon".
 - **Asset** — anything owned (USD, BTC, stocks). A stock is stored as `stock:<Yahoo ticker>`
@@ -47,7 +50,7 @@ Vocabulary:
   factor (`src/lib/fake.ts`) and the app becomes read-only, so screenshots are safe to share.
 - **Hidden from net worth** — a portfolio's ⋯ menu can leave it out of Net worth (card, graph and table);
   saved in `portfolios.inNetWorth`, its own card is unchanged.
-- **Percentages** — per portfolio (⋯ → Set percentages): `cardPercent` (what the card + its graph show,
+- **Percentages** — shown in the app as **Your share** ("Ваша частка"); per portfolio (⋯ → Set your share): `cardPercent` (what the card + its graph show,
   with a "50% of …" line) and `netWorthPercent` (what Net worth counts). Totals and graphs use
   `scaleEntries`; the table and stored entries keep real amounts.
 - **Card order** — portfolio cards are dragged into order (@dnd-kit), saved in `portfolios.position`.
@@ -111,7 +114,8 @@ names, emails, amounts, assets or portfolio names. Set `POSTHOG_KEY` / `POSTHOG_
 Public pages: home, `/faq`, `/privacy`, `/terms`, and `/blog` once an article is published. They're listed in
 `src/lib/site.ts` (title, description, breadcrumbs, structured data) and shown by `src/components/site.tsx`.
 `npm run build` writes each as real HTML, plus `sitemap.xml` and `404.html` (`scripts/prerender.mjs`), so a
-new public page only needs adding to that list. Articles live in `src/content/articles.tsx`, FAQ in `src/content/faq.ts`.
+new public page only needs adding to that list. The build also writes the loading screen
+(`src/components/app-shell.tsx`) into `index.html`, so returning users see it before any JavaScript arrives. Articles live in `src/content/articles.tsx`, FAQ in `src/content/faq.ts`.
 Public pages can't use Convex directly: they render at build time, without a backend.
 
 <!-- convex-ai-start -->

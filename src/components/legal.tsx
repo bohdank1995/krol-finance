@@ -39,8 +39,8 @@ function Privacy() {
             photo, when you sign in with Google. We never see your Google password.
           </li>
           <li>
-            <span className="text-foreground">What you enter</span>: portfolio names, entries (asset, amount, date,
-            note) and settings such as percentages, card order and language.
+            <span className="text-foreground">What you enter</span>: source names, transactions (asset, amount, date,
+            note) and settings such as your share, source order and language.
           </li>
           <li>
             <span className="text-foreground">Monobank, if you connect it</span>: your personal API token, your card
@@ -60,7 +60,7 @@ function Privacy() {
           We don’t use advertising or tracking cookies. We do count anonymous usage with PostHog: which pages are
           visited, where visitors came from, when someone starts and finishes signing in, and when a new account is
           created.
-          It isn’t linked to your account and never includes your name, email, amounts, assets or portfolio names.
+          It isn’t linked to your account and never includes your name, email, amounts, assets or source names.
           PostHog uses your IP address and browser details to tell visits apart, and we don’t record your screen.
         </p>
       </Section>
@@ -108,7 +108,7 @@ function Privacy() {
 
       <Section title="How long we keep it, and deleting it">
         <p>
-          We keep your data while you have an account. Deleting a portfolio in the app deletes its entries. To
+          We keep your data while you have an account. Deleting a source in the app deletes its transactions. To
           delete your whole account and everything in it, including stored tokens, or to get a copy of your data,
           write to <Mail /> and we’ll do it within 30 days. Copies in backups disappear as backups expire.
         </p>
