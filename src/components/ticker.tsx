@@ -1,27 +1,44 @@
-import { memo, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
+import { memo, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { ArrowDownUp } from 'lucide-react'
-import { EU, PL, US } from 'country-flag-icons/react/3x2'
-import ada from 'cryptocurrency-icons/svg/color/ada.svg'
-import avax from 'cryptocurrency-icons/svg/color/avax.svg'
-import bnb from 'cryptocurrency-icons/svg/color/bnb.svg'
-import btc from 'cryptocurrency-icons/svg/color/btc.svg'
-import doge from 'cryptocurrency-icons/svg/color/doge.svg'
-import eth from 'cryptocurrency-icons/svg/color/eth.svg'
-import link from 'cryptocurrency-icons/svg/color/link.svg'
-import sol from 'cryptocurrency-icons/svg/color/sol.svg'
-import trx from 'cryptocurrency-icons/svg/color/trx.svg'
-import xrp from 'cryptocurrency-icons/svg/color/xrp.svg'
+import ada from 'cryptocurrency-icons/svg/black/ada.svg'
+import avax from 'cryptocurrency-icons/svg/black/avax.svg'
+import bnb from 'cryptocurrency-icons/svg/black/bnb.svg'
+import btc from 'cryptocurrency-icons/svg/black/btc.svg'
+import doge from 'cryptocurrency-icons/svg/black/doge.svg'
+import eth from 'cryptocurrency-icons/svg/black/eth.svg'
+import eur from 'cryptocurrency-icons/svg/black/eur.svg'
+import link from 'cryptocurrency-icons/svg/black/link.svg'
+import sol from 'cryptocurrency-icons/svg/black/sol.svg'
+import trx from 'cryptocurrency-icons/svg/black/trx.svg'
+import usd from 'cryptocurrency-icons/svg/black/usd.svg'
+import xrp from 'cryptocurrency-icons/svg/black/xrp.svg'
+import pln from '@/assets/pln.svg'
 import ton from '@/assets/ton.svg'
 import { Button } from '@/components/ui/button'
 import { ASSETS, currencySign, type AssetSymbol } from '@/lib/assets'
 import { useT } from '@/lib/i18n'
 import type { Currency } from '@/lib/preferences'
 
-/** The currencies whose hryvnia rate the strip always shows, each with its flag. */
+/** The currencies whose hryvnia rate the strip always shows. */
 const RATES = ['USD', 'EUR', 'PLN'] as const
-const FLAGS: Record<(typeof RATES)[number], ComponentType<{ className?: string }>> = { USD: US, EUR: EU, PLN: PL }
-/** Coin logos (from the cryptocurrency-icons set; TON drawn here, as the set has none). */
-const COINS: Partial<Record<AssetSymbol, string>> = { BTC: btc, ETH: eth, SOL: sol, BNB: bnb, XRP: xrp, TON: ton, ADA: ada, DOGE: doge, AVAX: avax, LINK: link, TRX: trx }
+/** One-colour icons, drawn in the strip's grey: the cryptocurrency-icons set's "black" style (a solid circle
+    with the sign cut out). PLN and TON are drawn here the same way, as the set has neither. */
+const ICONS: Partial<Record<AssetSymbol, string>> = {
+  USD: usd,
+  EUR: eur,
+  PLN: pln,
+  BTC: btc,
+  ETH: eth,
+  SOL: sol,
+  BNB: bnb,
+  XRP: xrp,
+  TON: ton,
+  ADA: ada,
+  DOGE: doge,
+  AVAX: avax,
+  LINK: link,
+  TRX: trx,
+}
 /** Crypto worth a dollar: its price says nothing, so it's left out. */
 const STABLE = new Set<AssetSymbol>(['USDC', 'USDT'])
 
@@ -34,6 +51,18 @@ const TURN = 6000
 const SWITCH = 300
 
 type Item = { label: string; value: string; sign: string; icon: ReactNode }
+
+/** An icon file used as a mask, so it takes the strip's grey. */
+function Icon({ src }: { src?: string }) {
+  if (!src) return null
+  return (
+    <span
+      aria-hidden
+      style={{ maskImage: `url("${src}")`, WebkitMaskImage: `url("${src}")` }}
+      className="size-3.5 shrink-0 bg-faint-foreground mask-contain mask-center mask-no-repeat"
+    />
+  )
+}
 
 function Row({ items }: { items: Item[] }) {
   return (
@@ -70,23 +99,14 @@ export const Ticker = memo(function Ticker({ prices, assets, currency }: Props) 
   const rates: Item[] = []
   for (const code of RATES) {
     const usd = code === 'USD' ? 1 : prices[code]
-    const Flag = FLAGS[code]
-    if (uah && usd)
-      rates.push({ label: code, value: formatPrice(usd / uah), sign: currencySign('UAH'), icon: <Flag className="h-2.5 w-auto rounded-[2px] opacity-60 grayscale" /> })
+    if (uah && usd) rates.push({ label: code, value: formatPrice(usd / uah), sign: currencySign('UAH'), icon: <Icon src={ICONS[code]} /> })
   }
   const coins: Item[] = []
   const held = new Set(assets)
   for (const a of ASSETS) {
     if (a.type !== 'crypto' || STABLE.has(a.symbol) || !held.has(a.symbol)) continue
     const usd = prices[a.symbol]
-    const logo = COINS[a.symbol]
-    if (usd && rate)
-      coins.push({
-        label: a.symbol,
-        value: formatPrice(usd / rate),
-        sign: currencySign(currency),
-        icon: logo ? <img src={logo} alt="" className="size-3.5 opacity-60 grayscale" /> : null,
-      })
+    if (usd && rate) coins.push({ label: a.symbol, value: formatPrice(usd / rate), sign: currencySign(currency), icon: <Icon src={ICONS[a.symbol]} /> })
   }
   const groups = [rates, coins].filter((g) => g.length > 0)
 
