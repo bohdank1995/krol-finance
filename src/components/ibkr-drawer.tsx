@@ -257,6 +257,15 @@ function IbkrFlow({ onCreated, onDone }: { onCreated?: (id: string) => void; onD
             <p className="text-muted-foreground">{t.ibkr.noStocks}</p>
           ) : (
             <>
+              <Field label={t.name}>
+                <Input
+                  autoComplete="off"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="h-12"
+                />
+              </Field>
+
               <label
                 className={cn(
                   'flex items-center gap-3 px-4',
@@ -274,6 +283,7 @@ function IbkrFlow({ onCreated, onDone }: { onCreated?: (id: string) => void; onD
                   {t.ibkr.picked(picked.size, available.length)}
                 </span>
               </label>
+              {followsNew && <p className="-mt-2 px-4 text-xs text-faint-foreground">{t.ibkr.followsNew}</p>}
 
               <div role="group" aria-label={t.ibkr.stocks} className="grid gap-2">
                 {positions.map((p) => {
@@ -307,22 +317,6 @@ function IbkrFlow({ onCreated, onDone }: { onCreated?: (id: string) => void; onD
                 })}
               </div>
             </>
-          )}
-
-          {picked.size > 0 && (
-            <div className="grid gap-2">
-              <Field label={t.name}>
-                <Input
-                  autoComplete="off"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="h-12"
-                />
-              </Field>
-              {followsNew && (
-                <p className="text-xs text-faint-foreground">{t.ibkr.followsNew}</p>
-              )}
-            </div>
           )}
         </div>
       )}
