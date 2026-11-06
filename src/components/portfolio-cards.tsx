@@ -1,4 +1,5 @@
 import { Fragment, memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { ArrowDown, ArrowUp, ChartPie, CircleMinus, CirclePlus, MoreHorizontal, Pencil, Percent, Plus, RefreshCw, Settings2, Trash2, Unlink, WalletCards } from 'lucide-react'
 import {
   AlertDialog,
@@ -23,6 +24,7 @@ import {
   netWorthEntries,
   refreshIbkr,
   rowItems,
+  saveLayout,
   scaleEntries,
   setInNetWorth,
   type Entry,
@@ -42,6 +44,7 @@ import monobankLogo from '@/assets/monobank.svg'
 import ibkrLogo from '@/assets/ibkr.svg'
 import { FAB, FAB_BAR } from './add-entry-menu'
 import { EditCards } from './edit-cards'
+import { DragPreview, DropLine, Reorder, useDragged, useDropSide } from './reorder'
 import { IbkrDrawer } from './ibkr-drawer'
 import { MonobankDrawer } from './monobank-drawer'
 import { PercentsDrawer } from './percents-drawer'
@@ -205,6 +208,14 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
   /** A group is open while it, or one of its sources, is picked. */
   const isOpen = (item: Extract<RowItem, { kind: 'group' }>) =>
     openGroup === item.group.id || item.members.some((m) => m.id === selected)
+  /** The card following the pointer while one is dragged into a new place. */
+  const preview = (id: string) => {
+    const group = items.find((i) => i.kind === 'group' && i.group.id === id)
+    const list = group?.kind === 'group' ? group.members : portfolios.filter((p) => p.id === id)
+    const total = list.reduce((sum, p) => sum + balance(scaled.get(p.id) ?? [], valuation.prices, valuation.currency).total, 0)
+    const label = group?.kind === 'group' ? group.group.name : list[0]?.name ?? ''
+    return <DragPreview label={label} value={`${formatMoney(total)} ${currencySign(valuation.currency)}`} className="max-sm:w-[calc(100vw-3rem)]" />
+  }
   // The phones' dots: one per card in the row, open groups' sources included.
   const slides = [
     { id: NET_WORTH, label: t.netWorth },
@@ -219,6 +230,7 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
     <Card
       key={h.id}
       id={h.id}
+      draggable={!readOnly && !folded}
       folded={folded}
       order={++order}
       label={h.name}
@@ -334,55 +346,58 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
           </Button>
         )}
       </div>
-      <div className="relative">
-        <div
-          ref={rowRef}
-          role="tablist"
-          aria-label={t.portfolios}
-          className="relative -mx-6 flex snap-x snap-mandatory gap-2 overflow-x-auto px-6 pb-2 max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden sm:snap-none sm:gap-3 sm:pr-24"
-        >
-          <Card
-            id={NET_WORTH}
-            order={0}
-            label={t.netWorth}
-            entries={counted}
-            {...valuation}
-            active={selected === NET_WORTH}
-            onSelect={() => onSelect(NET_WORTH)}
-            live={entries.length > 0 ? status : undefined}
-          />
-          {items.map((item) =>
-            item.kind === 'source' ? (
-              sourceCard(item.portfolio)
-            ) : (
-              <Fragment key={item.group.id}>
-                <Card
-                  id={item.group.id}
-                  order={++order}
-                  label={item.group.name}
-                  stack={!isOpen(item)}
-                  note={t.sourcesCount(item.members.length)}
-                  entries={item.members.flatMap((m) => scaled.get(m.id) ?? [])}
-                  {...valuation}
-                  active={selected === item.group.id}
-                  onSelect={() => {
-                    // Opens the group (its sources slide out to the right); a second click closes it.
-                    if (selected === item.group.id) setOpenGroup(openGroup === item.group.id ? undefined : item.group.id)
-                    else setOpenGroup(item.group.id)
-                    onSelect(item.group.id)
-                  }}
-                />
-                {item.members.map((m) => sourceCard(m, !isOpen(item)))}
-              </Fragment>
-            ),
-          )}
-        </div>
+      <Reorder items={items} onMove={saveLayout} preview={preview}>
+        <div className="relative">
+          <div
+            ref={rowRef}
+            role="tablist"
+            aria-label={t.portfolios}
+            className="relative -mx-6 flex snap-x snap-mandatory gap-2 overflow-x-auto px-6 pb-2 max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden sm:snap-none sm:gap-3 sm:pr-24"
+          >
+            <Card
+              id={NET_WORTH}
+              order={0}
+              label={t.netWorth}
+              entries={counted}
+              {...valuation}
+              active={selected === NET_WORTH}
+              onSelect={() => onSelect(NET_WORTH)}
+              live={entries.length > 0 ? status : undefined}
+            />
+            {items.map((item) =>
+              item.kind === 'source' ? (
+                sourceCard(item.portfolio)
+              ) : (
+                <Fragment key={item.group.id}>
+                  <Card
+                    id={item.group.id}
+                    draggable={!readOnly}
+                    order={++order}
+                    label={item.group.name}
+                    stack={!isOpen(item)}
+                    note={t.sourcesCount(item.members.length)}
+                    entries={item.members.flatMap((m) => scaled.get(m.id) ?? [])}
+                    {...valuation}
+                    active={selected === item.group.id}
+                    onSelect={() => {
+                      // Opens the group (its sources slide out to the right); a second click closes it.
+                      if (selected === item.group.id) setOpenGroup(openGroup === item.group.id ? undefined : item.group.id)
+                      else setOpenGroup(item.group.id)
+                      onSelect(item.group.id)
+                    }}
+                  />
+                  {item.members.map((m) => sourceCard(m, !isOpen(item)))}
+                </Fragment>
+              ),
+            )}
+          </div>
 
-        {/* Pinned to the right over a fade: stays put while the cards scroll underneath. */}
-        <div className="pointer-events-none absolute inset-y-0 -right-6 flex w-16 max-sm:hidden items-center justify-end bg-linear-to-l from-background via-background/80 to-transparent pr-0.5 pb-2 sm:w-28 sm:pr-6">
-          {addMenu}
+          {/* Pinned to the right over a fade: stays put while the cards scroll underneath. */}
+          <div className="pointer-events-none absolute inset-y-0 -right-6 flex w-16 max-sm:hidden items-center justify-end bg-linear-to-l from-background via-background/80 to-transparent pr-0.5 pb-2 sm:w-28 sm:pr-6">
+            {addMenu}
+          </div>
         </div>
-      </div>
+      </Reorder>
 
       {slides.length > 1 && (
         <div className="mt-2 flex justify-center sm:hidden">
@@ -479,6 +494,8 @@ type CardProps = Valuation & {
   note?: string
   /** A source of a closed group: folded away to no width (it unfolds when the group opens). */
   folded?: boolean
+  /** Can be dragged to a new place (and dropped next to). Not Net worth, not in Fake numbers. */
+  draggable?: boolean
   /** Left out of the Net worth total. */
   hidden?: boolean
   /** Part of the real balance the card shows (0–1); the entries passed in are already scaled. */
@@ -500,7 +517,7 @@ type CardProps = Valuation & {
 
 const dayBefore = (day: string) => new Date(Date.parse(`${day}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
 
-function Card({ id, order, label, stack, note, folded, hidden, share = 1, netWorthShare, hint, syncing, message, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
+function Card({ id, order, label, stack, note, folded, draggable = false, hidden, share = 1, netWorthShare, hint, syncing, message, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
   const t = useT()
   const points = useMemo(() => series(entries, daily, prices, currency), [entries, daily, prices, currency])
   const today = new Date().toISOString().slice(0, 10)
@@ -509,9 +526,18 @@ function Card({ id, order, label, stack, note, folded, hidden, share = 1, netWor
   const total = range.to >= today ? now.total : valueOn(points, range.to)
   const pricing = range.to >= today && now.pricing
   const change = range.from ? total - valueOn(points, dayBefore(range.from)) : undefined
+  const drag = useDraggable({ id, disabled: !draggable })
+  const drop = useDroppable({ id, disabled: !draggable })
+  const side = useDropSide(id)
+  const dragged = useDragged() === id
 
   return (
     <div
+      ref={(el) => {
+        drag.setNodeRef(el)
+        drop.setNodeRef(el)
+      }}
+      {...(draggable ? drag.listeners : {})}
       data-slide={folded ? undefined : id}
       inert={folded}
       style={{ animationDelay: `${order * 60}ms` }}
@@ -519,8 +545,11 @@ function Card({ id, order, label, stack, note, folded, hidden, share = 1, netWor
         'animate-enter relative w-[calc(100vw-3rem)] shrink-0 snap-center snap-always touch-manipulation transition-[width,opacity,margin] duration-300 ease-out sm:w-62',
         // Folded: no width and the row's gap taken back, so it slides out from behind its group.
         folded && 'pointer-events-none -ml-2 w-0 overflow-hidden opacity-0 sm:-ml-3 sm:w-0',
+        // The card being dragged stays in place, faded, while its copy follows the pointer.
+        dragged && 'opacity-40',
       )}
     >
+      <DropLine side={side} />
       <button
         type="button"
         role="tab"

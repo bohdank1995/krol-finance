@@ -85,6 +85,7 @@ const en = {
   selected: (n: number) => `${n} selected`,
   group: 'Group',
   ungroup: 'Ungroup',
+  moveGroup: (name: string) => `Move ${name}`,
   groupCards: 'Group these cards',
   newGroup: 'New group',
   groupName: 'Group name',
@@ -154,10 +155,8 @@ const en = {
   newPortfolio: 'New source',
 
   percentages: 'Your share',
-  cardShows: 'Source shows',
-  countsInNetWorthLabel: 'Counts in net worth',
+  cardShows: 'Your share of this source',
   cardPercentError: 'Above 0, up to 100',
-  netWorthPercentError: 'Between 0 and 100',
   partOf: (part: string, total: string) => `${part} of ${total}`,
   hiddenNote: 'Not included in Net Worth for now — include it again from the ⋯ menu.',
 
@@ -288,6 +287,7 @@ const uk: Dictionary = {
   selected: (n) => `Вибрано: ${n}`,
   group: 'Згрупувати',
   ungroup: 'Розгрупувати',
+  moveGroup: (name) => `Перемістити ${name}`,
   groupCards: 'Згрупувати ці картки',
   newGroup: 'Нова група',
   groupName: 'Назва групи',
@@ -355,10 +355,8 @@ const uk: Dictionary = {
   newPortfolio: 'Нове джерело',
 
   percentages: 'Ваша частка',
-  cardShows: 'Джерело показує',
-  countsInNetWorthLabel: 'Враховується в капіталі',
+  cardShows: 'Ваша частка цього джерела',
   cardPercentError: 'Більше 0, до 100',
-  netWorthPercentError: 'Від 0 до 100',
   partOf: (part, total) => `${part} з ${total}`,
   hiddenNote: 'Зараз не враховується в капіталі — увімкніть знову в меню ⋯.',
 

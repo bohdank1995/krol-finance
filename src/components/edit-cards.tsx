@@ -1,7 +1,5 @@
 import { useState } from 'react'
-import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
-import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@dnd-kit/sortable'
-import { CSS as DndCSS } from '@dnd-kit/utilities'
+import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { GripVertical, Minus } from 'lucide-react'
 import { Field } from '@/components/field'
 import {
@@ -30,9 +28,11 @@ import {
 } from '@/lib/entries'
 import { formatMoney } from '@/lib/format'
 import { useT } from '@/lib/i18n'
+import { tidy } from '@/lib/layout'
 import { balance } from '@/lib/portfolio'
 import type { Currency } from '@/lib/preferences'
 import { cn } from '@/lib/utils'
+import { DragPreview, DropLine, Reorder, useDragged, useDropSide } from './reorder'
 
 /* The cards' edit mode, like rearranging apps on an iPhone: every source is shown at once and wiggles,
    and they can be dragged into order, ticked to delete or group, or removed with their minus badge.
@@ -50,16 +50,8 @@ type Props = {
   onDone: () => void
 }
 
-/** The id an item is dragged by: a source's or a group's. */
-const itemId = (i: RowItem) => (i.kind === 'source' ? i.portfolio.id : i.group.id)
-
-/** A group needs 2 sources: one left becomes a single source again, none and it's gone. */
-function tidy(items: RowItem[]): RowItem[] {
-  return items.flatMap((i): RowItem[] => {
-    if (i.kind === 'source' || i.members.length >= 2) return [i]
-    return i.members.map((portfolio) => ({ kind: 'source', portfolio }))
-  })
-}
+/** Fills the width: as many cards per row as fit (2 on phones), each at least 14rem wide. */
+const GRID = 'grid grid-cols-2 gap-x-2 gap-y-3 sm:grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] sm:gap-x-3'
 
 /** Takes these sources out wherever they are (alone or in a group). */
 const without = (items: RowItem[], ids: Set<string>) =>
@@ -140,29 +132,6 @@ export function EditCards({ portfolios, groups, entries, prices, currency, onDon
     onDone()
   }
 
-  // Mouse: drag after moving a few pixels, so a click still ticks. Touch: long-press, so the page still scrolls.
-  const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
-  )
-  const onDragEnd = ({ active, over }: DragEndEvent) => {
-    if (!over || active.id === over.id) return
-    setItems((all) => {
-      const ids = all.map(itemId)
-      return arrayMove(all, ids.indexOf(String(active.id)), ids.indexOf(String(over.id)))
-    })
-  }
-  const onMemberDragEnd = (groupId: string) => ({ active, over }: DragEndEvent) => {
-    if (!over || active.id === over.id) return
-    setItems((all) =>
-      all.map((i) => {
-        if (i.kind !== 'group' || i.group.id !== groupId) return i
-        const ids = i.members.map((m) => m.id)
-        return { ...i, members: arrayMove(i.members, ids.indexOf(String(active.id)), ids.indexOf(String(over.id))) }
-      }),
-    )
-  }
-
   const card = (p: Portfolio, inGroup?: GroupItem) => (
     <EditCard
       key={p.id}
@@ -174,58 +143,30 @@ export function EditCards({ portfolios, groups, entries, prices, currency, onDon
       onMinus={() => (inGroup ? takeOut(inGroup, p) : setConfirming([p]))}
     />
   )
+  const preview = (id: string) => {
+    const item = items.find((i) => i.kind === 'group' && i.group.id === id)
+    if (item?.kind === 'group')
+      return <DragPreview label={item.group.name} value={t.sourcesCount(item.members.length)} />
+    const p = portfolios.find((x) => x.id === id)
+    return p && <DragPreview label={p.name} value={`${formatMoney(totalOf(p))} ${currencySign(currency)}`} />
+  }
   const ticked = items.flatMap((i) => (i.kind === 'source' ? [i.portfolio] : i.members)).filter((p) => checked.has(p.id))
 
   return (
     <div className="animate-in duration-300 fade-in">
-      {/* Phones: Cancel on the left, Save on the right. */}
-      <div className="mb-3 flex items-center gap-2 max-sm:justify-between">
+      <div className="mb-3 flex items-center justify-end gap-2">
         <Button variant="secondary" onClick={onDone}>
           {t.cancel}
         </Button>
         <Button onClick={save}>{t.save}</Button>
       </div>
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <SortableContext items={items.map(itemId)} strategy={rectSortingStrategy}>
-          {/* Wraps instead of scrolling, so every source is in view: two per row on phones. */}
-          <div className="flex flex-wrap gap-x-2 gap-y-3 pt-2 sm:gap-x-3">
-            {items.map((i) =>
-              i.kind === 'source' ? (
-                card(i.portfolio)
-              ) : (
-                <SortableItem key={i.group.id} id={i.group.id} className="basis-full">
-                  {(handle) => (
-                    <div className="grid gap-2 rounded-xl border border-dashed p-3">
-                      <div className="flex items-center gap-2">
-                        <button type="button" aria-label={t.group} className="cursor-grab touch-none text-faint-foreground" {...handle}>
-                          <GripVertical className="size-4" />
-                        </button>
-                        <Input
-                          aria-label={t.groupName}
-                          value={i.group.name}
-                          maxLength={100}
-                          onChange={(e) => rename(i.group.id, e.target.value)}
-                          className="h-9 w-auto max-w-64 min-w-24 border-transparent bg-transparent px-1.5 font-medium field-sizing-content hover:border-input dark:bg-transparent"
-                        />
-                        <span className="text-xs text-faint-foreground">{t.sourcesCount(i.members.length)}</span>
-                        <Button variant="secondary" size="sm" className="ml-auto" onClick={() => ungroup(i.group.id)}>
-                          {t.ungroup}
-                        </Button>
-                      </div>
-                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onMemberDragEnd(i.group.id)}>
-                        <SortableContext items={i.members.map((m) => m.id)} strategy={rectSortingStrategy}>
-                          <div className="flex flex-wrap gap-x-2 gap-y-3 pt-2 sm:gap-x-3">{i.members.map((m) => card(m, i))}</div>
-                        </SortableContext>
-                      </DndContext>
-                    </div>
-                  )}
-                </SortableItem>
-              ),
-            )}
-          </div>
-        </SortableContext>
-      </DndContext>
+      <Reorder items={items} onMove={setItems} preview={preview}>
+        {/* Every source in view at once, filling the width. */}
+        <div className={cn(GRID, 'pt-2')}>
+          {items.map((i) => (i.kind === 'source' ? card(i.portfolio) : <GroupBlock key={i.group.id} item={i} onRename={rename} onUngroup={ungroup}>{i.members.map((m) => card(m, i))}</GroupBlock>))}
+        </div>
+      </Reorder>
 
       {/* Appears once something is ticked, above where the floating buttons usually sit. */}
       {checked.size > 0 && (
@@ -273,25 +214,55 @@ export function EditCards({ portfolios, groups, entries, prices, currency, onDon
   )
 }
 
-/** Something in the edit grid that can be dragged. `children` gets the drag handle's props (a group drags by its grip). */
-function SortableItem({
-  id,
-  className,
+/** A group in edit mode: its name (editable), Ungroup, and its cards. Drags by its grip; a card dropped on
+    it joins it. */
+function GroupBlock({
+  item,
+  onRename,
+  onUngroup,
   children,
 }: {
-  id: string
-  className?: string
-  children: (handle: ReturnType<typeof useSortable>['listeners']) => React.ReactNode
+  item: GroupItem
+  onRename: (id: string, name: string) => void
+  onUngroup: (id: string) => void
+  children: React.ReactNode
 }) {
-  const drag = useSortable({ id })
+  const t = useT()
+  const drag = useDraggable({ id: item.group.id })
+  const drop = useDroppable({ id: `group:${item.group.id}` })
+  const dragged = useDragged() === item.group.id
   return (
     <div
-      ref={drag.setNodeRef}
-      {...drag.attributes}
-      style={{ transform: DndCSS.Translate.toString(drag.transform), transition: drag.transition }}
-      className={cn('relative', drag.isDragging && 'z-10 opacity-80', className)}
+      ref={(el) => {
+        drag.setNodeRef(el)
+        drop.setNodeRef(el)
+      }}
+      className={cn('relative col-span-full grid gap-2 rounded-xl border border-dashed p-3 transition-opacity', dragged && 'opacity-40')}
     >
-      {children(drag.listeners)}
+      <DropLine side={useDropSide(`group:${item.group.id}`)} />
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label={t.moveGroup(item.group.name)}
+          className="cursor-grab touch-none text-faint-foreground hover:text-foreground"
+          {...drag.attributes}
+          {...drag.listeners}
+        >
+          <GripVertical className="size-4" />
+        </button>
+        <Input
+          aria-label={t.groupName}
+          value={item.group.name}
+          maxLength={100}
+          onChange={(e) => onRename(item.group.id, e.target.value)}
+          className="h-9 w-auto max-w-64 min-w-16 border-transparent bg-transparent px-1.5 font-medium field-sizing-content hover:border-input dark:bg-transparent"
+        />
+        <span className="text-xs text-faint-foreground">{t.sourcesCount(item.members.length)}</span>
+        <Button variant="secondary" size="sm" className="ml-auto" onClick={() => onUngroup(item.group.id)}>
+          {t.ungroup}
+        </Button>
+      </div>
+      <div className={cn(GRID, 'pt-2')}>{children}</div>
     </div>
   )
 }
@@ -312,21 +283,28 @@ function EditCard({
   minusLabel: string
   onMinus: () => void
 }) {
-  const drag = useSortable({ id: portfolio.id })
+  const drag = useDraggable({ id: portfolio.id })
+  const drop = useDroppable({ id: portfolio.id })
+  const side = useDropSide(portfolio.id)
+  const dragged = useDragged() === portfolio.id
   // Each card starts its wiggle at a different moment, so they don't move in step.
   const delay = `-${(portfolio.id.charCodeAt(0) + portfolio.id.charCodeAt(1)) % 30}0ms`
   return (
     <div
-      ref={drag.setNodeRef}
+      ref={(el) => {
+        drag.setNodeRef(el)
+        drop.setNodeRef(el)
+      }}
       {...drag.attributes}
       {...drag.listeners}
-      style={{ transform: DndCSS.Translate.toString(drag.transform), transition: drag.transition, animationDelay: delay }}
+      style={{ animationDelay: delay }}
       className={cn(
-        'relative w-[calc(50%-0.25rem)] touch-manipulation sm:w-62',
-        // The whole card wiggles, minus badge included.
-        drag.isDragging ? 'z-10 cursor-grabbing' : 'animate-wiggle cursor-grab',
+        'relative min-w-0 touch-manipulation',
+        // The whole card wiggles, minus badge included. The one being dragged stays behind, faded.
+        dragged ? 'opacity-40' : 'animate-wiggle cursor-grab',
       )}
     >
+      <DropLine side={side} />
       <div
         role="checkbox"
         aria-checked={checked}
@@ -341,7 +319,6 @@ function EditCard({
         className={cn(
           'flex min-h-24 flex-col justify-between rounded-xl border bg-card p-4 outline-none select-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:min-h-26 sm:p-5',
           checked ? 'border-foreground/30 bg-accent' : 'hover:border-foreground/15',
-          drag.isDragging && 'shadow-lg',
         )}
       >
         <span className="truncate pr-6 text-sm text-muted-foreground">{portfolio.name}</span>
