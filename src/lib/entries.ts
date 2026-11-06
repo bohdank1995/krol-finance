@@ -3,7 +3,7 @@ import type { OptimisticLocalStore } from 'convex/browser'
 import type { FunctionArgs, FunctionReference, FunctionReturnType } from 'convex/server'
 import { ConvexError } from 'convex/values'
 import { api } from '../../convex/_generated/api'
-import type { AssetSymbol, StockSymbol } from './assets'
+import { typeOf, type AssetSymbol, type StockSymbol } from './assets'
 import type { Period } from './period'
 import { convex } from './convex'
 import { dict } from './i18n'
@@ -186,10 +186,12 @@ export function setInNetWorth(id: string, inNetWorth: boolean) {
   save(api.data.updatePortfolio, { id, inNetWorth }, patchPortfolio(id, { inNetWorth }))
 }
 
-/** Whether a portfolio can have passive income. Monobank portfolios are bank cards: money on them only
-    "earns" from exchange rates moving, which isn't income. (A Monobank deposit, once it can be
-    connected, earns interest and should count.) */
-export const earnsPassiveIncome = (p: Portfolio) => p.source !== 'monobank'
+/** Whether a portfolio can have passive income: it holds something besides money (crypto, stocks, later
+    gold or silver). Money alone only "earns" from exchange rates moving, which isn't income; so do
+    Monobank portfolios, which are bank cards. (A Monobank deposit, once it can be connected, earns
+    interest and should count.) */
+export const earnsPassiveIncome = (p: Portfolio, entries: Entry[]) =>
+  p.source !== 'monobank' && entries.some((e) => e.portfolioId === p.id && typeOf(e.asset) !== 'money')
 
 /** Saves the picked period on the account, so the dashboard opens on it next time. */
 export function savePeriod(period: Period) {
