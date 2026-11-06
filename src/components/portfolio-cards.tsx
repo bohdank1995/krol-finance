@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'reac
 import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS as DndCSS } from '@dnd-kit/utilities'
-import { ArrowDown, ArrowUp, ChartCandlestick, ChartPie, Eye, EyeOff, Landmark, MoreHorizontal, Pencil, Percent, Plus, RefreshCw, Trash2, Unlink, WalletCards } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChartPie, CircleMinus, CirclePlus, MoreHorizontal, Pencil, Percent, Plus, RefreshCw, Trash2, Unlink, WalletCards } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +39,8 @@ import { balance, series, valueOn } from '@/lib/portfolio'
 import type { Currency } from '@/lib/preferences'
 import type { PriceStatus } from '@/lib/prices'
 import { cn } from '@/lib/utils'
+import monobankLogo from '@/assets/monobank.svg'
+import ibkrLogo from '@/assets/ibkr.svg'
 import { FAB, FAB_BAR } from './add-entry-menu'
 import { IbkrDrawer } from './ibkr-drawer'
 import { MonobankDrawer } from './monobank-drawer'
@@ -207,11 +209,11 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, entries
           {t.custom}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setConnecting('monobank')}>
-          <Landmark className="text-muted-foreground" />
+          <BrandIcon src={monobankLogo} />
           Monobank
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setConnecting('ibkr')}>
-          <ChartCandlestick className="text-muted-foreground" />
+          <BrandIcon src={ibkrLogo} />
           Interactive Brokers
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -276,7 +278,7 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, entries
                         >
                           <MoreHorizontal />
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-64">
+                        <DropdownMenuContent align="end" className="w-72">
                           <DropdownMenuItem onClick={() => setRenaming(h)}>
                             <Pencil className="text-muted-foreground" />
                             {t.rename}
@@ -286,7 +288,7 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, entries
                             {t.setPercentages}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setInNetWorth(h.id, !h.inNetWorth)}>
-                            {h.inNetWorth ? <EyeOff className="text-muted-foreground" /> : <Eye className="text-muted-foreground" />}
+                            {h.inNetWorth ? <CircleMinus className="text-muted-foreground" /> : <CirclePlus className="text-muted-foreground" />}
                             {h.inNetWorth ? t.hideFromNetWorth : t.showInNetWorth}
                           </DropdownMenuItem>
                           <DropdownMenuItem variant="destructive" onClick={() => setDeleting(h)}>
@@ -463,7 +465,7 @@ function Card({ id, order, sortable, label, hidden, share = 1, netWorthShare, hi
           {syncing ? <RefreshCw className="size-3.5 shrink-0 animate-spin" /> : live && <LiveDot status={live} />}
           {hidden && (
             <span title={t.hiddenFromNetWorth} className="shrink-0 text-faint-foreground">
-              <EyeOff className="size-3.5" aria-label={t.hiddenFromNetWorth} />
+              <CircleMinus className="size-3.5" aria-label={t.hiddenFromNetWorth} />
             </span>
           )}
           {netWorthShare !== undefined && netWorthShare < 100 && (
@@ -502,6 +504,17 @@ function Card({ id, order, sortable, label, hidden, share = 1, netWorthShare, hi
       </button>
       {menu}
     </div>
+  )
+}
+
+/** A company logo drawn in the menu's grey, like the lucide icons next to it (the SVG is used as a mask). */
+function BrandIcon({ src }: { src: string }) {
+  return (
+    <span
+      aria-hidden
+      className="size-4 shrink-0 bg-muted-foreground"
+      style={{ maskImage: `url("${src}")`, maskSize: 'contain', maskRepeat: 'no-repeat', maskPosition: 'center' }}
+    />
   )
 }
 

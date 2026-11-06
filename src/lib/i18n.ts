@@ -82,9 +82,9 @@ const en = {
   portfolioActions: (name: string) => `${name} actions`,
   rename: 'Rename',
   setPercentages: 'Set your share',
-  hideFromNetWorth: 'Hide from net worth',
-  showInNetWorth: 'Show in net worth',
-  hiddenFromNetWorth: 'Hidden from net worth',
+  hideFromNetWorth: 'Do not include in Net Worth',
+  showInNetWorth: 'Include in Net Worth',
+  hiddenFromNetWorth: 'Not included in Net Worth',
   hideFromPassive: (name: string) => `Leave ${name} out of passive income`,
   showInPassive: (name: string) => `Count ${name} in passive income`,
   hide: 'Hide',
@@ -148,7 +148,7 @@ const en = {
   cardPercentError: 'Above 0, up to 100',
   netWorthPercentError: 'Between 0 and 100',
   partOf: (part: string, total: string) => `${part} of ${total}`,
-  hiddenNote: 'Hidden from net worth for now — show it again from the ⋯ menu.',
+  hiddenNote: 'Not included in Net Worth for now — include it again from the ⋯ menu.',
 
   monobank: {
     pickCards: 'Pick cards',

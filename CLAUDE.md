@@ -54,7 +54,7 @@ Vocabulary:
   (`useT()`); the choice is saved on the account (`language` on the Convex user). The sign-in page stays English.
 - **Fake numbers** — toggle in the user menu: every portfolio's entries are scaled by a random
   factor (`src/lib/fake.ts`) and the app becomes read-only, so screenshots are safe to share.
-- **Hidden from net worth** — a portfolio's ⋯ menu can leave it out of Net worth (card, graph and table);
+- **Not included in Net Worth** ("Do not include in Net Worth" in the menu) — a portfolio's ⋯ menu can leave it out of Net worth (card, graph and table);
   saved in `portfolios.inNetWorth`, its own card is unchanged.
 - **Percentages** — shown in the app as **Your share** ("Ваша частка"); per portfolio (⋯ → Set your share): `cardPercent` (what the card + its graph show,
   with a "50% of …" line) and `netWorthPercent` (what Net worth counts). Totals and graphs use
