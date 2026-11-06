@@ -18,7 +18,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Skeleton } from '@/components/ui/skeleton'
 import { currencySign, type AssetSymbol } from '@/lib/assets'
 import {
   deletePortfolio,
@@ -46,6 +45,7 @@ import { IbkrDrawer } from './ibkr-drawer'
 import { MonobankDrawer } from './monobank-drawer'
 import { PercentsDrawer } from './percents-drawer'
 import { PortfolioDrawer } from './portfolio-drawer'
+import { Decode, Scrambling } from './scramble'
 
 export const NET_WORTH = 'all'
 
@@ -475,16 +475,17 @@ function Card({ id, order, sortable, label, hidden, share = 1, netWorthShare, hi
           )}
         </span>
         {syncing ? (
-          <span aria-busy="true" aria-label={message} className="mt-4 flex flex-col gap-2">
-            <Skeleton className="h-6 w-28 sm:h-5" />
-            <Skeleton className="h-3 w-20" />
-            <Skeleton className="h-3 w-24" />
+          <span aria-busy="true" aria-label={message} className="mt-4 flex items-baseline gap-x-1.5 font-mono tabular-nums">
+            <Scrambling length={formatMoney(total).length} className="text-2xl text-faint-foreground sm:text-xl" />
+            <span className="text-xs text-muted-foreground">{currencySign(currency)}</span>
           </span>
         ) : (
         <span className="mt-4 flex flex-col gap-0.5 font-mono tabular-nums">
           {message && <span className="font-sans text-xs text-brand">{message}</span>}
           <span className="flex flex-wrap items-baseline gap-x-1.5">
-            <span className={cn('text-2xl transition-opacity sm:text-xl', pricing && 'opacity-50')}>{formatMoney(total)}</span>
+            <span className={cn('text-2xl transition-opacity sm:text-xl', pricing && 'opacity-50')}>
+              <Decode text={formatMoney(total)} />
+            </span>
             <span className="text-xs text-muted-foreground">{currencySign(currency)}</span>
           </span>
           {share !== 1 && (
@@ -496,7 +497,7 @@ function Card({ id, order, sortable, label, hidden, share = 1, netWorthShare, hi
           {change !== undefined && (
             <span className={cn('flex items-center gap-0.5 text-xs', change < 0 ? 'text-muted-foreground' : 'text-brand')}>
               {change < 0 ? <ArrowDown className="size-3" /> : <ArrowUp className="size-3" />}
-              {formatMoney(Math.abs(change))}
+              <Decode text={formatMoney(Math.abs(change))} />
             </span>
           )}
         </span>
@@ -512,8 +513,8 @@ function BrandIcon({ src }: { src: string }) {
   return (
     <span
       aria-hidden
-      className="size-4 shrink-0 bg-muted-foreground"
-      style={{ maskImage: `url("${src}")`, maskSize: 'contain', maskRepeat: 'no-repeat', maskPosition: 'center' }}
+      className="size-4 shrink-0 bg-muted-foreground mask-contain mask-center mask-no-repeat"
+      style={{ maskImage: `url("${src}")`, WebkitMaskImage: `url("${src}")` }}
     />
   )
 }
