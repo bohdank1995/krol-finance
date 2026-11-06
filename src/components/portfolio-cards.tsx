@@ -165,12 +165,24 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, entries
     }
   }, [])
 
-  // Selecting another way (dot, new or deleted portfolio) brings that card into view.
+  // Selecting another way (dot, new or deleted portfolio) brings that card into view: centred on
+  // phones; on wider screens only when it's (partly) out of view, just far enough to show it whole.
   useEffect(() => {
     const row = rowRef.current
-    if (!row || !matchMedia(MOBILE).matches || centredSlide(row) === selected) return
-    const el = row.querySelector<HTMLElement>(`[data-slide="${CSS.escape(selected)}"]`)
-    if (el) row.scrollTo({ left: el.offsetLeft - (row.clientWidth - el.offsetWidth) / 2, behavior: 'smooth' })
+    const el = row?.querySelector<HTMLElement>(`[data-slide="${CSS.escape(selected)}"]`)
+    if (!row || !el) return
+    if (matchMedia(MOBILE).matches) {
+      if (centredSlide(row) !== selected)
+        row.scrollTo({ left: el.offsetLeft - (row.clientWidth - el.offsetWidth) / 2, behavior: 'smooth' })
+      return
+    }
+    // The row's padding keeps cards clear of the screen edge and of the "+" pinned on the right.
+    const { paddingLeft, paddingRight } = getComputedStyle(row)
+    const start = row.scrollLeft + parseFloat(paddingLeft)
+    const end = row.scrollLeft + row.clientWidth - parseFloat(paddingRight)
+    if (el.offsetLeft < start) row.scrollTo({ left: el.offsetLeft - parseFloat(paddingLeft), behavior: 'smooth' })
+    else if (el.offsetLeft + el.offsetWidth > end)
+      row.scrollTo({ left: el.offsetLeft + el.offsetWidth - row.clientWidth + parseFloat(paddingRight), behavior: 'smooth' })
   }, [selected, portfolios.length])
 
   /** "+" menu: in the toolbar next to the period on phones, pinned to the right of the cards on wider screens. */
