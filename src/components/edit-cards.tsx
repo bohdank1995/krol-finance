@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { GripVertical, Minus } from 'lucide-react'
 import { Field } from '@/components/field'
@@ -67,6 +67,8 @@ export function EditCards({ portfolios, groups, entries, prices, currency, onDon
   /** Sources waiting for the "Delete?" answer. */
   const [confirming, setConfirming] = useState<Portfolio[]>()
   const [naming, setNaming] = useState(false)
+  const gridRef = useRef<HTMLDivElement>(null)
+  const columns = useColumns(gridRef)
 
   const totalOf = (p: Portfolio) =>
     balance(scaleEntries([p], entries.filter((e) => e.portfolioId === p.id), 'card'), prices, currency).total
@@ -150,11 +152,13 @@ export function EditCards({ portfolios, groups, entries, prices, currency, onDon
     const p = portfolios.find((x) => x.id === id)
     return p && <DragPreview label={p.name} value={`${formatMoney(totalOf(p))} ${currencySign(currency)}`} />
   }
+  const inOneGroup = items.some((i) => i.kind === 'group' && [...checked].every((id) => i.members.some((m) => m.id === id)))
   const ticked = items.flatMap((i) => (i.kind === 'source' ? [i.portfolio] : i.members)).filter((p) => checked.has(p.id))
 
   return (
     <div className="animate-in duration-300 fade-in">
-      <div className="mb-3 flex items-center justify-end gap-2">
+      {/* Right side on wider screens; on phones Cancel on the left and Save on the right. */}
+      <div className="mb-3 flex items-center justify-end gap-2 max-sm:justify-between">
         <Button variant="secondary" onClick={onDone}>
           {t.cancel}
         </Button>
@@ -163,8 +167,16 @@ export function EditCards({ portfolios, groups, entries, prices, currency, onDon
 
       <Reorder items={items} onMove={setItems} preview={preview}>
         {/* Every source in view at once, filling the width. */}
-        <div className={cn(GRID, 'pt-2')}>
-          {items.map((i) => (i.kind === 'source' ? card(i.portfolio) : <GroupBlock key={i.group.id} item={i} onRename={rename} onUngroup={ungroup}>{i.members.map((m) => card(m, i))}</GroupBlock>))}
+        <div ref={gridRef} className={cn(GRID, 'pt-2')}>
+          {items.map((i) =>
+            i.kind === 'source' ? (
+              card(i.portfolio)
+            ) : (
+              <GroupBlock key={i.group.id} item={i} columns={columns} onRename={rename} onUngroup={ungroup}>
+                {i.members.map((m) => card(m, i))}
+              </GroupBlock>
+            ),
+          )}
         </div>
       </Reorder>
 
@@ -175,9 +187,12 @@ export function EditCards({ portfolios, groups, entries, prices, currency, onDon
           <Button variant="secondary" className="text-destructive" onClick={() => setConfirming(ticked)}>
             {t.delete}
           </Button>
-          <Button disabled={checked.size < 2} onClick={() => setNaming(true)}>
-            {t.group}
-          </Button>
+          {/* No group inside a group: ticking only cards of one group offers just Delete. */}
+          {!inOneGroup && (
+            <Button disabled={checked.size < 2} onClick={() => setNaming(true)}>
+              {t.group}
+            </Button>
+          )}
         </div>
       )}
 
@@ -214,15 +229,33 @@ export function EditCards({ portfolios, groups, entries, prices, currency, onDon
   )
 }
 
+/** How many cards fit in a row of this grid right now (it fills the width with as many as fit). */
+function useColumns(ref: React.RefObject<HTMLElement | null>) {
+  const [columns, setColumns] = useState(2)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = () => setColumns(getComputedStyle(el).gridTemplateColumns.split(' ').length)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [ref])
+  return columns
+}
+
 /** A group in edit mode: its name (editable), Ungroup, and its cards. Drags by its grip; a card dropped on
     it joins it. */
 function GroupBlock({
   item,
+  columns,
   onRename,
   onUngroup,
   children,
 }: {
   item: GroupItem
+  /** Cards per row in the grid around it: the group is as wide as its cards, up to a full row. */
+  columns: number
   onRename: (id: string, name: string) => void
   onUngroup: (id: string) => void
   children: React.ReactNode
@@ -231,13 +264,15 @@ function GroupBlock({
   const drag = useDraggable({ id: item.group.id })
   const drop = useDroppable({ id: `group:${item.group.id}` })
   const dragged = useDragged() === item.group.id
+  const span = Math.min(item.members.length, columns)
   return (
     <div
       ref={(el) => {
         drag.setNodeRef(el)
         drop.setNodeRef(el)
       }}
-      className={cn('relative col-span-full grid gap-2 rounded-xl border border-dashed p-3 transition-opacity', dragged && 'opacity-40')}
+      style={{ gridColumn: `span ${span} / span ${span}` }}
+      className={cn('relative grid min-w-0 gap-2 rounded-xl border border-dashed p-3 transition-opacity', dragged && 'opacity-40')}
     >
       <DropLine side={useDropSide(`group:${item.group.id}`)} />
       <div className="flex items-center gap-2">
@@ -262,7 +297,9 @@ function GroupBlock({
           {t.ungroup}
         </Button>
       </div>
-      <div className={cn(GRID, 'pt-2')}>{children}</div>
+      <div className={cn(GRID, 'pt-2')} style={{ gridTemplateColumns: `repeat(${span}, minmax(0, 1fr))` }}>
+        {children}
+      </div>
     </div>
   )
 }

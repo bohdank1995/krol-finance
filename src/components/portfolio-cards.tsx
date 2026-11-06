@@ -547,6 +547,8 @@ function Card({ id, order, label, stack, note, folded, draggable = false, hidden
         folded && 'pointer-events-none -ml-2 w-0 overflow-hidden opacity-0 sm:-ml-3 sm:w-0',
         // The card being dragged stays in place, faded, while its copy follows the pointer.
         dragged && 'opacity-40',
+        // Room for the stack's edges, so they don't touch the next card.
+        stack && 'mr-2',
       )}
     >
       <DropLine side={side} />

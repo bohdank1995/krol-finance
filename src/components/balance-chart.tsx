@@ -56,7 +56,8 @@ export const BalanceChart = memo(function BalanceChart({ points, currency }: { p
           tickFormatter={(v: number) => compact.format(v)}
         />
         <ChartTooltip
-          cursor={false}
+          // A thin vertical line through the hovered day, down to the axis.
+          cursor={{ stroke: 'var(--faint-foreground)', strokeWidth: 1 }}
           content={
             <ChartTooltipContent
               hideIndicator
