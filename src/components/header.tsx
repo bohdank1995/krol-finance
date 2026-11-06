@@ -1,6 +1,6 @@
-import logo from '@/assets/koshel-logo.svg'
 import { Check, ChevronDown, Minus, Plus } from 'lucide-react'
 import { useState } from 'react'
+import { Bar } from '@/components/app-shell'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useT } from '@/lib/i18n'
@@ -10,18 +10,7 @@ import { UserMenu } from './user-menu'
 
 /** Top bar, pinned while scrolling: the Koshel logo on the left, the account on the right. */
 export function Header({ email, image }: { email: string; image?: string }) {
-  return (
-    <header className="sticky top-0 z-20 -mx-6 flex items-center justify-between gap-3 bg-background/85 px-6 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur-md">
-      {/* The logo file is used as a mask so it takes the theme's text color. */}
-      <span
-        role="img"
-        aria-label="Koshel"
-        style={{ maskImage: `url(${logo})`, WebkitMaskImage: `url(${logo})` }}
-        className="aspect-958/370 h-10 bg-foreground mask-contain mask-no-repeat"
-      />
-      <UserMenu email={email} image={image} />
-    </header>
-  )
+  return <Bar account={<UserMenu email={email} image={image} />} />
 }
 
 /** The tracked period: a list of presets above the cards, plus "In the last N days / weeks / months / years". */

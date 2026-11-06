@@ -15,11 +15,17 @@
   </head>
   <body>
     <div id="root"></div>
-    <!-- The ready-made home page is for visitors: returning users go straight to the app (see mayBeSignedIn). -->
+    <!-- The loading screen, written here at build time (scripts/prerender.mjs). -->
+    <template id="loading"></template>
+    <!-- The ready-made home page is for visitors: returning users get the loading screen at once and go
+         straight to the app (see mayBeSignedIn). -->
     <script>
       try {
-        if (location.search.includes('code=') || Object.keys(localStorage).some((k) => k.startsWith('__convexAuthJWT')))
-          document.getElementById('root').replaceChildren()
+        if (location.pathname === '/' && (location.search.includes('code=') || Object.keys(localStorage).some((k) => k.startsWith('__convexAuthJWT')))) {
+          const root = document.getElementById('root')
+          root.dataset.loading = ''
+          root.replaceChildren(document.getElementById('loading').content.cloneNode(true))
+        }
       } catch {}
     </script>
     <noscript>

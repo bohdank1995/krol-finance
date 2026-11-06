@@ -141,3 +141,16 @@
     animation: none;
   }
 }
+/* Loading placeholders: hidden while loading is quick, then a fade. Each sets its animation-delay from
+   when the page opened (`slowFade` in app-shell.tsx). */
+@keyframes slow-in {
+  from {
+    opacity: 0;
+  }
+}
+@utility animate-slow-in {
+  animation: slow-in 0.5s ease-out both;
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 1ms;
+  }
+}

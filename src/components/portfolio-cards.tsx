@@ -381,24 +381,6 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, entries
   )
 })
 
-/** Placeholder row while portfolios load: Net worth plus two cards, same size as the real ones. */
-export function PortfolioCardsSkeleton() {
-  const t = useT()
-  return (
-    <div aria-busy="true" aria-label={t.loadingPortfolios} className="-mx-6 flex gap-2 overflow-hidden px-6 pb-2 sm:gap-3">
-      {[0, 1, 2].map((i) => (
-        <div
-          key={i}
-          className="flex min-h-30 w-[calc(100vw-3rem)] shrink-0 flex-col justify-between rounded-xl border bg-card p-5 sm:min-h-26 sm:w-62"
-        >
-          <Skeleton className="h-3.5 w-20" />
-          <Skeleton className="mt-4 h-6 w-28 sm:h-5" />
-        </div>
-      ))}
-    </div>
-  )
-}
-
 type CardProps = Valuation & {
   id: string
   /** Place in the row: the cards fade in one after another, left to right. */

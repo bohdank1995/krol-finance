@@ -1,8 +1,9 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { DashboardSkeleton } from '@/components/app-shell'
 import { BalanceChart, BalanceChartSkeleton, PassiveIncome } from '@/components/balance-chart'
-import { EntriesTable, EntriesTableSkeleton } from '@/components/entries-table'
+import { EntriesTable } from '@/components/entries-table'
 import { Header, PeriodFilter } from '@/components/header'
-import { NET_WORTH, PortfolioCards, PortfolioCardsSkeleton } from '@/components/portfolio-cards'
+import { NET_WORTH, PortfolioCards } from '@/components/portfolio-cards'
 import { netWorthEntries, netWorthPortfolios, scaleEntries, scalePayouts, setInPassiveIncome, useEntries, useLoaded, usePayouts, usePortfolios } from '@/lib/entries'
 import { fakeEntries, fakePayouts } from '@/lib/fake'
 import { useDailyPrices } from '@/lib/history'
@@ -11,7 +12,6 @@ import { balance, firstDay, growth, passiveIn, series, withPayouts } from '@/lib
 import { CURRENCIES, usePreferences } from '@/lib/preferences'
 import { useLivePrices } from '@/lib/prices'
 import { useReveal } from '@/lib/reveal'
-import { cn } from '@/lib/utils'
 
 /* Everything a signed-in user sees. Loaded separately, so visitors to the home page don't download it. */
 
@@ -83,9 +83,7 @@ export default function Dashboard({ email, image }: { email: string; image?: str
 
   // Reveal the page once its numbers are real: data in, every asset priced, graph history in.
   const priced = loaded && !balance(entries, prices, currency).pricing
-  const { ready, slow } = useReveal(loaded, priced && historyReady)
-  /** Placeholders (slow loads only) just fade in; the real content slides in when ready. */
-  const placeholder = 'animate-in fade-in duration-500'
+  const ready = useReveal(loaded, priced && historyReady)
 
   // A soft settle when the numbers change currency, instead of a hard jump.
   const mainRef = useRef<HTMLElement>(null)
@@ -102,39 +100,25 @@ export default function Dashboard({ email, image }: { email: string; image?: str
     <div className="min-h-svh px-6 pb-28 sm:pb-14">
       <Header email={email} image={image} />
       <main ref={mainRef} className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-10 sm:mt-6">
-        <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
-          {ready ? (
-            <PortfolioCards
-              toolbar={toolbar}
-              portfolios={portfolios}
-              entries={entries}
-              prices={prices}
-              daily={daily}
-              currency={currency}
-              range={range}
-              status={status}
-              selected={selected}
-              onSelect={setPicked}
-              readOnly={fake}
-            />
-          ) : (
-            slow && (
-              <div className={cn(placeholder, 'grid gap-3')}>
-                {toolbar}
-                <PortfolioCardsSkeleton />
-              </div>
-            )
-          )}
-        </div>
         {!ready ? (
-          slow && (
-            <div className={cn(placeholder, 'grid gap-10')}>
-              <BalanceChartSkeleton />
-              <EntriesTableSkeleton />
-            </div>
-          )
+          <DashboardSkeleton toolbar={toolbar} />
         ) : (
           <>
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
+              <PortfolioCards
+                toolbar={toolbar}
+                portfolios={portfolios}
+                entries={entries}
+                prices={prices}
+                daily={daily}
+                currency={currency}
+                range={range}
+                status={status}
+                selected={selected}
+                onSelect={setPicked}
+                readOnly={fake}
+              />
+            </div>
             {historyReady ? (
               <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_1px_16rem] lg:gap-8">
                 <div className="animate-enter min-w-0" style={{ animationDelay: '200ms' }}>
