@@ -72,7 +72,7 @@ export const Ticker = memo(function Ticker({ prices, assets, currency }: Props) 
     const usd = code === 'USD' ? 1 : prices[code]
     const Flag = FLAGS[code]
     if (uah && usd)
-      rates.push({ label: code, value: formatPrice(usd / uah), sign: currencySign('UAH'), icon: <Flag className="h-2.5 w-auto rounded-[2px]" /> })
+      rates.push({ label: code, value: formatPrice(usd / uah), sign: currencySign('UAH'), icon: <Flag className="h-2.5 w-auto rounded-[2px] opacity-60 grayscale" /> })
   }
   const coins: Item[] = []
   const held = new Set(assets)
@@ -85,7 +85,7 @@ export const Ticker = memo(function Ticker({ prices, assets, currency }: Props) 
         label: a.symbol,
         value: formatPrice(usd / rate),
         sign: currencySign(currency),
-        icon: logo ? <img src={logo} alt="" className="size-3.5" /> : null,
+        icon: logo ? <img src={logo} alt="" className="size-3.5 opacity-60 grayscale" /> : null,
       })
   }
   const groups = [rates, coins].filter((g) => g.length > 0)

@@ -1,4 +1,4 @@
-import { Fragment, memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { ArrowDown, ArrowUp, ChartPie, CircleMinus, CirclePlus, MoreHorizontal, Pencil, Percent, Plus, RefreshCw, Settings2, Trash2, Unlink, WalletCards } from 'lucide-react'
 import {
@@ -226,11 +226,10 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
     ),
   ]
   /** A source's card; `folded` ones belong to a closed group: no width, slid in behind it. */
-  const sourceCard = (h: Portfolio, folded = false, bracket?: Bracket) => (
+  const sourceCard = (h: Portfolio, folded = false) => (
     <Card
       key={h.id}
       id={h.id}
-      bracket={folded ? undefined : bracket}
       draggable={!readOnly && !folded}
       folded={folded}
       order={++order}
@@ -353,7 +352,7 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
             ref={rowRef}
             role="tablist"
             aria-label={t.portfolios}
-            className="relative -mx-6 flex snap-x snap-mandatory gap-2 overflow-x-auto px-6 pb-2 max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden sm:snap-none sm:gap-3 sm:pr-24"
+            className="relative -mx-6 flex snap-x snap-mandatory gap-2 overflow-x-auto px-6 pt-1.5 pb-2 max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden sm:snap-none sm:gap-3 sm:pr-24"
           >
             <Card
               id={NET_WORTH}
@@ -369,14 +368,17 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
               item.kind === 'source' ? (
                 sourceCard(item.portfolio)
               ) : (
-                <Fragment key={item.group.id}>
+                // An outline around the group's card, and its sources while it's open. An outline rather than
+                // a border, so it takes no room and the cards keep their place and size.
+                <div
+                  key={item.group.id}
+                  className="mx-1.5 flex shrink-0 gap-2 rounded-xl outline-1 outline-offset-4 outline-foreground/15 outline-solid sm:gap-3"
+                >
                   <Card
                     id={item.group.id}
                     draggable={!readOnly}
                     order={++order}
                     label={item.group.name}
-                    stack={!isOpen(item)}
-                  bracket={isOpen(item) ? 'start' : undefined}
                     note={t.sourcesCount(item.members.length)}
                     entries={item.members.flatMap((m) => scaled.get(m.id) ?? [])}
                     {...valuation}
@@ -388,8 +390,8 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
                       onSelect(item.group.id)
                     }}
                   />
-                  {item.members.map((m, i) => sourceCard(m, !isOpen(item), i === item.members.length - 1 ? 'end' : 'middle'))}
-                </Fragment>
+                  {item.members.map((m) => sourceCard(m, !isOpen(item)))}
+                </div>
               ),
             )}
           </div>
@@ -485,23 +487,17 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
   )
 })
 
-type Bracket = 'start' | 'middle' | 'end'
-
 type CardProps = Valuation & {
   id: string
   /** Place in the row: the cards fade in one after another, left to right. */
   order: number
   label: string
-  /** A group's card: drawn as a small stack. */
-  stack?: boolean
   /** A short grey line under the label, e.g. "3 sources" on a group. */
   note?: string
   /** A source of a closed group: folded away to no width (it unfolds when the group opens). */
   folded?: boolean
   /** Can be dragged to a new place (and dropped next to). Not Net worth, not in Fake numbers. */
   draggable?: boolean
-  /** Part of an open group: a line under the group's card and its sources ties them together. */
-  bracket?: Bracket
   /** Left out of the Net worth total. */
   hidden?: boolean
   /** Part of the real balance the card shows (0–1); the entries passed in are already scaled. */
@@ -523,7 +519,7 @@ type CardProps = Valuation & {
 
 const dayBefore = (day: string) => new Date(Date.parse(`${day}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
 
-function Card({ id, order, label, stack, note, folded, draggable = false, bracket, hidden, share = 1, netWorthShare, hint, syncing, message, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
+function Card({ id, order, label, note, folded, draggable = false, hidden, share = 1, netWorthShare, hint, syncing, message, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
   const t = useT()
   const points = useMemo(() => series(entries, daily, prices, currency), [entries, daily, prices, currency])
   const today = new Date().toISOString().slice(0, 10)
@@ -553,22 +549,9 @@ function Card({ id, order, label, stack, note, folded, draggable = false, bracke
         folded && 'pointer-events-none -ml-2 w-0 overflow-hidden opacity-0 sm:-ml-3 sm:w-0',
         // The card being dragged stays in place, faded, while its copy follows the pointer.
         dragged && 'opacity-40',
-        // Room for the stack's edges, so they don't touch the next card.
-        stack && 'mr-2',
       )}
     >
       <DropLine side={side} />
-      {/* One segment per card, each reaching across the gap to the next, so together they read as one line. */}
-      {bracket && (
-        <span
-          aria-hidden
-          className={cn(
-            'pointer-events-none absolute -bottom-1.5 h-0.5 animate-in rounded-full bg-foreground/20 duration-300 fade-in',
-            bracket === 'start' ? 'left-4' : 'left-0',
-            bracket === 'end' ? 'right-4' : '-right-2 sm:-right-3',
-          )}
-        />
-      )}
       <button
         type="button"
         role="tab"
@@ -580,9 +563,6 @@ function Card({ id, order, label, stack, note, folded, draggable = false, bracke
           // Keeps its full width while folded (the outer box shrinks), so the text never rewraps and stretches the row.
           'min-w-[calc(100vw-3rem)] sm:min-w-62',
           active ? 'border-foreground/30 bg-accent' : 'hover:border-foreground/15',
-          // Two card edges peeking out on the right: a stack of sources. They tuck away as the group opens.
-          'transition-[box-shadow,background-color,border-color]',
-          stack && 'shadow-[4px_0_0_-1px_var(--color-card),4px_0_0_0_var(--color-border),8px_0_0_-1px_var(--color-card),8px_0_0_0_var(--color-border)]',
         )}
       >
         <span className="flex items-center gap-2 pr-10 text-sm text-muted-foreground">
