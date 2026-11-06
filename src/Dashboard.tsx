@@ -2,6 +2,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { DashboardSkeleton } from '@/components/app-shell'
 import { BalanceChart, BalanceChartSkeleton, PassiveIncome } from '@/components/balance-chart'
 import { EntriesTable } from '@/components/entries-table'
+import { Holdings } from '@/components/holdings'
 import { Header, PeriodFilter } from '@/components/header'
 import { NET_WORTH, PortfolioCards } from '@/components/portfolio-cards'
 import { Ticker } from '@/components/ticker'
@@ -9,6 +10,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { earnsPassiveIncome, membersOf, netWorthEntries, netWorthPortfolios, savePeriod, scaleEntries, scalePayouts, setInPassiveIncome, useEntries, useGroups, useLoaded, usePayouts, usePortfolios } from '@/lib/entries'
 import { fakeEntries, fakePayouts } from '@/lib/fake'
 import { useDailyPrices } from '@/lib/history'
+import { useT } from '@/lib/i18n'
 import { inRange, rangeOf, type Period } from '@/lib/period'
 import { balance, firstDay, growth, passiveIn, series, withPayouts } from '@/lib/portfolio'
 import { CURRENCIES, usePreferences } from '@/lib/preferences'
@@ -19,6 +21,7 @@ import { cn } from '@/lib/utils'
 /* Everything a signed-in user sees. Loaded separately, so visitors to the home page don't download it. */
 
 export default function Dashboard({ email, image, saved }: { email: string; image?: string; saved: Period }) {
+  const t = useT()
   const portfolios = usePortfolios()
   const groups = useGroups()
   const real = useEntries()
@@ -40,6 +43,8 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
   const [picked, setPicked] = useState(NET_WORTH)
   // The edit mode of the cards (reorder, group, delete): everything below them steps aside meanwhile.
   const [editing, setEditing] = useState(false)
+  // Below the graph: what's held (whenever it was bought) or the transactions made in the period.
+  const [tab, setTab] = useState<'assets' | 'transactions'>('assets')
   // The sources the picked card stands for: one source, or a group's sources. Gone ones fall back to Net worth.
   const scope = useMemo(() => (picked === NET_WORTH ? [] : membersOf(picked, portfolios)), [picked, portfolios])
   const selected = scope.length > 0 ? picked : NET_WORTH
@@ -67,24 +72,24 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
   )
   // Net worth's passive income leaves out the portfolios switched off in its list, and those holding only money (bank
   // cards included); a group leaves out its money-only ones.
-  const passive = useMemo(() => {
+  const earning = useMemo(() => {
     const off = new Set(
       selected === NET_WORTH
         ? portfolios.filter((p) => !p.inPassiveIncome || !earnsPassiveIncome(p, entries)).map((p) => p.id)
         : scope.filter((p) => !earnsPassiveIncome(p, entries)).map((p) => p.id),
     )
     const ids = new Set(scope.map((p) => p.id))
-    return passiveIn(
-      withPayouts(
-        growth(valued.filter((e) => !off.has(e.portfolioId)), daily, prices, currency),
-        scalePayouts(portfolios, payouts, selected === NET_WORTH ? 'netWorth' : 'card').filter(
-          (r) => (selected === NET_WORTH || ids.has(r.portfolioId)) && !off.has(r.portfolioId),
-        ),
-        prices[currency],
+    return {
+      entries: valued.filter((e) => !off.has(e.portfolioId)),
+      payouts: scalePayouts(portfolios, payouts, selected === NET_WORTH ? 'netWorth' : 'card').filter(
+        (r) => (selected === NET_WORTH || ids.has(r.portfolioId)) && !off.has(r.portfolioId),
       ),
-      range,
-    )
-  }, [valued, daily, prices, currency, range, portfolios, entries, payouts, selected, scope])
+    }
+  }, [valued, portfolios, entries, payouts, selected, scope])
+  const passive = useMemo(
+    () => passiveIn(withPayouts(growth(earning.entries, daily, prices, currency), earning.payouts, prices[currency]), range),
+    [earning, daily, prices, currency, range],
+  )
   // Net worth: where the passive income comes from, per portfolio (zeros left out unless switched off, losses kept).
   // Sorted by value only, so hiding one doesn't make the rows jump around.
   const parts = useMemo(() => {
@@ -180,7 +185,38 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
                   ) : (
                     <BalanceChartSkeleton />
                   )}
+                  <section className="grid grid-cols-[minmax(0,1fr)] gap-2">
+                  <div role="tablist" className="animate-enter -mb-1 flex gap-5" style={{ animationDelay: '360ms' }}>
+                    {(['assets', 'transactions'] as const).map((id) => (
+                      <button
+                        key={id}
+                        type="button"
+                        role="tab"
+                        aria-selected={tab === id}
+                        onClick={() => setTab(id)}
+                        className={cn(
+                          'py-1 text-sm transition-colors outline-none focus-visible:underline',
+                          tab === id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+                        )}
+                      >
+                        {id === 'assets' ? t.assetsTab : t.transactionsTab}
+                      </button>
+                    ))}
+                  </div>
+                  {tab === 'assets' && (
+                    <Holdings
+                      entries={valued}
+                      earning={earning.entries}
+                      payouts={earning.payouts}
+                      showIncome={withPassive}
+                      prices={prices}
+                      daily={daily}
+                      currency={currency}
+                      range={range}
+                    />
+                  )}
                   <EntriesTable
+                    list={tab === 'transactions'}
                     entries={rows}
                     portfolios={selected === NET_WORTH ? portfolios : scope}
                     prices={prices}
@@ -190,6 +226,7 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
                     filtered={period !== 'all'}
                     view={`${selected}:${JSON.stringify(period)}`}
                   />
+                  </section>
                 </div>
               </div>
             </>

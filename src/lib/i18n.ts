@@ -143,6 +143,10 @@ const en = {
   },
 
   value: 'Value',
+  assetsTab: 'Assets',
+  transactionsTab: 'Transactions',
+  payouts: 'Dividends and interest',
+  noAssets: 'Nothing held in this period.',
   paid: 'Paid',
   loadingGraph: 'Loading graph',
 
@@ -346,6 +350,10 @@ const uk: Dictionary = {
   },
 
   value: 'Вартість',
+  assetsTab: 'Активи',
+  transactionsTab: 'Операції',
+  payouts: 'Дивіденди та відсотки',
+  noAssets: 'У цьому періоді активів не було.',
   paid: 'Сплачено',
   loadingGraph: 'Завантаження графіка',
 

@@ -48,7 +48,10 @@ Vocabulary:
   one "Opening position" per stock, then "Position change" rows from the daily sync. Read-only like
   Monobank. `trackedAssets` lists the picked stocks; null ("Select all") also follows new purchases.
 - **Period** — the tracked time span picked above the cards, on the left (All time by default; the last pick is saved on the account, `period` on the Convex user). It limits
-  the graph and table; cards show the balance at the period's end plus the change during it.
+  the graph and the Transactions tab; cards show the balance at the period's end plus the change during it.
+- **Assets tab** — below the graph, next to Transactions (`holdings.tsx`): one row per asset held at the period's
+  end, whenever it was bought, with its value and the passive income it made in the period (plus a "Dividends and
+  interest" row). The rows add up to the passive income number. Opens by default.
 - **Display currency** — USD / EUR / UAH switch in the user popover; values convert via the currency's own
   Binance price. Saved per browser in `src/lib/preferences.ts`.
 - **Language** — Ukrainian (default) / English switch in the user popover. Texts live in `src/lib/i18n.ts`

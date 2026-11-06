@@ -46,6 +46,8 @@ type Props = {
   filtered: boolean
   /** Changes when another source or period is picked: the list goes back to its first page. */
   view: string
+  /** False shows only the Deposit / Withdraw buttons (the Assets tab is open instead). */
+  list?: boolean
 }
 
 /** "Bitcoin" for BTC, in the app's language where it has its own name; stocks show their ticker. */
@@ -68,7 +70,7 @@ const enter = { animationDelay: '380ms' }
 /** Rows drawn at first, and added by each "Show more": long histories (years of card payments) stay quick. */
 const PAGE = 50
 
-export const EntriesTable = memo(function EntriesTable({ entries, portfolios, prices, portfolioId, currency, readOnly, filtered, view }: Props) {
+export const EntriesTable = memo(function EntriesTable({ entries, portfolios, prices, portfolioId, currency, readOnly, filtered, view, list = true }: Props) {
   const t = useT()
   const [editing, setEditing] = useState<Entry>()
   const [deleting, setDeleting] = useState<Entry>()
@@ -85,10 +87,12 @@ export const EntriesTable = memo(function EntriesTable({ entries, portfolios, pr
   const rows = [...entries].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
   const shown = rows.slice(0, limit.rows)
   const left = rows.length - shown.length
+  const actions = editable.length > 0 && !synced && <EntryActions portfolios={editable} portfolioId={portfolioId} />
+  if (!list) return actions
 
   return (
     <section className="grid gap-2">
-      {editable.length > 0 && !synced && <EntryActions portfolios={editable} portfolioId={portfolioId} />}
+      {actions}
 
       {rows.length === 0 && (
         <div className="animate-enter flex flex-col items-center gap-4 rounded-xl border border-dashed px-6 py-14 text-center" style={enter}>

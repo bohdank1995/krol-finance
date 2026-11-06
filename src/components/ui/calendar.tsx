@@ -26,6 +26,7 @@ function Calendar({
   const defaultClassNames = getDefaultClassNames()
 
   return (
+    <CalendarLocale.Provider value={locale}>
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn(
@@ -131,50 +132,42 @@ function Calendar({
         hidden: cn("invisible", defaultClassNames.hidden),
         ...classNames,
       }}
+      // Defined once, outside: parts made inside the render would be new each time, and React would rebuild the
+      // calendar on every redraw, closing an open month or year dropdown.
       components={{
-        Root: ({ className, rootRef, ...props }) => {
-          return (
-            <div
-              data-slot="calendar"
-              ref={rootRef}
-              className={cn(className)}
-              {...props}
-            />
-          )
-        },
-        Chevron: ({ className, orientation, ...props }) => {
-          if (orientation === "left") {
-            return (
-              <ChevronLeftIcon className={cn("size-4", className)} {...props} />
-            )
-          }
-
-          if (orientation === "right") {
-            return (
-              <ChevronRightIcon className={cn("size-4", className)} {...props} />
-            )
-          }
-
-          return (
-            <ChevronDownIcon className={cn("size-4", className)} {...props} />
-          )
-        },
-        DayButton: ({ ...props }) => (
-          <CalendarDayButton locale={locale} {...props} />
-        ),
-        WeekNumber: ({ children, ...props }) => {
-          return (
-            <td {...props}>
-              <div className="flex size-(--cell-size) items-center justify-center text-center">
-                {children}
-              </div>
-            </td>
-          )
-        },
+        Root: CalendarRoot,
+        Chevron: CalendarChevron,
+        DayButton: CalendarLocaleDayButton,
+        WeekNumber: CalendarWeekNumber,
         ...components,
       }}
       {...props}
     />
+    </CalendarLocale.Provider>
+  )
+}
+
+const CalendarLocale = React.createContext<Partial<Locale> | undefined>(undefined)
+
+function CalendarRoot({ className, rootRef, ...props }: React.ComponentProps<"div"> & { rootRef?: React.Ref<HTMLDivElement> }) {
+  return <div data-slot="calendar" ref={rootRef} className={cn(className)} {...props} />
+}
+
+function CalendarChevron({ className, orientation, ...props }: { className?: string; orientation?: "left" | "right" | "up" | "down"; size?: number; disabled?: boolean }) {
+  if (orientation === "left") return <ChevronLeftIcon className={cn("size-4", className)} {...props} />
+  if (orientation === "right") return <ChevronRightIcon className={cn("size-4", className)} {...props} />
+  return <ChevronDownIcon className={cn("size-4", className)} {...props} />
+}
+
+function CalendarLocaleDayButton(props: React.ComponentProps<typeof DayButton>) {
+  return <CalendarDayButton locale={React.useContext(CalendarLocale)} {...props} />
+}
+
+function CalendarWeekNumber({ children, ...props }: React.ComponentProps<"td">) {
+  return (
+    <td {...props}>
+      <div className="flex size-(--cell-size) items-center justify-center text-center">{children}</div>
+    </td>
   )
 }
 
