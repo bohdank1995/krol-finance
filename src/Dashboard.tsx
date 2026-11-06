@@ -1,18 +1,21 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { Pencil } from 'lucide-react'
 import { DashboardSkeleton } from '@/components/app-shell'
 import { BalanceChart, BalanceChartSkeleton, PassiveIncome } from '@/components/balance-chart'
 import { EntriesTable } from '@/components/entries-table'
 import { Header, PeriodFilter } from '@/components/header'
 import { NET_WORTH, PortfolioCards } from '@/components/portfolio-cards'
 import { Ticker } from '@/components/ticker'
+import { Button } from '@/components/ui/button'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { earnsPassiveIncome, netWorthEntries, netWorthPortfolios, savePeriod, scaleEntries, scalePayouts, setInPassiveIncome, useEntries, useLoaded, usePayouts, usePortfolios } from '@/lib/entries'
+import { earnsPassiveIncome, membersOf, netWorthEntries, netWorthPortfolios, savePeriod, scaleEntries, scalePayouts, setInPassiveIncome, useEntries, useGroups, useLoaded, usePayouts, usePortfolios } from '@/lib/entries'
 import { fakeEntries, fakePayouts } from '@/lib/fake'
 import { useDailyPrices } from '@/lib/history'
 import { inRange, rangeOf, type Period } from '@/lib/period'
 import { balance, firstDay, growth, passiveIn, series, withPayouts } from '@/lib/portfolio'
 import { CURRENCIES, usePreferences } from '@/lib/preferences'
 import { useLivePrices } from '@/lib/prices'
+import { useT } from '@/lib/i18n'
 import { useReveal } from '@/lib/reveal'
 import { cn } from '@/lib/utils'
 
@@ -20,6 +23,7 @@ import { cn } from '@/lib/utils'
 
 export default function Dashboard({ email, image, saved }: { email: string; image?: string; saved: Period }) {
   const portfolios = usePortfolios()
+  const groups = useGroups()
   const real = useEntries()
   const loaded = useLoaded()
   const { currency: chosen, fake, fakeSeed } = usePreferences()
@@ -37,12 +41,17 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
   }, [])
   const range = useMemo(() => rangeOf(period), [period])
   const [picked, setPicked] = useState(NET_WORTH)
-  // A deleted portfolio falls back to Net worth.
-  const selected = portfolios.some((p) => p.id === picked) ? picked : NET_WORTH
-  const shown = useMemo(
-    () => (selected === NET_WORTH ? netWorthEntries(portfolios, entries) : entries.filter((e) => e.portfolioId === selected)),
-    [portfolios, entries, selected],
-  )
+  // The edit mode of the cards (reorder, group, delete): everything below them steps aside meanwhile.
+  const [editing, setEditing] = useState(false)
+  // The sources the picked card stands for: one source, or a group's sources. Gone ones fall back to Net worth.
+  const scope = useMemo(() => (picked === NET_WORTH ? [] : membersOf(picked, portfolios)), [picked, portfolios])
+  const selected = scope.length > 0 ? picked : NET_WORTH
+  const isGroup = selected !== NET_WORTH && groups.some((g) => g.id === selected)
+  const shown = useMemo(() => {
+    if (selected === NET_WORTH) return netWorthEntries(portfolios, entries)
+    const ids = new Set(scope.map((p) => p.id))
+    return entries.filter((e) => ids.has(e.portfolioId))
+  }, [portfolios, entries, selected, scope])
   // The graph adds up the set percentages; the table keeps real amounts.
   const valued = useMemo(
     () => scaleEntries(portfolios, shown, selected === NET_WORTH ? 'netWorth' : 'card'),
@@ -59,22 +68,25 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
     () => series(valued, daily, prices, currency).filter((p) => (!range.from || p.date >= range.from) && p.date <= range.to),
     [valued, daily, prices, currency, range],
   )
-  // Net worth's passive income leaves out the portfolios switched off in its list, and bank cards.
+  // Net worth's passive income leaves out the portfolios switched off in its list, and bank cards; a group leaves out its bank cards.
   const passive = useMemo(() => {
     const off = new Set(
-      selected === NET_WORTH ? portfolios.filter((p) => !p.inPassiveIncome || !earnsPassiveIncome(p)).map((p) => p.id) : [],
+      selected === NET_WORTH
+        ? portfolios.filter((p) => !p.inPassiveIncome || !earnsPassiveIncome(p)).map((p) => p.id)
+        : scope.filter((p) => !earnsPassiveIncome(p)).map((p) => p.id),
     )
+    const ids = new Set(scope.map((p) => p.id))
     return passiveIn(
       withPayouts(
         growth(valued.filter((e) => !off.has(e.portfolioId)), daily, prices, currency),
         scalePayouts(portfolios, payouts, selected === NET_WORTH ? 'netWorth' : 'card').filter(
-          (r) => (selected === NET_WORTH || r.portfolioId === selected) && !off.has(r.portfolioId),
+          (r) => (selected === NET_WORTH || ids.has(r.portfolioId)) && !off.has(r.portfolioId),
         ),
         prices[currency],
       ),
       range,
     )
-  }, [valued, daily, prices, currency, range, portfolios, payouts, selected])
+  }, [valued, daily, prices, currency, range, portfolios, payouts, selected, scope])
   // Net worth: where the passive income comes from, per portfolio (zeros left out unless switched off, losses kept).
   // Sorted by value only, so hiding one doesn't make the rows jump around.
   const parts = useMemo(() => {
@@ -91,7 +103,7 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
       .sort((a, b) => b.value - a.value)
   }, [selected, portfolios, entries, payouts, daily, prices, currency, range])
   const rows = useMemo(() => shown.filter((e) => inRange(e.createdAt, range)), [shown, range])
-  const withPassive = selected === NET_WORTH || portfolios.some((p) => p.id === selected && earnsPassiveIncome(p))
+  const withPassive = selected === NET_WORTH || scope.some(earnsPassiveIncome)
 
   // Reveal the page once its numbers are real: data in, every asset priced, graph history in.
   const priced = loaded && !balance(entries, prices, currency).pricing
@@ -106,7 +118,27 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
     mainRef.current?.animate({ opacity: [0.5, 1] }, { duration: 220, easing: 'ease-out' })
   }, [currency])
-  const toolbar = useMemo(() => <PeriodFilter period={period} onChange={pick} />, [period, pick])
+  const t = useT()
+  const toolbar = useMemo(
+    () => (
+      <div className="flex items-center gap-2">
+        {/* Edit mode: reorder, group and delete sources. Not in Fake numbers (read-only). */}
+        {!fake && portfolios.length > 0 && (
+          <Button
+            variant="outline"
+            size="icon-lg"
+            aria-label={t.editSources}
+            onClick={() => setEditing(true)}
+            className="animate-in text-muted-foreground fade-in hover:text-foreground"
+          >
+            <Pencil />
+          </Button>
+        )}
+        <PeriodFilter period={period} onChange={pick} />
+      </div>
+    ),
+    [period, pick, fake, portfolios.length, t],
+  )
 
   return (
     <TooltipProvider delay={150}>
@@ -120,7 +152,10 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
               <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
                 <PortfolioCards
                   toolbar={toolbar}
+                  editing={editing}
+                  onEditingDone={() => setEditing(false)}
                   portfolios={portfolios}
+                  groups={groups}
                   entries={entries}
                   prices={prices}
                   daily={daily}
@@ -132,43 +167,58 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
                   readOnly={fake}
                 />
               </div>
-              {historyReady ? (
-                <div
-                  className={cn(
-                    'grid grid-cols-[minmax(0,1fr)] gap-6',
-                    withPassive && 'lg:grid-cols-[minmax(0,1fr)_1px_16rem] lg:gap-8',
-                  )}
-                >
-                  <div className="animate-enter min-w-0" style={{ animationDelay: '200ms' }}>
-                    <BalanceChart points={points} currency={currency} />
-                  </div>
-                  {withPassive && (
-                    <>
-                      {/* On phones passive income comes first, above the graph. */}
-                      <div aria-hidden className="animate-enter h-px bg-border max-lg:-order-1 lg:h-auto lg:w-px" style={{ animationDelay: '260ms' }} />
-                      <div className="animate-enter max-lg:-order-2" style={{ animationDelay: '300ms' }}>
-                        <PassiveIncome total={passive.total} parts={parts} currency={currency} onToggle={fake ? undefined : setInPassiveIncome} />
+              {/* Steps aside while the cards are being edited: fades out and folds up, then comes back. */}
+              <div
+                inert={editing}
+                className={cn(
+                  'grid transition-[grid-template-rows,opacity,margin] duration-300 ease-out',
+                  editing ? 'pointer-events-none -mt-10 grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr]',
+                )}
+              >
+                <div className={cn('grid min-h-0 grid-cols-[minmax(0,1fr)] gap-10', editing && 'overflow-hidden')}>
+                  {historyReady ? (
+                    <div
+                      className={cn(
+                        'grid grid-cols-[minmax(0,1fr)] gap-6',
+                        withPassive && 'lg:grid-cols-[minmax(0,1fr)_1px_16rem] lg:gap-8',
+                      )}
+                    >
+                      <div className="animate-enter min-w-0" style={{ animationDelay: '200ms' }}>
+                        <BalanceChart points={points} currency={currency} />
                       </div>
-                    </>
+                      {withPassive && (
+                        <>
+                          {/* On phones passive income comes first, above the graph. */}
+                          <div aria-hidden className="animate-enter h-px bg-border max-lg:-order-1 lg:h-auto lg:w-px" style={{ animationDelay: '260ms' }} />
+                          <div className="animate-enter max-lg:-order-2" style={{ animationDelay: '300ms' }}>
+                            <PassiveIncome total={passive.total} parts={parts} currency={currency} onToggle={fake ? undefined : setInPassiveIncome} />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <BalanceChartSkeleton />
                   )}
+                  <EntriesTable
+                    entries={rows}
+                    portfolios={selected === NET_WORTH ? portfolios : scope}
+                    prices={prices}
+                    portfolioId={selected === NET_WORTH || isGroup ? undefined : selected}
+                    currency={currency}
+                    readOnly={fake}
+                    filtered={period !== 'all'}
+                    view={`${selected}:${JSON.stringify(period)}`}
+                  />
                 </div>
-              ) : (
-                <BalanceChartSkeleton />
-              )}
-              <EntriesTable
-                entries={rows}
-                portfolios={portfolios}
-                prices={prices}
-                portfolioId={selected === NET_WORTH ? undefined : selected}
-                currency={currency}
-                readOnly={fake}
-                filtered={period !== 'all'}
-                view={`${selected}:${JSON.stringify(period)}`}
-              />
+              </div>
             </>
           )}
         </main>
-        {ready && <Ticker prices={prices} assets={live} currency={currency} />}
+        {ready && (
+          <div inert={editing} className={cn('transition-opacity duration-300', editing && 'opacity-0')}>
+            <Ticker prices={prices} assets={live} currency={currency} />
+          </div>
+        )}
       </div>
     </TooltipProvider>
   )

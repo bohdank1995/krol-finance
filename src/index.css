@@ -140,6 +140,23 @@
     animation: none;
   }
 }
+/* Edit mode (`edit-cards.tsx`): cards wiggle like iPhone apps being rearranged. `rotate` rather than
+   `transform`, so dragging keeps its own transform. */
+@keyframes wiggle {
+  0%,
+  100% {
+    rotate: -0.8deg;
+  }
+  50% {
+    rotate: 0.8deg;
+  }
+}
+@utility animate-wiggle {
+  animation: wiggle 0.3s ease-in-out infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
 /* Long labels (`marquee.tsx`): rest, slide left to the end, rest, slide back. The right edge fades. */
 @keyframes marquee {
   0%,

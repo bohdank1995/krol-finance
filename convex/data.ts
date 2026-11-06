@@ -38,7 +38,7 @@ function short(value: string | undefined, max: number, what: string) {
 }
 
 /** New rows bring their own app id: it must not be taken, or `.unique()` lookups of it would break. */
-async function freshId(ctx: QueryCtx, table: 'portfolios' | 'entries', id: string) {
+async function freshId(ctx: QueryCtx, table: 'portfolios' | 'entries' | 'groups', id: string) {
   short(id, 64, 'id')
   const taken = await ctx.db
     .query(table)
@@ -56,7 +56,7 @@ async function manualPortfolio(ctx: QueryCtx, userId: Id<'users'>, id: string) {
 
 type PortfolioView = Pick<
   Doc<'portfolios'>,
-  'id' | 'name' | 'createdAt' | 'source' | 'position' | 'inNetWorth' | 'cardPercent' | 'netWorthPercent'
+  'id' | 'name' | 'createdAt' | 'source' | 'position' | 'inNetWorth' | 'cardPercent' | 'netWorthPercent' | 'groupId'
 > & { syncedAt?: string; inPassiveIncome: boolean; loadingHistory?: boolean }
 type EntryView = Pick<Doc<'entries'>, 'id' | 'portfolioId' | 'asset' | 'amount' | 'createdAt' | 'note' | 'price'>
 
@@ -72,6 +72,7 @@ const portfolioView = (p: Doc<'portfolios'>): PortfolioView => ({
   netWorthPercent: p.netWorthPercent,
   inPassiveIncome: p.inPassiveIncome ?? true,
   loadingHistory: p.loadingHistory,
+  groupId: p.groupId,
 })
 
 const entryView = (e: Doc<'entries'>): EntryView => ({
@@ -91,13 +92,15 @@ export const everything = query({
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx)
     if (!userId) return null
-    const [portfolios, entries, payouts] = await Promise.all([
+    const [portfolios, entries, payouts, groups] = await Promise.all([
       ctx.db.query('portfolios').withIndex('by_user', (q) => q.eq('userId', userId)).collect(),
       ctx.db.query('entries').withIndex('by_user', (q) => q.eq('userId', userId)).collect(),
       ctx.db.query('payouts').withIndex('by_user', (q) => q.eq('userId', userId)).collect(),
+      ctx.db.query('groups').withIndex('by_user', (q) => q.eq('userId', userId)).collect(),
     ])
     return {
       portfolios: portfolios.map(portfolioView),
+      groups: groups.map((g) => ({ id: g.id, name: g.name })),
       entries: entries.map(entryView),
       payouts: payouts.map((r) => ({ id: r.externalId, portfolioId: r.portfolioId, date: r.date, usd: r.usd })),
     }
@@ -168,8 +171,66 @@ export const deletePortfolio = mutation({
     const p = await ownPortfolio(ctx, userId, id)
     await deleteEntriesOf(ctx, p.id)
     await ctx.db.delete(p._id)
+    await dropSmallGroups(ctx, userId)
   },
 })
+
+/** Saves the cards' edit mode in one go: `order` is every source in display order, `groups` the stacks.
+    A group with fewer than 2 sources isn't kept, and groups left out are removed. */
+export const saveLayout = mutation({
+  args: {
+    order: v.array(v.string()),
+    groups: v.array(v.object({ id: v.string(), name: v.string(), portfolioIds: v.array(v.string()) })),
+  },
+  handler: async (ctx, { order, groups }) => {
+    const userId = await signedIn(ctx)
+    if (order.length > 500 || groups.length > 200) throw new ConvexError('Too many portfolios.')
+    const existing = await ctx.db
+      .query('groups')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .collect()
+    const memberOf = new Map<string, string>()
+    const kept = new Set<string>()
+    for (const g of groups) {
+      if (g.portfolioIds.length < 2) continue
+      short(g.name, 100, 'name')
+      const own = existing.find((e) => e.id === g.id)
+      if (own) {
+        if (own.name !== g.name) await ctx.db.patch(own._id, { name: g.name })
+      } else {
+        await freshId(ctx, 'groups', g.id)
+        await ctx.db.insert('groups', { id: g.id, userId, name: g.name })
+      }
+      kept.add(g.id)
+      for (const id of g.portfolioIds) memberOf.set(id, g.id)
+    }
+    for (const [position, id] of order.entries()) {
+      const p = await ownPortfolio(ctx, userId, id)
+      const groupId = memberOf.get(id)
+      if (p.position !== position || p.groupId !== groupId) await ctx.db.patch(p._id, { position, groupId })
+    }
+    for (const g of existing) if (!kept.has(g.id)) await ctx.db.delete(g._id)
+  },
+})
+
+/** After a source is deleted: a group with fewer than 2 sources left is undone. */
+async function dropSmallGroups(ctx: MutationCtx, userId: Id<'users'>) {
+  const groups = await ctx.db
+    .query('groups')
+    .withIndex('by_user', (q) => q.eq('userId', userId))
+    .collect()
+  if (groups.length === 0) return
+  const portfolios = await ctx.db
+    .query('portfolios')
+    .withIndex('by_user', (q) => q.eq('userId', userId))
+    .collect()
+  for (const g of groups) {
+    const members = portfolios.filter((p) => p.groupId === g.id)
+    if (members.length >= 2) continue
+    for (const p of members) await ctx.db.patch(p._id, { groupId: undefined })
+    await ctx.db.delete(g._id)
+  }
+}
 
 export async function deleteEntriesOf(ctx: MutationCtx, portfolioId: string) {
   const entries = await ctx.db

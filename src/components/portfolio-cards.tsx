@@ -1,7 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
-import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
-import { CSS as DndCSS } from '@dnd-kit/utilities'
+import { Fragment, memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ArrowDown, ArrowUp, ChartPie, CircleMinus, CirclePlus, MoreHorizontal, Pencil, Percent, Plus, RefreshCw, Trash2, Unlink, WalletCards } from 'lucide-react'
 import {
   AlertDialog,
@@ -25,11 +22,13 @@ import {
   isReadOnly,
   netWorthEntries,
   refreshIbkr,
-  reorderPortfolios,
+  rowItems,
   scaleEntries,
   setInNetWorth,
   type Entry,
+  type Group,
   type Portfolio,
+  type RowItem,
 } from '@/lib/entries'
 import { formatAgo, formatMoney } from '@/lib/format'
 import type { DailyPrices } from '@/lib/history'
@@ -42,6 +41,7 @@ import { cn } from '@/lib/utils'
 import monobankLogo from '@/assets/monobank.svg'
 import ibkrLogo from '@/assets/ibkr.svg'
 import { FAB, FAB_BAR } from './add-entry-menu'
+import { EditCards } from './edit-cards'
 import { IbkrDrawer } from './ibkr-drawer'
 import { MonobankDrawer } from './monobank-drawer'
 import { PercentsDrawer } from './percents-drawer'
@@ -78,17 +78,21 @@ type Valuation = {
 
 type Props = Valuation & {
   portfolios: Portfolio[]
+  groups: Group[]
   entries: Entry[]
   status: PriceStatus
   selected: string
   onSelect: (id: string) => void
   /** Fake numbers mode: no renaming, deleting or dragging. */
   readOnly: boolean
-  /** Sits above the cards, left of the "+" on phones (the period picker). */
+  /** Sits above the cards, left of the "+" on phones (the edit button and period picker). */
   toolbar?: ReactNode
+  /** The edit mode (`edit-cards.tsx`) shows instead of the row. */
+  editing?: boolean
+  onEditingDone?: () => void
 }
 
-export const PortfolioCards = memo(function PortfolioCards({ portfolios, entries, status, selected, onSelect, readOnly, toolbar, ...valuation }: Props) {
+export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups, entries, status, selected, onSelect, readOnly, toolbar, editing, onEditingDone, ...valuation }: Props) {
   const t = useT()
   const [creating, setCreating] = useState(false)
   const [syncing, setSyncing] = useState<string[]>([])
@@ -97,6 +101,7 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, entries
   const [renaming, setRenaming] = useState<Portfolio>()
   const [deleting, setDeleting] = useState<Portfolio>()
   const [adjusting, setAdjusting] = useState<Portfolio>()
+  const [openGroup, setOpenGroup] = useState<string>()
   const rowRef = useRef<HTMLDivElement>(null)
   const latest = useRef({ selected, onSelect })
   useEffect(() => {
@@ -130,18 +135,6 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, entries
     setTimeout(() => show(), 5000)
   }
   const ownEntries = (id: string) => entries.filter((e) => e.portfolioId === id)
-  const slides = [{ id: NET_WORTH, label: t.netWorth }, ...portfolios.map((p) => ({ id: p.id, label: p.name }))]
-
-  // Mouse: drag after moving a few pixels, so a click still selects. Touch: long-press, so a swipe still scrolls.
-  const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
-  )
-  const onDragEnd = ({ active, over }: DragEndEvent) => {
-    if (!over || active.id === over.id) return
-    const ids = portfolios.map((p) => p.id)
-    reorderPortfolios(arrayMove(ids, ids.indexOf(String(active.id)), ids.indexOf(String(over.id))))
-  }
 
   // A swipe that settles on a card makes it the active one.
   useEffect(() => {
@@ -188,6 +181,76 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, entries
       row.scrollTo({ left: el.offsetLeft + el.offsetWidth - row.clientWidth + parseFloat(paddingRight), behavior: 'smooth' })
   }, [selected, portfolios.length])
 
+  // Cards fade in one after another, left to right.
+  let order = 0
+  const items = rowItems(portfolios, groups)
+  /** A group is open while it, or one of its sources, is picked. */
+  const isOpen = (item: Extract<RowItem, { kind: 'group' }>) =>
+    openGroup === item.group.id || item.members.some((m) => m.id === selected)
+  // The phones' dots: one per card in the row, open groups' sources included.
+  const slides = [
+    { id: NET_WORTH, label: t.netWorth },
+    ...items.flatMap((i) =>
+      i.kind === 'source'
+        ? [{ id: i.portfolio.id, label: i.portfolio.name }]
+        : [{ id: i.group.id, label: i.group.name }, ...(isOpen(i) ? i.members.map((m) => ({ id: m.id, label: m.name })) : [])],
+    ),
+  ]
+  const sourceCard = (h: Portfolio) => (
+    <Card
+      key={h.id}
+      id={h.id}
+      order={++order}
+      label={h.name}
+      hidden={!h.inNetWorth}
+      share={h.cardPercent / 100}
+      netWorthShare={h.inNetWorth ? h.netWorthPercent : undefined}
+      syncing={syncing.includes(h.id) || loadingHistory(h)}
+      message={syncStatus[h.id]}
+      hint={syncStatus[h.id] ?? (loadingHistory(h) ? t.ibkr.loadingHistory : h.syncedAt && t.synced(formatAgo(h.syncedAt)))}
+      entries={scaled.get(h.id) ?? []}
+      {...valuation}
+      active={selected === h.id}
+      onSelect={() => onSelect(h.id)}
+      menu={
+        !readOnly && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  aria-label={t.portfolioActions(h.name)}
+                  className="absolute top-3 right-3 text-muted-foreground hover:text-foreground aria-expanded:text-foreground"
+                />
+              }
+            >
+              <MoreHorizontal />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-72">
+              <DropdownMenuItem onClick={() => setRenaming(h)}>
+                <Pencil className="text-muted-foreground" />
+                {t.rename}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setAdjusting(h)}>
+                <Percent className="text-muted-foreground" />
+                {t.setPercentages}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setInNetWorth(h.id, !h.inNetWorth)}>
+                {h.inNetWorth ? <CircleMinus className="text-muted-foreground" /> : <CirclePlus className="text-muted-foreground" />}
+                {h.inNetWorth ? t.hideFromNetWorth : t.showInNetWorth}
+              </DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onClick={() => setDeleting(h)}>
+                {isReadOnly(h) ? <Unlink /> : <Trash2 />}
+                {isReadOnly(h) ? t.disconnect : t.delete}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      }
+    />
+  )
+
   /** "+" menu: in the toolbar next to the period on phones, pinned to the right of the cards on wider screens. */
   const addMenu = (
     <DropdownMenu>
@@ -221,8 +284,20 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, entries
     </DropdownMenu>
   )
 
+  if (editing)
+    return (
+      <EditCards
+        portfolios={portfolios}
+        groups={groups}
+        entries={entries}
+        prices={valuation.prices}
+        currency={valuation.currency}
+        onDone={() => onEditingDone?.()}
+      />
+    )
+
   return (
-    <div>
+    <div className="animate-in duration-300 fade-in">
       {/* Same edges as the cards and everything below them. */}
       <div className="mb-3 flex items-center justify-between gap-3">
         {toolbar}
@@ -245,65 +320,31 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, entries
             onSelect={() => onSelect(NET_WORTH)}
             live={entries.length > 0 ? status : undefined}
           />
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-            <SortableContext items={portfolios.map((p) => p.id)} strategy={horizontalListSortingStrategy}>
-              {portfolios.map((h, i) => (
+          {items.map((item) =>
+            item.kind === 'source' ? (
+              sourceCard(item.portfolio)
+            ) : (
+              <Fragment key={item.group.id}>
                 <Card
-                  key={h.id}
-                  id={h.id}
-                  order={i + 1}
-                  sortable={!readOnly}
-                  label={h.name}
-                  hidden={!h.inNetWorth}
-                  share={h.cardPercent / 100}
-                  netWorthShare={h.inNetWorth ? h.netWorthPercent : undefined}
-                  syncing={syncing.includes(h.id) || loadingHistory(h)}
-                  message={syncStatus[h.id]}
-                  hint={syncStatus[h.id] ?? (loadingHistory(h) ? t.ibkr.loadingHistory : h.syncedAt && t.synced(formatAgo(h.syncedAt)))}
-                  entries={scaled.get(h.id) ?? []}
+                  id={item.group.id}
+                  order={++order}
+                  label={item.group.name}
+                  stack
+                  note={t.sourcesCount(item.members.length)}
+                  entries={item.members.flatMap((m) => scaled.get(m.id) ?? [])}
                   {...valuation}
-                  active={selected === h.id}
-                  onSelect={() => onSelect(h.id)}
-                  menu={
-                    !readOnly && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button
-                              variant="secondary"
-                              size="icon"
-                              aria-label={t.portfolioActions(h.name)}
-                              className="absolute top-3 right-3 text-muted-foreground hover:text-foreground aria-expanded:text-foreground"
-                            />
-                          }
-                        >
-                          <MoreHorizontal />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-72">
-                          <DropdownMenuItem onClick={() => setRenaming(h)}>
-                            <Pencil className="text-muted-foreground" />
-                            {t.rename}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setAdjusting(h)}>
-                            <Percent className="text-muted-foreground" />
-                            {t.setPercentages}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setInNetWorth(h.id, !h.inNetWorth)}>
-                            {h.inNetWorth ? <CircleMinus className="text-muted-foreground" /> : <CirclePlus className="text-muted-foreground" />}
-                            {h.inNetWorth ? t.hideFromNetWorth : t.showInNetWorth}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem variant="destructive" onClick={() => setDeleting(h)}>
-                            {isReadOnly(h) ? <Unlink /> : <Trash2 />}
-                            {isReadOnly(h) ? t.disconnect : t.delete}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )
-                  }
+                  active={selected === item.group.id}
+                  onSelect={() => {
+                    // Opens the group (its sources slide out to the right); a second click closes it.
+                    if (selected === item.group.id) setOpenGroup(openGroup === item.group.id ? undefined : item.group.id)
+                    else setOpenGroup(item.group.id)
+                    onSelect(item.group.id)
+                  }}
                 />
-              ))}
-            </SortableContext>
-          </DndContext>
+                {isOpen(item) && item.members.map((m) => sourceCard(m))}
+              </Fragment>
+            ),
+          )}
         </div>
 
         {/* Pinned to the right over a fade: stays put while the cards scroll underneath. */}
@@ -400,9 +441,11 @@ type CardProps = Valuation & {
   id: string
   /** Place in the row: the cards fade in one after another, left to right. */
   order: number
-  /** Portfolio cards can be dragged; Net worth stays first. */
-  sortable?: boolean
   label: string
+  /** A group's card: drawn as a small stack. */
+  stack?: boolean
+  /** A short grey line under the label, e.g. "3 sources" on a group. */
+  note?: string
   /** Left out of the Net worth total. */
   hidden?: boolean
   /** Part of the real balance the card shows (0–1); the entries passed in are already scaled. */
@@ -424,9 +467,8 @@ type CardProps = Valuation & {
 
 const dayBefore = (day: string) => new Date(Date.parse(`${day}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
 
-function Card({ id, order, sortable, label, hidden, share = 1, netWorthShare, hint, syncing, message, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
+function Card({ id, order, label, stack, note, hidden, share = 1, netWorthShare, hint, syncing, message, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
   const t = useT()
-  const drag = useSortable({ id, disabled: !sortable })
   const points = useMemo(() => series(entries, daily, prices, currency), [entries, daily, prices, currency])
   const today = new Date().toISOString().slice(0, 10)
   // Up to today the live balance; a period that ended earlier shows that day's close.
@@ -437,17 +479,9 @@ function Card({ id, order, sortable, label, hidden, share = 1, netWorthShare, hi
 
   return (
     <div
-      ref={sortable ? drag.setNodeRef : undefined}
-      {...(sortable ? drag.listeners : {})}
       data-slide={id}
-      style={{
-        animationDelay: `${order * 60}ms`,
-        ...(sortable ? { transform: DndCSS.Translate.toString(drag.transform), transition: drag.transition } : {}),
-      }}
-      className={cn(
-        'animate-enter relative w-[calc(100vw-3rem)] shrink-0 snap-center snap-always touch-manipulation sm:w-62',
-        drag.isDragging && 'z-10 opacity-80',
-      )}
+      style={{ animationDelay: `${order * 60}ms` }}
+      className="animate-enter relative w-[calc(100vw-3rem)] shrink-0 snap-center snap-always touch-manipulation sm:w-62"
     >
       <button
         type="button"
@@ -458,11 +492,13 @@ function Card({ id, order, sortable, label, hidden, share = 1, netWorthShare, hi
         className={cn(
           'flex h-full min-h-30 w-full flex-col justify-between rounded-xl border bg-card p-5 text-left transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:min-h-26',
           active ? 'border-foreground/30 bg-accent' : 'hover:border-foreground/15',
-          drag.isDragging && 'cursor-grabbing shadow-lg',
+          // Two card edges peeking out below: a stack of sources.
+          stack && 'shadow-[0_4px_0_-1px_var(--color-card),0_4px_0_0_var(--color-border),0_8px_0_-1px_var(--color-card),0_8px_0_0_var(--color-border)]',
         )}
       >
         <span className="flex items-center gap-2 pr-10 text-sm text-muted-foreground">
           <span className="truncate">{label}</span>
+          {note && <span className="shrink-0 text-xs text-faint-foreground">{note}</span>}
           {syncing ? <RefreshCw className="size-3.5 shrink-0 animate-spin" /> : live && <LiveDot status={live} />}
           {hidden && (
             <Hint text={t.hiddenFromNetWorth}>

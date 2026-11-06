@@ -59,7 +59,13 @@ Vocabulary:
 - **Percentages** — shown in the app as **Your share** ("Ваша частка"); per portfolio (⋯ → Set your share): `cardPercent` (what the card + its graph show,
   with a "50% of …" line) and `netWorthPercent` (what Net worth counts). Totals and graphs use
   `scaleEntries`; the table and stored entries keep real amounts.
-- **Card order** — portfolio cards are dragged into order (@dnd-kit), saved in `portfolios.position`.
+- **Edit mode** — the pencil left of the period opens it (`edit-cards.tsx`): every card shows at once and wiggles,
+  cards are dragged into order (@dnd-kit, saved in `portfolios.position`), ticked to Delete or Group, or removed
+  with their minus badge. Nothing is saved until Save (`saveLayout` in `convex/data.ts`); Cancel drops it all.
+  Graph, table and floating buttons step aside meanwhile.
+- **Group** — a named stack of 2+ sources (`groups` table, `portfolios.groupId`), sitting where its first source
+  is. Its card shows the sources' total; picking it shows them together in the graph and table, and slides its
+  sources out to its right. A group left with fewer than 2 sources is undone.
 - **Drawer** — the right-side panel (`ui/sheet.tsx`) used for every form. Only short "Delete?"
   confirmations stay as small centered pop-ups.
 
