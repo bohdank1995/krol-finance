@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -464,14 +465,14 @@ function Card({ id, order, sortable, label, hidden, share = 1, netWorthShare, hi
           <span className="truncate">{label}</span>
           {syncing ? <RefreshCw className="size-3.5 shrink-0 animate-spin" /> : live && <LiveDot status={live} />}
           {hidden && (
-            <span title={t.hiddenFromNetWorth} className="shrink-0 text-faint-foreground">
+            <Hint text={t.hiddenFromNetWorth}>
               <CircleMinus className="size-3.5" aria-label={t.hiddenFromNetWorth} />
-            </span>
+            </Hint>
           )}
           {netWorthShare !== undefined && netWorthShare < 100 && (
-            <span title={t.countsInNetWorth(netWorthShare)} className="shrink-0 text-faint-foreground">
+            <Hint text={t.countsInNetWorth(netWorthShare)}>
               <ChartPie className="size-3.5" aria-label={t.countsInNetWorth(netWorthShare)} />
-            </span>
+            </Hint>
           )}
         </span>
         {syncing ? (
@@ -505,6 +506,16 @@ function Card({ id, order, sortable, label, hidden, share = 1, netWorthShare, hi
       </button>
       {menu}
     </div>
+  )
+}
+
+/** A small icon on a card with its explanation in a tooltip. A span, since it sits inside the card's button. */
+function Hint({ text, children }: { text: string; children: ReactNode }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<span className="shrink-0 text-faint-foreground" />}>{children}</TooltipTrigger>
+      <TooltipContent>{text}</TooltipContent>
+    </Tooltip>
   )
 }
 

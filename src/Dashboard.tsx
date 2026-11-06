@@ -5,6 +5,7 @@ import { EntriesTable } from '@/components/entries-table'
 import { Header, PeriodFilter } from '@/components/header'
 import { NET_WORTH, PortfolioCards } from '@/components/portfolio-cards'
 import { Ticker } from '@/components/ticker'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { earnsPassiveIncome, netWorthEntries, netWorthPortfolios, savePeriod, scaleEntries, scalePayouts, setInPassiveIncome, useEntries, useLoaded, usePayouts, usePortfolios } from '@/lib/entries'
 import { fakeEntries, fakePayouts } from '@/lib/fake'
 import { useDailyPrices } from '@/lib/history'
@@ -108,65 +109,67 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
   const toolbar = useMemo(() => <PeriodFilter period={period} onChange={pick} />, [period, pick])
 
   return (
-    <div className="min-h-svh px-6 pb-40 sm:pb-24">
-      <Header email={email} image={image} />
-      <main ref={mainRef} className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-10 sm:mt-6">
-        {!ready ? (
-          <DashboardSkeleton toolbar={toolbar} />
-        ) : (
-          <>
-            <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
-              <PortfolioCards
-                toolbar={toolbar}
-                portfolios={portfolios}
-                entries={entries}
-                prices={prices}
-                daily={daily}
-                currency={currency}
-                range={range}
-                status={status}
-                selected={selected}
-                onSelect={setPicked}
-                readOnly={fake}
-              />
-            </div>
-            {historyReady ? (
-              <div
-                className={cn(
-                  'grid grid-cols-[minmax(0,1fr)] gap-6',
-                  withPassive && 'lg:grid-cols-[minmax(0,1fr)_1px_16rem] lg:gap-8',
-                )}
-              >
-                <div className="animate-enter min-w-0" style={{ animationDelay: '200ms' }}>
-                  <BalanceChart points={points} currency={currency} />
-                </div>
-                {withPassive && (
-                  <>
-                    {/* On phones passive income comes first, above the graph. */}
-                    <div aria-hidden className="animate-enter h-px bg-border max-lg:-order-1 lg:h-auto lg:w-px" style={{ animationDelay: '260ms' }} />
-                    <div className="animate-enter max-lg:-order-2" style={{ animationDelay: '300ms' }}>
-                      <PassiveIncome total={passive.total} parts={parts} currency={currency} onToggle={fake ? undefined : setInPassiveIncome} />
-                    </div>
-                  </>
-                )}
+    <TooltipProvider delay={150}>
+      <div className="min-h-svh px-6 pb-40 sm:pb-24">
+        <Header email={email} image={image} />
+        <main ref={mainRef} className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-10 sm:mt-6">
+          {!ready ? (
+            <DashboardSkeleton toolbar={toolbar} />
+          ) : (
+            <>
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
+                <PortfolioCards
+                  toolbar={toolbar}
+                  portfolios={portfolios}
+                  entries={entries}
+                  prices={prices}
+                  daily={daily}
+                  currency={currency}
+                  range={range}
+                  status={status}
+                  selected={selected}
+                  onSelect={setPicked}
+                  readOnly={fake}
+                />
               </div>
-            ) : (
-              <BalanceChartSkeleton />
-            )}
-            <EntriesTable
-              entries={rows}
-              portfolios={portfolios}
-              prices={prices}
-              portfolioId={selected === NET_WORTH ? undefined : selected}
-              currency={currency}
-              readOnly={fake}
-              filtered={period !== 'all'}
-              view={`${selected}:${JSON.stringify(period)}`}
-            />
-          </>
-        )}
-      </main>
-      {ready && <Ticker prices={prices} assets={live} currency={currency} />}
-    </div>
+              {historyReady ? (
+                <div
+                  className={cn(
+                    'grid grid-cols-[minmax(0,1fr)] gap-6',
+                    withPassive && 'lg:grid-cols-[minmax(0,1fr)_1px_16rem] lg:gap-8',
+                  )}
+                >
+                  <div className="animate-enter min-w-0" style={{ animationDelay: '200ms' }}>
+                    <BalanceChart points={points} currency={currency} />
+                  </div>
+                  {withPassive && (
+                    <>
+                      {/* On phones passive income comes first, above the graph. */}
+                      <div aria-hidden className="animate-enter h-px bg-border max-lg:-order-1 lg:h-auto lg:w-px" style={{ animationDelay: '260ms' }} />
+                      <div className="animate-enter max-lg:-order-2" style={{ animationDelay: '300ms' }}>
+                        <PassiveIncome total={passive.total} parts={parts} currency={currency} onToggle={fake ? undefined : setInPassiveIncome} />
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <BalanceChartSkeleton />
+              )}
+              <EntriesTable
+                entries={rows}
+                portfolios={portfolios}
+                prices={prices}
+                portfolioId={selected === NET_WORTH ? undefined : selected}
+                currency={currency}
+                readOnly={fake}
+                filtered={period !== 'all'}
+                view={`${selected}:${JSON.stringify(period)}`}
+              />
+            </>
+          )}
+        </main>
+        {ready && <Ticker prices={prices} assets={live} currency={currency} />}
+      </div>
+    </TooltipProvider>
   )
 }

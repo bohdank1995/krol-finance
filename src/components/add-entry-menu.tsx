@@ -32,10 +32,10 @@ export function AddEntryMenu({ portfolios, portfolioId, direction, trigger }: Pr
       <DropdownMenu>
         <DropdownMenuTrigger render={trigger} />
         <DropdownMenuContent align="end" className="w-56">
-          {ENTRY_TYPES.map((e) => (
-            <DropdownMenuItem key={e.value} disabled={'soon' in e} onClick={() => setType(e.value)}>
+          {/* Types that aren't ready yet (manual stocks) are left out. */}
+          {ENTRY_TYPES.filter((e) => !('soon' in e)).map((e) => (
+            <DropdownMenuItem key={e.value} onClick={() => setType(e.value)}>
               {t.entryTypes[e.value]}
-              {'soon' in e && <span className="ml-auto text-faint-foreground">{t.soon}</span>}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>

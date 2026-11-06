@@ -127,15 +127,15 @@ function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
  */
 function SheetBar({ title, action, cancel }: { title: React.ReactNode; action?: React.ReactNode; cancel: string }) {
   return (
-    <div className="max-sm:sticky max-sm:top-0 max-sm:z-10 max-sm:-mx-6 max-sm:-mt-6 max-sm:grid max-sm:grid-cols-[1fr_auto_1fr] max-sm:items-center max-sm:gap-2 max-sm:border-b max-sm:bg-popover max-sm:px-3 max-sm:pt-[max(0.5rem,env(safe-area-inset-top))] max-sm:pb-2">
+    <div className="max-sm:sticky max-sm:top-0 max-sm:z-10 max-sm:-mx-6 max-sm:-mt-6 max-sm:grid max-sm:grid-cols-[1fr_auto_1fr] max-sm:items-center max-sm:mb-2 max-sm:gap-2 max-sm:bg-popover max-sm:px-3 max-sm:pt-[max(0.75rem,env(safe-area-inset-top))] max-sm:pb-2">
       <SheetPrimitive.Close
-        render={<Button type="button" variant="ghost" size="sm" className="justify-self-start text-muted-foreground sm:hidden" />}
+        render={<Button type="button" variant="secondary" size="icon" aria-label={cancel} className="justify-self-start sm:hidden" />}
       >
-        {cancel}
+        <XIcon />
       </SheetPrimitive.Close>
       <SheetPrimitive.Title
         data-slot="sheet-title"
-        className="min-w-0 truncate text-sm font-normal text-muted-foreground max-sm:text-center max-sm:font-medium max-sm:text-foreground"
+        className="min-w-0 truncate text-base font-medium text-foreground max-sm:text-center"
       >
         {title}
       </SheetPrimitive.Title>
