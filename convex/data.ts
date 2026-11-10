@@ -100,7 +100,7 @@ export const everything = query({
     ])
     return {
       portfolios: portfolios.map(portfolioView),
-      groups: groups.map((g) => ({ id: g.id, name: g.name })),
+      groups: groups.map((g) => ({ id: g.id, name: g.name, icon: g.icon })),
       entries: entries.map(entryView),
       payouts: payouts.map((r) => ({ id: r.externalId, portfolioId: r.portfolioId, date: r.date, usd: r.usd })),
     }
@@ -175,12 +175,18 @@ export const deletePortfolio = mutation({
   },
 })
 
+/** A group's icon: a logo and a tile colour (`src/components/group-icon.tsx` draws it). */
+const ICON = /^(monobank|ibkr):(brand|pink|orange|yellow|green|blue|violet)$/
+function checkIcon(icon: string | undefined) {
+  if (icon !== undefined && !ICON.test(icon)) throw new ConvexError('Unknown icon.')
+}
+
 /** Saves the cards' edit mode in one go: `order` is every source in display order, `groups` the stacks.
     A group with fewer than 2 sources isn't kept, and groups left out are removed. */
 export const saveLayout = mutation({
   args: {
     order: v.array(v.string()),
-    groups: v.array(v.object({ id: v.string(), name: v.string(), portfolioIds: v.array(v.string()) })),
+    groups: v.array(v.object({ id: v.string(), name: v.string(), icon: v.optional(v.string()), portfolioIds: v.array(v.string()) })),
   },
   handler: async (ctx, { order, groups }) => {
     const userId = await signedIn(ctx)
@@ -194,12 +200,13 @@ export const saveLayout = mutation({
     for (const g of groups) {
       if (g.portfolioIds.length < 2) continue
       short(g.name, 100, 'name')
+      checkIcon(g.icon)
       const own = existing.find((e) => e.id === g.id)
       if (own) {
-        if (own.name !== g.name) await ctx.db.patch(own._id, { name: g.name })
+        if (own.name !== g.name || own.icon !== g.icon) await ctx.db.patch(own._id, { name: g.name, icon: g.icon })
       } else {
         await freshId(ctx, 'groups', g.id)
-        await ctx.db.insert('groups', { id: g.id, userId, name: g.name })
+        await ctx.db.insert('groups', { id: g.id, userId, name: g.name, icon: g.icon })
       }
       kept.add(g.id)
       for (const id of g.portfolioIds) memberOf.set(id, g.id)
@@ -215,14 +222,15 @@ export const saveLayout = mutation({
 
 /** Stacks these sources into a new group (connecting several Monobank cards at once). */
 export const createGroup = mutation({
-  args: { id: v.string(), name: v.string(), portfolioIds: v.array(v.string()) },
-  handler: async (ctx, { id, name, portfolioIds }) => {
+  args: { id: v.string(), name: v.string(), icon: v.optional(v.string()), portfolioIds: v.array(v.string()) },
+  handler: async (ctx, { id, name, icon, portfolioIds }) => {
     const userId = await signedIn(ctx)
     if (portfolioIds.length < 2 || portfolioIds.length > 500) throw new ConvexError('A group needs 2 or more sources.')
     short(name, 100, 'name')
+    checkIcon(icon)
     await freshId(ctx, 'groups', id)
     const members = await Promise.all(portfolioIds.map((p) => ownPortfolio(ctx, userId, p)))
-    await ctx.db.insert('groups', { id, userId, name })
+    await ctx.db.insert('groups', { id, userId, name, icon })
     for (const p of members) await ctx.db.patch(p._id, { groupId: id })
   },
 })

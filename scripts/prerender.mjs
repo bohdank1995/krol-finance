@@ -12,8 +12,10 @@ const template = readFileSync('dist/index.html', 'utf8')
   .replace('<!--seo-->', `<link rel="preload" href="/assets/${font}" as="font" type="font/woff2" crossorigin /><!--seo-->`)
 const escape = (text) => text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
 
-function html(body, { title, description, head = '' }) {
+// The home page is Ukrainian; the other public pages are English.
+function html(body, { title, description, head = '', lang = 'en' }) {
   return template
+    .replace(/<html lang="[^"]*"/, `<html lang="${lang}"`)
     .replace(/<title>.*<\/title>/, `<title>${escape(title)}</title>`)
     .replace(/(<meta\s+name="description"\s+content=")[^"]*"/, `$1${escape(description)}"`)
     .replace('<!--seo-->', head)
@@ -26,7 +28,7 @@ for (const page of PAGES) {
     .join('')
   const file = page.path === '/' ? 'dist/index.html' : join('dist', `${page.path}.html`)
   mkdirSync(dirname(file), { recursive: true })
-  let out = html(render(page.path), { ...page, head: `<link rel="canonical" href="${canonicalOf(page)}" />${data}` })
+  let out = html(render(page.path), { ...page, lang: page.path === '/' ? 'uk' : 'en', head: `<link rel="canonical" href="${canonicalOf(page)}" />${data}` })
   // Returning users see the loading screen at once instead of the home page (see index.html).
   if (page.path === '/') out = out.replace('<template id="loading"></template>', () => `<template id="loading">${renderLoading()}</template>`)
   writeFileSync(file, out)

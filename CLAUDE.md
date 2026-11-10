@@ -54,8 +54,12 @@ Vocabulary:
   interest" row). The rows add up to the passive income number. Opens by default.
 - **Display currency** — USD / EUR / UAH switch in the user popover; values convert via the currency's own
   Binance price. Saved per browser in `src/lib/preferences.ts`.
-- **Language** — Ukrainian (default) / English switch in the user popover. Texts live in `src/lib/i18n.ts`
-  (`useT()`); the choice is saved on the account (`language` on the Convex user). The sign-in page stays English.
+- **Language** — Ukrainian (default) / English. Ukrainian unless the browser's first language is English (no Russian);
+  a pick on the home page's UA / EN switch is remembered in the browser, and once signed in the account's saved choice
+  wins (`language` on the Convex user; a new account gets the language it signed up in). Rule and store: `src/lib/language.ts`
+  (also mirrored by an early script in `index.html`, so English visitors never see the Ukrainian first). App texts live in
+  `src/lib/i18n.ts` (`useT()`), home page texts in `src/content/landing.ts`. The home page is built in Ukrainian; FAQ,
+  Privacy and Terms are English only.
 - **Fake numbers** — toggle in the user menu: every portfolio's entries are scaled by a random
   factor (`src/lib/fake.ts`) and the app becomes read-only, so screenshots are safe to share.
 - **Not included in Net Worth** ("Do not include in Net Worth" in the menu) — a portfolio's ⋯ menu can leave it out of Net worth (card, graph and table);
@@ -70,7 +74,8 @@ Vocabulary:
 - **Card order** — cards are dragged (@dnd-kit, `reorder.tsx`) in the dashboard row and in edit mode: a green
   line shows where a card lands; the move rules are in `src/lib/layout.ts`. Saved in `portfolios.position`.
 - **Group** — a named stack of 2+ sources (`groups` table, `portfolios.groupId`), sitting where its first source
-  is. Its card shows the sources' total; picking it shows them together in the graph and table, and slides its
+  is. It can have an **icon** left of its name: a coloured tile with the Monobank or IBKR logo (`groups.icon`,
+  `monobank:violet`; `group-icon.tsx`), picked in its Edit group drawer or in edit mode; colours are `--tile-*` tokens. Its card shows the sources' total; picking it shows them together in the graph and table, and slides its
   sources out to its right. A group left with fewer than 2 sources is undone.
 - **Drawer** — the right-side panel (`ui/sheet.tsx`) used for every form. Only short "Delete?"
   confirmations stay as small centered pop-ups.

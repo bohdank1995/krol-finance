@@ -32,6 +32,7 @@ import { tidy } from '@/lib/layout'
 import { balance } from '@/lib/portfolio'
 import type { Currency } from '@/lib/preferences'
 import { cn } from '@/lib/utils'
+import { GroupIconPicker } from './group-icon'
 import { DragPreview, DropLine, Reorder, useDragged, useDropSide } from './reorder'
 
 /* The cards' edit mode, like rearranging apps on an iPhone: every source is shown at once and wiggles,
@@ -124,8 +125,9 @@ export function EditCards({ portfolios, groups, entries, prices, currency, onDon
       ),
     )
 
-  const rename = (id: string, name: string) =>
-    setItems((all) => all.map((i) => (i.kind === 'group' && i.group.id === id ? { ...i, group: { ...i.group, name } } : i)))
+  /** Changes a group's name or icon. */
+  const rename = (id: string, change: { name?: string; icon?: string | undefined }) =>
+    setItems((all) => all.map((i) => (i.kind === 'group' && i.group.id === id ? { ...i, group: { ...i.group, ...change } } : i)))
 
   const save = () => {
     for (const id of deleted) deletePortfolio(id)
@@ -256,7 +258,7 @@ function GroupBlock({
   item: GroupItem
   /** Cards per row in the grid around it: the group is as wide as its cards, up to a full row. */
   columns: number
-  onRename: (id: string, name: string) => void
+  onRename: (id: string, change: { name?: string; icon?: string | undefined }) => void
   onUngroup: (id: string) => void
   children: React.ReactNode
 }) {
@@ -285,11 +287,12 @@ function GroupBlock({
         >
           <GripVertical className="size-4" />
         </button>
+        <GroupIconPicker value={item.group.icon} onChange={(icon) => onRename(item.group.id, { icon })} />
         <Input
           aria-label={t.groupName}
           value={item.group.name}
           maxLength={100}
-          onChange={(e) => onRename(item.group.id, e.target.value)}
+          onChange={(e) => onRename(item.group.id, { name: e.target.value })}
           className="h-9 w-auto max-w-64 min-w-16 border-transparent bg-transparent px-1.5 font-medium field-sizing-content hover:border-input dark:bg-transparent"
         />
         <span className="text-xs text-faint-foreground">{t.sourcesCount(item.members.length)}</span>

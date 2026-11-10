@@ -40,6 +40,7 @@ import { balance, series, valueOn } from '@/lib/portfolio'
 import type { Currency } from '@/lib/preferences'
 import type { PriceStatus } from '@/lib/prices'
 import { cn } from '@/lib/utils'
+import { GroupIcon } from '@/components/group-icon'
 import monobankLogo from '@/assets/monobank.svg'
 import ibkrLogo from '@/assets/ibkr.svg'
 import { FAB, FAB_BAR } from './add-entry-menu'
@@ -207,9 +208,9 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
   // Cards fade in one after another, left to right.
   let order = 0
   const items = rowItems(portfolios, groups)
-  /** Renames a group, or turns its sources back into single sources where it was (like edit mode does). */
-  const renameGroup = (id: string, name: string) =>
-    saveLayout(items.map((i) => (i.kind === 'group' && i.group.id === id ? { ...i, group: { ...i.group, name } } : i)))
+  /** Renames a group or changes its icon, or turns its sources back into single sources where it was (like edit mode does). */
+  const editGroup = (id: string, name: string, icon: string | undefined) =>
+    saveLayout(items.map((i) => (i.kind === 'group' && i.group.id === id ? { ...i, group: { ...i.group, name, icon } } : i)))
   const ungroup = (id: string) => {
     if (selected === id) onSelect(NET_WORTH)
     saveLayout(
@@ -392,6 +393,7 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
                     draggable={!readOnly}
                     order={++order}
                     label={item.group.name}
+                    icon={item.group.icon}
                     stack={!isOpen(item)}
                     note={t.sourcesCount(item.members.length)}
                     entries={item.members.flatMap((m) => scaled.get(m.id) ?? [])}
@@ -491,7 +493,7 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
       <PortfolioDrawer
         open={!!renamingGroup}
         onOpenChange={(open) => !open && setRenamingGroup(undefined)}
-        group={renamingGroup && { name: renamingGroup.name, onRename: (name) => renameGroup(renamingGroup.id, name) }}
+        group={renamingGroup && { name: renamingGroup.name, icon: renamingGroup.icon, onSave: (name, icon) => editGroup(renamingGroup.id, name, icon) }}
       />
       <PortfolioDrawer
         open={!!renaming}
@@ -539,6 +541,8 @@ type CardProps = Valuation & {
   /** Place in the row: the cards fade in one after another, left to right. */
   order: number
   label: string
+  /** A group's icon (`group-icon.tsx`), shown left of the label. */
+  icon?: string
   /** A group's card: true draws two cards peeking out on its right (closed), false tucks them away (open). */
   stack?: boolean
   /** A short grey line under the label, e.g. "3 sources" on a group. */
@@ -568,7 +572,7 @@ type CardProps = Valuation & {
 
 const dayBefore = (day: string) => new Date(Date.parse(`${day}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
 
-function Card({ id, order, label, stack, note, folded, draggable = false, hidden, share = 1, netWorthShare, hint, syncing, message, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
+function Card({ id, order, label, icon, stack, note, folded, draggable = false, hidden, share = 1, netWorthShare, hint, syncing, message, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
   const t = useT()
   const points = useMemo(() => series(entries, daily, prices, currency), [entries, daily, prices, currency])
   const today = new Date().toISOString().slice(0, 10)
@@ -631,6 +635,7 @@ function Card({ id, order, label, stack, note, folded, draggable = false, hidden
         )}
       >
         <span className="flex items-center gap-2 pr-10 text-sm text-muted-foreground">
+          <GroupIcon icon={icon} />
           <span className="truncate">{label}</span>
           {note && <span className="shrink-0 text-xs text-faint-foreground">{note}</span>}
           {syncing ? <RefreshCw className="size-3.5 shrink-0 animate-spin" /> : live && <LiveDot status={live} />}

@@ -101,7 +101,7 @@ function MonobankFlow({ onCreated, onDone }: { onCreated?: (id: string) => void;
       run(async () => {
         const chosen = cards.filter((c) => picked.has(c.id))
         const ids = await connectMonobankCards(chosen.map((c) => ({ accountId: c.id, name: `Mono ${cardLabel(c)}` })))
-        if (grouped && ids.length > 1) onCreated?.(createGroup(groupName.trim() || 'Monobank', ids))
+        if (grouped && ids.length > 1) onCreated?.(createGroup(groupName.trim() || 'Monobank', ids, 'monobank:brand'))
         else if (ids[0]) onCreated?.(ids[0])
         onDone()
       })

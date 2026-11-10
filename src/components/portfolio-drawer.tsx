@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Field } from '@/components/field'
+import { GroupIconPicker } from '@/components/group-icon'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -17,12 +18,12 @@ type Props = {
   onOpenChange: (open: boolean) => void
   /** When set, the drawer only renames this portfolio. */
   portfolio?: Portfolio
-  /** When set, the drawer only renames this group, saving the name with `onRename`. */
-  group?: { name: string; onRename: (name: string) => void }
+  /** When set, the drawer edits this group's name and icon, saving them with `onSave`. */
+  group?: { name: string; icon?: string; onSave: (name: string, icon: string | undefined) => void }
   onCreated?: (id: string) => void
 }
 
-/** Right-side drawer to create a portfolio (just a name), or rename one or a group. */
+/** Right-side drawer to create a portfolio (just a name), rename one, or edit a group's icon and name. */
 export function PortfolioDrawer({ open, onOpenChange, ...rest }: Props) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -42,12 +43,13 @@ function PortfolioForm({
 }: Omit<Props, 'open' | 'onOpenChange'> & { onDone: () => void }) {
   const t = useT()
   const [name, setName] = useState(group?.name ?? portfolio?.name ?? '')
+  const [icon, setIcon] = useState(group?.icon)
   const valid = !!name.trim()
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!valid) return
-    if (group) group.onRename(name.trim())
+    if (group) group.onSave(name.trim(), icon)
     else if (portfolio) renamePortfolio(portfolio.id, name.trim())
     else onCreated?.(addPortfolio(name.trim()))
     onDone()
@@ -64,13 +66,15 @@ function PortfolioForm({
       <SheetBar title={group ? t.renameGroup : portfolio ? t.renamePortfolio : t.newPortfolio} action={action('sm')} cancel={t.cancel} />
 
       <Field label={group ? t.groupName : t.name}>
-        <Input
-          autoFocus
-          autoComplete="off"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="h-12"
-        />
+        {group ? (
+          // The icon sits inline, left of the name.
+          <div className="flex items-center gap-2">
+            <GroupIconPicker value={icon} onChange={setIcon} className="size-12 rounded-lg border-input" />
+            <Input autoFocus autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} className="h-12" />
+          </div>
+        ) : (
+          <Input autoFocus autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} className="h-12" />
+        )}
       </Field>
 
       <SheetFooter>

@@ -29,9 +29,10 @@ export const hasBlog = articles.length > 0
 export const PAGES: Page[] = [
   {
     path: '/',
-    title: 'Koshel · Track your net worth and passive income',
+    // In Ukrainian, like the page itself (English visitors get it redrawn in English).
+    title: 'Koshel · Облік капіталу та пасивного доходу',
     description:
-      'Koshel is a personal finance tracker: add cash, crypto and stocks, connect Monobank cards and Interactive Brokers, and see your net worth over time.',
+      'Koshel — трекер особистих фінансів: додавайте готівку, криптовалюту й акції, підключайте картки Monobank та Interactive Brokers і стежте за капіталом.',
     crumbs: [],
     data: [
       { '@context': 'https://schema.org', '@type': 'WebSite', name: NAME, url: url('/') },
