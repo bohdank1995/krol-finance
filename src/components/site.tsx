@@ -3,10 +3,12 @@ import { Legal } from '@/components/legal'
 import { Landing } from '@/components/landing'
 import { articles, AUTHOR } from '@/content/articles'
 import { FAQ } from '@/content/faq'
+import { LANDING } from '@/content/landing'
+import type { Language } from '@/lib/language'
 import { hasBlog, pageAt } from '@/lib/site'
 
 /* The public pages around the app: FAQ, blog, "not found", and the footer and breadcrumbs they share.
-   English only, like the home page. Plain links: every page is its own ready-made HTML file. */
+   English only; the home page is Ukrainian or English (`landing.tsx`). Plain links: every page is its own ready-made HTML file. */
 
 export function Breadcrumbs({ path }: { path: string }) {
   const crumbs = pageAt(path)?.crumbs ?? []
@@ -30,12 +32,14 @@ export function Breadcrumbs({ path }: { path: string }) {
   )
 }
 
-export function SiteFooter() {
+/** The links under every public page; the home page passes its language, the rest are English. */
+export function SiteFooter({ language = 'en' }: { language?: Language }) {
+  const t = LANDING[language].footer
   const links = [
-    { href: '/faq', label: 'FAQ' },
-    ...(hasBlog ? [{ href: '/blog', label: 'Blog' }] : []),
-    { href: '/privacy', label: 'Privacy' },
-    { href: '/terms', label: 'Terms' },
+    { href: '/faq', label: t.faq },
+    ...(hasBlog ? [{ href: '/blog', label: t.blog }] : []),
+    { href: '/privacy', label: t.privacy },
+    { href: '/terms', label: t.terms },
     { href: 'mailto:hello@koshel.me', label: 'hello@koshel.me' },
   ]
   return (

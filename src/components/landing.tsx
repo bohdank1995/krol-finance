@@ -1,9 +1,24 @@
-import dashboardSmall from '@/assets/landing-dashboard-768.webp'
-import dashboardMedium from '@/assets/landing-dashboard-1440.webp'
-import dashboard from '@/assets/landing-dashboard.webp'
-import logo from '@/assets/koshel-logo.svg'
+import desktopEn768 from '@/assets/landing-desktop-en-768.webp'
+import desktopEn1440 from '@/assets/landing-desktop-en-1440.webp'
+import desktopEn2880 from '@/assets/landing-desktop-en-2880.webp'
+import desktopUk768 from '@/assets/landing-desktop-uk-768.webp'
+import desktopUk1440 from '@/assets/landing-desktop-uk-1440.webp'
+import desktopUk2880 from '@/assets/landing-desktop-uk-2880.webp'
+import phoneEn from '@/assets/landing-phone-en.webp'
+import phoneUk from '@/assets/landing-phone-uk.webp'
+import { useEffect } from 'react'
+import { Bar } from '@/components/app-shell'
 import { SiteFooter } from '@/components/site'
 import { Button } from '@/components/ui/button'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { LANDING } from '@/content/landing'
+import { applyLanguage, currentLanguage, LANGUAGES, useLanguage, type Language } from '@/lib/language'
+
+/** The app in each language (fake numbers, neutral names): a 1440×900 desktop at three widths, and an iPhone at 3×. */
+const PREVIEW: Record<Language, { desktop: [string, string, string]; phone: string }> = {
+  uk: { desktop: [desktopUk768, desktopUk1440, desktopUk2880], phone: phoneUk },
+  en: { desktop: [desktopEn768, desktopEn1440, desktopEn2880], phone: phoneEn },
+}
 
 function GoogleIcon() {
   return (
@@ -15,58 +30,89 @@ function GoogleIcon() {
 
 /** The home page itself, without sign-in logic: it's also rendered ahead of time for search engines. */
 export function Landing({ onGoogle, busy, error }: { onGoogle?: () => void; busy?: boolean; error?: string }) {
+  const language = useLanguage()
+  const t = LANDING[language]
+  const preview = PREVIEW[language]
+  useEffect(() => {
+    // Hydrated in Ukrainian first; once the visitor's language is on screen, show the page (index.html hid it).
+    if (language !== currentLanguage()) return
+    document.title = t.title
+    delete document.documentElement.dataset.relang
+  }, [language, t.title])
+
   return (
-    <main className="flex min-h-svh flex-col items-center gap-14 overflow-x-clip px-4 pt-16 pb-10 sm:pt-24">
-      {/* The home page for visitors (and Google's app review): what Koshel is for, sign-in, a look at the app. */}
-      <div className="flex max-w-xl flex-col items-center gap-6 text-center">
-        <span
-          role="img"
-          aria-label="Koshel"
-          style={{ maskImage: `url(${logo})`, WebkitMaskImage: `url(${logo})` }}
-          className="aspect-958/370 h-14 bg-foreground mask-contain mask-no-repeat"
+    <main className="flex min-h-svh flex-col items-center gap-14 overflow-x-clip px-4 pb-10">
+      {/* The same top bar as the app: the logo on the left, the language on the right. */}
+      <div className="w-full px-2">
+        <Bar
+          account={
+            <ToggleGroup
+              size="sm"
+              spacing={0}
+              aria-label={t.language}
+              value={[language]}
+              // Clicking the already-chosen one would empty the group: keep it.
+              onValueChange={(v: string[]) => v[0] && applyLanguage(v[0] as Language, { remember: true })}
+              className="font-mono"
+            >
+              {LANGUAGES.map((l) => (
+                <ToggleGroupItem key={l.value} value={l.value} lang={l.value} className="px-2 text-xs text-muted-foreground aria-pressed:text-foreground">
+                  {l.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          }
         />
-        <h1 className="text-3xl font-medium text-balance text-foreground sm:text-5xl">Make financial freedom real</h1>
+      </div>
+      {/* The home page for visitors (and Google's app review): what Koshel is for, sign-in, a look at the app. */}
+      <div className="flex max-w-xl flex-col items-center gap-6 pt-4 text-center sm:pt-12">
+        <h1 className="text-3xl font-medium text-balance text-foreground sm:text-5xl">{t.headline}</h1>
         <p className="max-w-md text-base text-balance text-muted-foreground">
-          A finance tracker designed to show your passive income — and encourage you to grow it.
+          {t.subline}
         </p>
         <div className="flex w-full max-w-xs flex-col gap-3">
           <Button onClick={onGoogle} disabled={busy} className="h-12 gap-2">
             <GoogleIcon />
-            Continue with Google
+            {t.google}
           </Button>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <p className="text-xs text-muted-foreground">
-            By continuing you agree to the{' '}
+            {t.terms[0]}
             <a href="/terms" className="underline underline-offset-4 hover:text-foreground">
-              Terms
-            </a>{' '}
-            and{' '}
+              {t.terms[1]}
+            </a>
+            {t.terms[2]}
             <a href="/privacy" className="underline underline-offset-4 hover:text-foreground">
-              Privacy policy
+              {t.terms[3]}
             </a>
             .
           </p>
         </div>
       </div>
 
-      {/* The dashboard (fake numbers, neutral names), cut off below the graph and fading into the page. */}
-      <div className="relative w-full max-w-5xl">
-        <div className="overflow-hidden rounded-t-xl border border-b-0 border-border shadow-[0_24px_80px_-12px_rgb(0_0_0/0.7)]">
-          <img
-            src={dashboard}
-            srcSet={`${dashboardSmall} 768w, ${dashboardMedium} 1440w, ${dashboard} 2880w`}
-            sizes="(min-width: 1056px) 1024px, calc(100vw - 2rem)"
-            width={2880}
-            height={1236}
-            fetchPriority="high"
-            alt="The Koshel dashboard: your sources, a net worth graph and passive income"
-            className="h-auto w-full"
-          />
+      {/* The app, cut off above (its own logo and avatar bar would repeat ours) and below the graph, fading into the page:
+          the desktop on wider screens, a phone on phones. The image is pulled up by the bar's height (72 of 393 points on
+          the phone, 80 of 1440 on desktop; margins in % follow the width). */}
+      <div className="relative w-full max-w-[300px] sm:max-w-7xl">
+        <div className="aspect-[393/628] overflow-hidden rounded-t-[2.5rem] border border-b-0 border-border shadow-[0_24px_80px_-12px_rgb(0_0_0/0.7)] sm:aspect-[1440/580] sm:rounded-t-xl">
+          <picture>
+            <source media="(max-width: 639px)" srcSet={preview.phone} width={1179} height={2556} />
+            <img
+              src={preview.desktop[2]}
+              srcSet={`${preview.desktop[0]} 768w, ${preview.desktop[1]} 1440w, ${preview.desktop[2]} 2880w`}
+              sizes="(min-width: 1312px) 1280px, calc(100vw - 2rem)"
+              width={2880}
+              height={1800}
+              fetchPriority="high"
+              alt={t.desktopAlt}
+              className="-mt-[18.32%] h-auto w-full sm:-mt-[5.556%]"
+            />
+          </picture>
         </div>
         <div aria-hidden className="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-b from-transparent to-background" />
       </div>
 
-      <SiteFooter />
+      <SiteFooter language={language} />
     </main>
   )
 }

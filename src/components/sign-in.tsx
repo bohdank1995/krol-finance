@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Landing } from '@/components/landing'
+import { LANDING } from '@/content/landing'
 import { trackGoogleButtonClicked } from '@/lib/analytics'
 import { useSignInWithGoogle } from '@/lib/auth'
+import { currentLanguage } from '@/lib/language'
 
 export function SignIn() {
   const [busy, setBusy] = useState(false)
@@ -18,7 +20,7 @@ export function SignIn() {
     } catch (e) {
       console.error(e)
       setBusy(false)
-      setError('Could not sign in with Google. Try again.')
+      setError(LANDING[currentLanguage()].signInFailed)
     }
   }
 

@@ -37,6 +37,7 @@
     --color-primary-foreground: var(--primary-foreground);
     --color-primary: var(--primary);
     --color-brand: var(--brand);
+    --color-tile-foreground: var(--tile-foreground);
     --color-popover-foreground: var(--popover-foreground);
     --color-popover: var(--popover);
     --color-card-foreground: var(--card-foreground);
@@ -81,6 +82,17 @@
     --chart-3: oklch(0.66 0.09 235);
     --chart-4: oklch(0.6 0.07 265);
     --chart-5: oklch(0.5 0.03 250);
+    /* Group icon tiles (`group-icon.tsx`): the logo is drawn in --tile-foreground on one of these.
+       "monobank" / "ibkr" are each logo's own colour. */
+    --tile-foreground: oklch(0.99 0 0);
+    --tile-monobank: oklch(0.13 0.004 250);
+    --tile-ibkr: oklch(0.55 0.21 27);
+    --tile-pink: oklch(0.64 0.2 355);
+    --tile-orange: oklch(0.7 0.17 50);
+    --tile-yellow: oklch(0.78 0.15 85);
+    --tile-green: oklch(0.62 0.15 155);
+    --tile-blue: oklch(0.6 0.16 250);
+    --tile-violet: oklch(0.58 0.18 295);
     --radius: 0.5rem;
     --sidebar: oklch(0.19 0.005 250);
     --sidebar-foreground: oklch(0.93 0.004 250);

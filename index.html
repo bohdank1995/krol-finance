@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="uk" class="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -9,9 +9,28 @@
     <title>Koshel</title>
     <meta
       name="description"
-      content="Koshel is a personal finance tracker: add cash, crypto and stocks, connect Monobank cards and Interactive Brokers, and see your net worth over time."
+      content="Koshel — трекер особистих фінансів: додавайте готівку, криптовалюту й акції, підключайте картки Monobank та Interactive Brokers і стежте за капіталом."
     />
     <!--seo-->
+    <!-- The home page is written in Ukrainian. English visitors (English browser, or English picked before) get
+         it hidden until the app has redrawn it in English, so they never see the Ukrainian first. Same rule
+         as detectLanguage in src/lib/language.ts. -->
+    <style>html[data-relang] #root { visibility: hidden }</style>
+    <script>
+      try {
+        // Not for returning users: they get the loading screen, then the app (see below).
+        const returning = location.search.includes('code=') || Object.keys(localStorage).some((k) => k.startsWith('__convexAuthJWT'))
+        if (location.pathname === '/' && !returning) {
+          const saved = localStorage.getItem('koshel.language')
+          const first = (navigator.languages && navigator.languages[0]) || navigator.language || ''
+          if ((saved || (/^en\b/i.test(first) ? 'en' : 'uk')) === 'en') {
+            document.documentElement.lang = 'en'
+            document.documentElement.dataset.relang = ''
+            setTimeout(() => delete document.documentElement.dataset.relang, 4000)
+          }
+        }
+      } catch {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

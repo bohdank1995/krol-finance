@@ -40,7 +40,8 @@ export type Portfolio = {
 }
 
 /** A named stack of sources, made in the cards' edit mode. Its card shows their total. */
-export type Group = { id: string; name: string }
+/** `icon` is `<logo>:<colour>` (see `group-icon.tsx`), unset for none. */
+export type Group = { id: string; name: string; icon?: string }
 
 /** One place in the cards row: a single source, or a group with its sources (2 or more). */
 export type RowItem = { kind: 'source'; portfolio: Portfolio } | { kind: 'group'; group: Group; members: Portfolio[] }
@@ -259,11 +260,11 @@ export function reorderPortfolios(ids: string[]) {
 /** Saves the edit mode's result: the new order, and the groups (new, renamed, emptied). */
 export function saveLayout(items: RowItem[]) {
   const order = items.flatMap((i) => (i.kind === 'source' ? [i.portfolio.id] : i.members.map((m) => m.id)))
-  const groups = items.flatMap((i) => (i.kind === 'group' ? [{ id: i.group.id, name: i.group.name, portfolioIds: i.members.map((m) => m.id) }] : []))
+  const groups = items.flatMap((i) => (i.kind === 'group' ? [{ id: i.group.id, name: i.group.name, icon: i.group.icon, portfolioIds: i.members.map((m) => m.id) }] : []))
   const memberOf = new Map(groups.flatMap((g) => g.portfolioIds.map((id) => [id, g.id] as const)))
   save(api.data.saveLayout, { order, groups }, (d) => ({
     ...d,
-    groups: groups.map(({ id, name }) => ({ id, name })),
+    groups: groups.map(({ id, name, icon }) => ({ id, name, icon })),
     portfolios: d.portfolios.map((p) =>
       order.includes(p.id) ? { ...p, position: order.indexOf(p.id), groupId: memberOf.get(p.id) } : p,
     ),
@@ -271,11 +272,11 @@ export function saveLayout(items: RowItem[]) {
 }
 
 /** Stacks these sources into a new group. Returns the group's id. */
-export function createGroup(name: string, portfolioIds: string[]) {
+export function createGroup(name: string, portfolioIds: string[], icon?: string) {
   const id = crypto.randomUUID()
-  save(api.data.createGroup, { id, name, portfolioIds }, (d) => ({
+  save(api.data.createGroup, { id, name, icon, portfolioIds }, (d) => ({
     ...d,
-    groups: [...d.groups, { id, name }],
+    groups: [...d.groups, { id, name, icon }],
     portfolios: d.portfolios.map((p) => (portfolioIds.includes(p.id) ? { ...p, groupId: id } : p)),
   }))
   return id

@@ -132,6 +132,8 @@ export default defineSchema({
     id: v.string(),
     userId: v.id('users'),
     name: v.string(),
+    /** The tile left of its name: `<logo>:<colour>`, like `monobank:red` (see `ICON` in data.ts). None when unset. */
+    icon: v.optional(v.string()),
   })
     .index('by_app_id', ['id'])
     .index('by_user', ['userId']),

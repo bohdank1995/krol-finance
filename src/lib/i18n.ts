@@ -1,21 +1,15 @@
-import { useSyncExternalStore } from 'react'
 import type { EntryType } from './assets'
 import type { Preset, Unit } from './period'
+import type { Colour } from '@/components/group-icon'
 import { api } from '../../convex/_generated/api'
 import { convex } from './convex'
+import { applyLanguage, currentLanguage, isLanguage, useLanguage, type Language } from './language'
 
-/* App language. Ukrainian by default; the user's pick is saved on their account
-   (the `language` field of their Convex user), so it follows them to every device. The sign-in page
-   stays in English and doesn't use this. */
+/* App texts in both languages. Which one shows is decided in `language.ts` (Ukrainian unless the browser is
+   English, or this browser's pick on the home page); once signed in, the account's saved language wins
+   (the `language` field of their Convex user), so it follows them to every device. */
 
-export const LANGUAGES = [
-  { value: 'uk', label: 'UA' },
-  { value: 'en', label: 'EN' },
-] as const
-export type Language = (typeof LANGUAGES)[number]['value']
-
-const DEFAULT: Language = 'uk'
-const isLanguage = (v: unknown): v is Language => LANGUAGES.some((l) => l.value === v)
+export { LANGUAGES, useLanguage, type Language } from './language'
 
 const en = {
   cancel: 'Cancel',
@@ -159,7 +153,18 @@ const en = {
   },
 
   renamePortfolio: 'Rename source',
-  renameGroup: 'Rename group',
+  renameGroup: 'Edit group',
+  groupIcon: 'Group icon',
+  noIcon: 'No icon',
+  colours: {
+    brand: 'brand colour',
+    pink: 'pink',
+    orange: 'orange',
+    yellow: 'yellow',
+    green: 'green',
+    blue: 'blue',
+    violet: 'violet',
+  } satisfies Record<Colour, string>,
   groupActions: (name: string) => `Actions for ${name}`,
   newPortfolio: 'New source',
 
@@ -368,7 +373,18 @@ const uk: Dictionary = {
   },
 
   renamePortfolio: 'Перейменувати джерело',
-  renameGroup: 'Перейменувати групу',
+  renameGroup: 'Редагувати групу',
+  groupIcon: 'Іконка групи',
+  noIcon: 'Без іконки',
+  colours: {
+    brand: 'фірмовий колір',
+    pink: 'рожевий',
+    orange: 'помаранчевий',
+    yellow: 'жовтий',
+    green: 'зелений',
+    blue: 'синій',
+    violet: 'фіолетовий',
+  },
   groupActions: (name) => `Дії з ${name}`,
   newPortfolio: 'Нове джерело',
 
@@ -422,16 +438,8 @@ const uk: Dictionary = {
 
 const DICTIONARIES: Record<Language, Dictionary> = { en, uk }
 
-const listeners = new Set<() => void>()
-let current: Language = DEFAULT
-
-function apply(language: Language) {
-  current = language
-  document.documentElement.lang = language
-  listeners.forEach((l) => l())
-}
-
-// The signed-in user's saved language; signing out goes back to the default.
+// The signed-in user's saved language. A user without one (new account) keeps what they had before signing
+// in, and it's saved for them. Signing out keeps the language on screen.
 const me = convex.watchQuery(api.users.me, {})
 me.onUpdate(() => {
   let user
@@ -440,30 +448,20 @@ me.onUpdate(() => {
   } catch {
     return
   }
-  if (user === undefined) return // still loading
-  const next = isLanguage(user?.language) ? user.language : DEFAULT
-  if (next !== current) apply(next)
-  // The sign-in page is English.
-  if (!user) document.documentElement.lang = 'en'
+  if (!user) return // still loading, or signed out
+  if (isLanguage(user.language)) applyLanguage(user.language, { remember: true })
+  else setLanguage(currentLanguage())
 })
-
-function subscribe(listener: () => void) {
-  listeners.add(listener)
-  return () => {
-    listeners.delete(listener)
-  }
-}
-
-export const useLanguage = () => useSyncExternalStore(subscribe, () => current)
 
 /** The texts in the current language; re-renders when it changes. */
 export const useT = () => DICTIONARIES[useLanguage()]
 
 /** The texts outside React (formatting, error messages). */
-export const dict = () => DICTIONARIES[current]
+export const dict = () => DICTIONARIES[currentLanguage()]
 
-/** Switches instantly, then saves it on the account; switches back if saving fails. */
+/** Switches instantly and remembers it in this browser, then saves it on the account. */
 export function setLanguage(language: Language) {
+  applyLanguage(language, { remember: true })
   convex
     .mutation(
       api.users.setLanguage,
