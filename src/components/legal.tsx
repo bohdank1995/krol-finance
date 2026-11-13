@@ -57,11 +57,13 @@ function Privacy() {
           </li>
         </ul>
         <p>
-          We don’t use advertising or tracking cookies. We do count anonymous usage with PostHog: which pages are
-          visited, where visitors came from, when someone starts and finishes signing in, and when a new account is
-          created.
-          It isn’t linked to your account and never includes your name, email, amounts, assets or source names.
-          PostHog uses your IP address and browser details to tell visits apart, and we don’t record your screen.
+          We don’t use advertising or tracking cookies. We count usage with PostHog: which pages are visited, where
+          visitors came from, when someone starts and finishes signing in, when a new account is created, and when
+          you open your dashboard, with how many of your assets hold at least one transaction.
+          Before you sign in, it’s anonymous. After you sign in, these events carry a random-looking ID made from
+          your account, so we can see whether people keep coming back. It never includes your name, email,
+          amounts, assets or source names. PostHog uses your IP address and browser details to tell visits apart,
+          and we don’t record your screen.
         </p>
       </Section>
 
@@ -88,7 +90,7 @@ function Privacy() {
           <li>Convex: stores your data and runs Koshel’s server.</li>
           <li>Vercel: hosts the website.</li>
           <li>Google: sign-in.</li>
-          <li>PostHog: anonymous usage statistics.</li>
+          <li>PostHog: usage statistics, without your name, email or amounts.</li>
           <li>Monobank and Interactive Brokers: read with the tokens you give, only if you connect them.</li>
           <li>
             Binance and Yahoo Finance: public prices. Your browser connects to Binance directly; Yahoo Finance only

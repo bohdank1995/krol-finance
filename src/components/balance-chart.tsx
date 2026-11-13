@@ -15,7 +15,15 @@ import type { Currency } from '@/lib/preferences'
 import { cn } from '@/lib/utils'
 
 
-const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 })
+/** Axis labels like "1.8K". The decimals follow the gap between grid lines, so a flat graph (1,740 to 1,790)
+    reads 1.74K, 1.76K… instead of 1.8K on every line. */
+function axisFormat(values: number[]) {
+  const max = Math.max(...values.map(Math.abs))
+  const unit = max >= 1e9 ? 1e9 : max >= 1e6 ? 1e6 : max >= 1e3 ? 1e3 : 1
+  const step = (Math.max(...values) - Math.min(...values)) / 4 / unit
+  const digits = step > 0 ? Math.min(3, Math.max(1, Math.ceil(-Math.log10(step)))) : 1
+  return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: digits })
+}
 
 /** Same height as the graph, so nothing jumps when it arrives. */
 export function BalanceChartSkeleton() {
@@ -36,6 +44,7 @@ export const BalanceChart = memo(function BalanceChart({ points, currency }: { p
   }
   // Room on the right for the last date label; grows with the text size.
   const rem = parseFloat(getComputedStyle(document.documentElement).fontSize)
+  const compact = axisFormat(points.map((p) => p.value))
   return (
     <ChartContainer config={config} className="aspect-auto h-64 w-full font-mono tabular-nums">
       <LineChart data={points} margin={{ top: 8, right: rem, bottom: 0, left: 0 }}>

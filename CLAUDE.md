@@ -30,9 +30,9 @@ The user is a designer, not an engineer. Explain changes in plain language.
 
 Vocabulary:
 - **Portfolio** — a named card in the top "Portfolios" row (e.g. "Binance"): a name plus its entries,
-  no type of its own. The first card, **Net worth**, sums every portfolio. The app calls it a
-  **source** / **джерело** (a manual one is "Manual source" / "Ручне джерело"); "portfolio" is only the
-  code's name. Don't call it a "card" in texts: cards are Monobank's bank cards.
+  no type of its own. The first card, **Net worth**, sums every portfolio. The app calls it an
+  **asset** / **актив** (a manual one is "Cash and crypto" / "Готівка й крипта"); "portfolio" is only the
+  code's name. Debts, later, are their own kind ("Борг"); net worth = assets − debts. Don't call it a "card" in texts: cards are Monobank's bank cards.
 - **Entry** — a signed change (+/−) of one asset inside a portfolio. One portfolio can mix entry types.
   The app calls it a **transaction** ("операція" in Ukrainian); "entry" is only the code's name.
 - **Entry type** — money / crypto / stocks; decides which assets an entry can use. It is
@@ -49,7 +49,7 @@ Vocabulary:
   Monobank. `trackedAssets` lists the picked stocks; null ("Select all") also follows new purchases.
 - **Period** — the tracked time span picked above the cards, on the left (All time by default; the last pick is saved on the account, `period` on the Convex user). It limits
   the graph and the Transactions tab; cards show the balance at the period's end plus the change during it.
-- **Assets tab** — below the graph, next to Transactions (`holdings.tsx`): one row per asset held at the period's
+- **Breakdown tab** ("Склад"; `assetsTab`) — below the graph, next to Transactions (`holdings.tsx`): one row per asset held at the period's
   end, whenever it was bought, with its value and the passive income it made in the period (plus a "Dividends and
   interest" row). The rows add up to the passive income number. Opens by default.
 - **Display currency** — USD / EUR / UAH switch in the user popover; values convert via the currency's own
@@ -80,11 +80,13 @@ Vocabulary:
 - **Drawer** — the right-side panel (`ui/sheet.tsx`) used for every form. Only short "Delete?"
   confirmations stay as small centered pop-ups.
 
-Flow: + card → drawer with a name → floating Deposit (+, primary) / Withdraw (−, secondary) buttons →
+Flow: + card → drawer with a name → floating Add (+, primary) / Subtract (−, secondary) buttons ("Додати" / "Відняти"; an asset with no transactions shows Add alone) →
 each asks for the entry type in a dropdown → entry drawer (the button decides the sign).
 
-The + card opens a menu: Custom (the flow above), Monobank (`monobank-drawer.tsx`: paste token → tick cards)
-or Interactive Brokers (`ibkr-drawer.tsx`: setup guide → paste Flex token + Query ID → pick stocks / Select all).
+A new account with no assets shows only a title, a subtitle and an "Add asset" button (`?empty` on a dev build shows
+this screen without touching the data). The + card and that button open the same menu, in titled sections:
+"Connect a bank or broker" (Monobank, IBKR) and "Add by hand" (Cash and crypto, the flow above). Monobank opens `monobank-drawer.tsx` (paste token → tick cards),
+Interactive Brokers opens `ibkr-drawer.tsx` (setup guide → paste Flex token + Query ID → pick stocks / Select all).
 
 `src/lib/entries.ts` is the app's data module (live Convex subscription to portfolios + entries,
 optimistic edits, `call` for server actions). Live prices come from Binance public market data in
@@ -131,10 +133,10 @@ Tokens are encrypted with the deployment's `TOKEN_KEY` (`convex/secrets.ts`: act
 row of the user. Stock price lookups are rate-limited per user (`convex/limits.ts`). Public mutations
 cap text lengths and reject app ids that are already taken (`convex/data.ts`).
 
-Analytics: PostHog (`src/lib/analytics.ts`), anonymous page views plus sign-in events (`google_button_clicked`, then `sign_up` for a new account or `login` for an existing one). Every event carries `source`: the
-link's `utm_source`, else the referring site, else `direct`, remembered for the browser tab. No cookies,
-profiles, autocapture or session recording, and addresses lose their query (Google's sign-in code). Never send
-names, emails, amounts, assets or portfolio names. Set `POSTHOG_KEY` / `POSTHOG_HOST` on Vercel to turn it on.
+Analytics: PostHog (`src/lib/analytics.ts`), page views plus sign-in events (`google_button_clicked`, then `sign_up` for a new account or `login` for an existing one) and `dashboard_viewed` (once per page load, again after 30 min away or when the count grows), carrying `assets_with_data`: how many assets hold at least one transaction. Every event carries `source`: the
+link's `utm_source`, else the referring site, else `direct`, remembered for the browser tab. Visitors stay anonymous; once signed in, `identifyUser` gives PostHog a scrambled account ID (SHA-256 of the Convex user id, from `users.me`), with the first `source` kept on the person as `first_source`. That's what counts activation (2+ assets with data within 7 days of `sign_up`, VISION.md) and retention (another `dashboard_viewed` 8–14 days later). No cookies,
+autocapture or session recording, and addresses lose their query (Google's sign-in code). Never send
+names, emails, amounts, assets or portfolio names. Set `POSTHOG_KEY` / `POSTHOG_HOST` on Vercel to turn it on; cookieless mode must also be on in the PostHog project's settings, or its events are dropped.
 
 Public pages: home, `/faq`, `/privacy`, `/terms`, and `/blog` once an article is published. They're listed in
 `src/lib/site.ts` (title, description, breadcrumbs, structured data) and shown by `src/components/site.tsx`.

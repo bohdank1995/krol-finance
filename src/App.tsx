@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect } from 'react'
 import { useConvexAuth, useQuery } from 'convex/react'
 import { AppShell } from '@/components/app-shell'
 import { SignIn } from '@/components/sign-in'
-import { trackSignedIn } from '@/lib/analytics'
+import { identifyUser, trackSignedIn } from '@/lib/analytics'
 import { mayBeSignedIn } from '@/lib/auth'
 import { reloadOnce } from '@/lib/chunks'
 import { periodOf } from '@/lib/period'
@@ -18,7 +18,9 @@ function App() {
   const { isLoading, isAuthenticated } = useConvexAuth()
   const me = useQuery(api.users.me, isAuthenticated ? {} : 'skip')
   useEffect(() => {
-    if (me) trackSignedIn(me.createdAt)
+    if (!me) return
+    identifyUser(me.id)
+    trackSignedIn(me.createdAt)
   }, [me])
   // Visitors keep seeing the home page while this loads; returning users see the loading screen.
   if (isLoading) return mayBeSignedIn() ? <AppShell /> : <SignIn />
