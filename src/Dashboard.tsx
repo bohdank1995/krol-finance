@@ -1,6 +1,7 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { DashboardSkeleton } from '@/components/app-shell'
 import { BalanceChart, BalanceChartSkeleton, PassiveIncome } from '@/components/balance-chart'
+import { EntryActions } from '@/components/add-entry-menu'
 import { EntriesTable } from '@/components/entries-table'
 import { Holdings } from '@/components/holdings'
 import { Header, PeriodFilter } from '@/components/header'
@@ -9,6 +10,7 @@ import { Ticker } from '@/components/ticker'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { earnsPassiveIncome, membersOf, netWorthEntries, netWorthPortfolios, savePeriod, scaleEntries, scalePayouts, setInPassiveIncome, useEntries, useGroups, useLoaded, usePayouts, usePortfolios } from '@/lib/entries'
 import { fakeEntries, fakePayouts } from '@/lib/fake'
+import { trackDashboardViewed } from '@/lib/analytics'
 import { useDailyPrices } from '@/lib/history'
 import { useT } from '@/lib/i18n'
 import { inRange, rangeOf, type Period } from '@/lib/period'
@@ -121,8 +123,21 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
     mainRef.current?.animate({ opacity: [0.5, 1] }, { duration: 220, easing: 'ease-out' })
   }, [currency])
+  // Usage statistics: how many assets hold at least one transaction (a count only, never what's in them).
+  const assetsWithData = useMemo(() => new Set(real.map((e) => e.portfolioId)).size, [real])
+  useEffect(() => {
+    if (!ready) return
+    const view = () => document.visibilityState === 'visible' && trackDashboardViewed(assetsWithData)
+    view()
+    document.addEventListener('visibilitychange', view)
+    return () => document.removeEventListener('visibilitychange', view)
+  }, [ready, assetsWithData])
   const toolbar = useMemo(() => <PeriodFilter period={period} onChange={pick} />, [period, pick])
   const startEditing = useCallback(() => setEditing(true), [])
+  // A manual asset with nothing in it yet: a short note on what it can hold and Deposit alone, no graph or tabs.
+  const fresh = !fake && !isGroup && scope.length === 1 && scope[0].source === 'manual' && shown.length === 0
+  // A new account (no sources yet) shows only the cards row: no period, graph, passive income or tabs.
+  const empty = portfolios.length === 0
 
   return (
     <TooltipProvider delay={150}>
@@ -135,7 +150,7 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
             <>
               <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
                 <PortfolioCards
-                  toolbar={toolbar}
+                  toolbar={empty ? undefined : toolbar}
                   editing={editing}
                   // Edit mode: reorder, group and delete sources. Not in Fake numbers (read-only).
                   onEdit={!fake && portfolios.length > 0 ? startEditing : undefined}
@@ -154,6 +169,14 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
                 />
               </div>
               {/* Steps aside while the cards are being edited: fades out and folds up, then comes back. */}
+              {fresh && (
+                <div className="animate-enter flex flex-col items-center gap-2 py-20 text-center">
+                  <h2 className="text-xl font-medium text-foreground">{t.emptyAssetTitle}</h2>
+                  <p className="max-w-sm text-sm text-muted-foreground">{t.emptyAssetSubtitle}</p>
+                  <EntryActions portfolios={scope} portfolioId={selected} depositOnly />
+                </div>
+              )}
+              {!empty && !fresh && (
               <div
                 inert={editing}
                 className={cn(
@@ -229,6 +252,7 @@ export default function Dashboard({ email, image, saved }: { email: string; imag
                   </section>
                 </div>
               </div>
+              )}
             </>
           )}
         </main>

@@ -14,7 +14,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { currencySign, type AssetSymbol } from '@/lib/assets'
@@ -248,6 +251,7 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
       folded={folded}
       order={++order}
       label={h.name}
+      brand={h.source === 'monobank' ? monobankLogo : h.source === 'ibkr' ? ibkrLogo : undefined}
       hidden={!h.inNetWorth}
       share={h.cardPercent / 100}
       netWorthShare={h.inNetWorth ? h.netWorthPercent : undefined}
@@ -297,6 +301,22 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
     />
   )
 
+  /** What can be added, in two titled sections: connected banks and brokers, then a list kept by hand. */
+  const addOptions = (align: 'center' | 'end') => (
+    <DropdownMenuContent align={align} className="w-80">
+      <DropdownMenuGroup>
+        <DropdownMenuLabel className="text-xs font-normal">{t.connectSection}</DropdownMenuLabel>
+        <AddOption icon={<BrandIcon src={monobankLogo} />} label="Monobank" hint={t.monobankHint} onClick={() => setConnecting('monobank')} />
+        <AddOption icon={<BrandIcon src={ibkrLogo} />} label="Interactive Brokers" hint={t.ibkrHint} onClick={() => setConnecting('ibkr')} />
+      </DropdownMenuGroup>
+      <DropdownMenuSeparator />
+      <DropdownMenuGroup>
+        <DropdownMenuLabel className="text-xs font-normal">{t.manualSection}</DropdownMenuLabel>
+        <AddOption icon={<WalletCards className="size-4 text-muted-foreground" />} label={t.custom} hint={t.customHint} onClick={() => setCreating(true)} />
+      </DropdownMenuGroup>
+    </DropdownMenuContent>
+  )
+
   /** "+" menu: in the toolbar next to the period on phones, pinned to the right of the cards on wider screens. */
   const addMenu = (
     <DropdownMenu>
@@ -313,22 +333,12 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
       >
         <Plus />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuItem onClick={() => setCreating(true)}>
-          <WalletCards className="text-muted-foreground" />
-          {t.custom}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setConnecting('monobank')}>
-          <BrandIcon src={monobankLogo} />
-          Monobank
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setConnecting('ibkr')}>
-          <BrandIcon src={ibkrLogo} />
-          Interactive Brokers
-        </DropdownMenuItem>
-      </DropdownMenuContent>
+      {addOptions('end')}
     </DropdownMenu>
   )
+
+  // A new account: no cards yet, just what Koshel is for and one button to add the first asset.
+  const empty = portfolios.length === 0 && !readOnly
 
   if (editing)
     return (
@@ -344,6 +354,20 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
 
   return (
     <div className="animate-in duration-300 fade-in">
+      {empty ? (
+        <div className="animate-enter flex flex-col items-center gap-3 py-24 text-center sm:py-32">
+          <h1 className="text-3xl font-medium text-foreground sm:text-4xl">{t.emptyTitle}</h1>
+          <p className="max-w-sm text-sm text-muted-foreground">{t.emptySubtitle}</p>
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button size="lg" className="mt-5" />}>
+              <Plus />
+              {t.addPortfolio}
+            </DropdownMenuTrigger>
+            {addOptions('center')}
+          </DropdownMenu>
+        </div>
+      ) : (
+      <>
       {/* Same edges as the cards and everything below them. */}
       <div className="mb-3 flex items-center gap-2">
         <span className="mr-auto">{toolbar}</span>
@@ -446,6 +470,8 @@ export const PortfolioCards = memo(function PortfolioCards({ portfolios, groups,
           </div>
         </div>
       </Reorder>
+      </>
+      )}
 
       {slides.length > 1 && (
         <div className="mt-2 flex justify-center sm:hidden">
@@ -543,6 +569,8 @@ type CardProps = Valuation & {
   label: string
   /** A group's icon (`group-icon.tsx`), shown left of the label. */
   icon?: string
+  /** A connected source's logo (Monobank, IBKR), shown grey left of the label. */
+  brand?: string
   /** A group's card: true draws two cards peeking out on its right (closed), false tucks them away (open). */
   stack?: boolean
   /** A short grey line under the label, e.g. "3 sources" on a group. */
@@ -572,7 +600,7 @@ type CardProps = Valuation & {
 
 const dayBefore = (day: string) => new Date(Date.parse(`${day}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
 
-function Card({ id, order, label, icon, stack, note, folded, draggable = false, hidden, share = 1, netWorthShare, hint, syncing, message, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
+function Card({ id, order, label, icon, brand, stack, note, folded, draggable = false, hidden, share = 1, netWorthShare, hint, syncing, message, entries, prices, daily, currency, range, active, onSelect, menu, live }: CardProps) {
   const t = useT()
   const points = useMemo(() => series(entries, daily, prices, currency), [entries, daily, prices, currency])
   const today = new Date().toISOString().slice(0, 10)
@@ -635,7 +663,7 @@ function Card({ id, order, label, icon, stack, note, folded, draggable = false, 
         )}
       >
         <span className="flex items-center gap-2 pr-10 text-sm text-muted-foreground">
-          <GroupIcon icon={icon} />
+          {brand ? <BrandIcon src={brand} /> : <GroupIcon icon={icon} />}
           <span className="truncate">{label}</span>
           {note && <span className="shrink-0 text-xs text-faint-foreground">{note}</span>}
           {syncing ? <RefreshCw className="size-3.5 shrink-0 animate-spin" /> : live && <LiveDot status={live} />}
@@ -665,7 +693,7 @@ function Card({ id, order, label, icon, stack, note, folded, draggable = false, 
             <span className="text-xs text-muted-foreground">{currencySign(currency)}</span>
           </span>
           {share !== 1 && (
-            <span className="text-xs text-faint-foreground">
+            <span className="text-xs text-muted-foreground">
               {t.shareOf(Math.round(share * 1000) / 10, formatMoney(total / share))}
             </span>
           )}
@@ -695,6 +723,19 @@ function Hint({ text, children }: { text: string; children: ReactNode }) {
 }
 
 /** A company logo drawn in the menu's grey, like the lucide icons next to it (the SVG is used as a mask). */
+/** One row of the "+" menu: an icon, the option's name and a short line on what it holds. */
+function AddOption({ icon, label, hint, onClick }: { icon: ReactNode; label: string; hint: string; onClick: () => void }) {
+  return (
+    <DropdownMenuItem onClick={onClick} className="items-start">
+      <span className="mt-1 flex size-4 items-center justify-center">{icon}</span>
+      <span className="grid gap-0.5">
+        <span>{label}</span>
+        <span className="text-sm text-muted-foreground">{hint}</span>
+      </span>
+    </DropdownMenuItem>
+  )
+}
+
 function BrandIcon({ src }: { src: string }) {
   return (
     <span

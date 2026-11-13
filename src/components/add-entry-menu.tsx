@@ -59,11 +59,13 @@ export const FAB_BAR =
 /** A floating button: half the screen each when paired (full width alone) on phones. */
 export const FAB = 'shadow-lg max-sm:flex-1'
 
-/** Floating Deposit + Withdraw pair: half the screen width each on phones, hugging their labels on desktop. */
-export function EntryActions(props: Omit<Props, 'direction' | 'trigger'>) {
+/** Floating Deposit + Withdraw pair: half the screen width each on phones, hugging their labels on desktop.
+    `depositOnly` leaves out Withdraw, for an asset with nothing in it yet. */
+export function EntryActions({ depositOnly, ...props }: Omit<Props, 'direction' | 'trigger'> & { depositOnly?: boolean }) {
   const t = useT()
   return (
     <div className={FAB_BAR}>
+      {!depositOnly && (
       <AddEntryMenu
         {...props}
         direction="out"
@@ -74,6 +76,7 @@ export function EntryActions(props: Omit<Props, 'direction' | 'trigger'>) {
           </Button>
         }
       />
+      )}
       <AddEntryMenu
         {...props}
         direction="in"

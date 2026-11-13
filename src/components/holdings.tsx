@@ -92,7 +92,7 @@ export const Holdings = memo(function Holdings({ entries, earning, payouts, show
     <Table className="animate-enter" style={enter}>
       <TableHeader className="max-sm:hidden">
         <TableRow className="hover:bg-transparent">
-          <TableHead className={cn(head, 'pl-0')}>{t.asset}</TableHead>
+          <TableHead className={cn(head, 'pl-0')}>{t.name}</TableHead>
           <TableHead className={cn(head, 'text-right')}>{t.amount}</TableHead>
           <TableHead className={cn(head, 'text-right')}>{t.value}, {currencySign(currency)}</TableHead>
           {showIncome && <TableHead className={cn(head, 'pr-0 text-right')}>{t.passiveIncome}, {currencySign(currency)}</TableHead>}

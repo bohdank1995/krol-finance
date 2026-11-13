@@ -73,7 +73,15 @@ function PortfolioForm({
             <Input autoFocus autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} className="h-12" />
           </div>
         ) : (
-          <Input autoFocus autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} className="h-12" />
+          // A new asset shows example names, so people see they can call it anything.
+          <Input
+            autoFocus
+            autoComplete="off"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={portfolio ? undefined : t.nameExamples}
+            className="h-12"
+          />
         )}
       </Field>
 

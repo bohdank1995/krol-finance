@@ -3,7 +3,7 @@ import { ConvexError, v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { signedIn } from './data'
 
-/** The signed-in user's email, saved language and period, and account age; null when signed out. */
+/** The signed-in user's id (scrambled for analytics), email, saved language and period, and account age; null when signed out. */
 export const me = query({
   args: {},
   handler: async (ctx) => {
@@ -11,6 +11,7 @@ export const me = query({
     const user = userId && (await ctx.db.get(userId))
     if (!user) return null
     return {
+      id: user._id,
       email: user.email ?? '',
       language: user.language,
       period: user.period,

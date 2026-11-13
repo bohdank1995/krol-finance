@@ -100,6 +100,8 @@ function refresh() {
   }
   if (data === undefined) return // still loading
   if (data === null) return set([], [], false)
+  // Local preview of a brand-new account: `?empty` hides the data on screen only (dev builds only).
+  if (import.meta.env.DEV && new URLSearchParams(location.search).has('empty')) return set([], [])
   set(
     sortPortfolios(data.portfolios as Portfolio[]),
     ([...data.entries] as Entry[]).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
